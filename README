@@ -4,7 +4,10 @@ lua l2l.lua test.lsp out.lua
 lua out.lua
 
 Description:
-A lisp to lua compiler in 100 lines.
+A lisp to lua compiler (with parser) in 100 lines.
+
+Motivated by:
+http://blog.fogus.me/2012/01/25/lisp-in-40-lines-of-ruby/
 
 Sample source code:
 (label a 5)
