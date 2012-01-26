@@ -1,28 +1,29 @@
 Sample source code
 ==================
-(label a 5)
-(print a)
-(print (* a 5))
+    (label a 5)
+    (print a)
+    (print (* a 5))
 
-(label double (lambda (x) (* x 2)))
-(print (double a))
+    (label double (lambda (x) (* x 2)))
+    (print (double a))
 
-(print (eval (quote (double (+ 1 2)))))
+    (print (eval (quote (double (+ 1 2)))))
 
 Sample output
 =============
--- header omitted --
-a=5
-print(a)
-print(a*5)
-double=function(x) return x*2 end
-print(double(a))
-print(eval(list(sym("double"),list(sym("+"),1,2))))
+    -- header omitted --
+    a=5
+    print(a)
+    print(a*5)
+    double=function(x) return x*2 end
+    print(double(a))
+    print(eval(list(sym("double"),list(sym("+"),1,2))))
 
-Quickstart:
-cd into l2l directory
-lua l2l.lua test.lsp out.lua
-lua out.lua
+Quickstart
+==========
+    cd into l2l directory
+    lua l2l.lua test.lsp out.lua
+    lua out.lua
 
 Description
 ===========
