@@ -19,3 +19,12 @@ Sample source code:
 
 (print (eval (quote (double (+ 1 2)))))
 
+Sample output:
+-- header omitted --
+a=5
+print(a)
+print(a*5)
+double=function(x) return x*2 end
+print(double(a))
+print(eval(list(sym("double"),list(sym("+"),1,2))))
+
