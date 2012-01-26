@@ -19,6 +19,13 @@ Sample output
     print(double(a))
     print(eval(list(sym("double"),list(sym("+"),1,2))))
 
+Sample output output
+====================
+    5
+    25
+    10
+    6
+
 Quickstart
 ==========
     cd into l2l directory
