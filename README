@@ -1,0 +1,18 @@
+Quickstart:
+cd into l2l directory
+lua l2l.lua test.lsp out.lua
+lua out.lua
+
+Description:
+A lisp to lua compiler in 100 lines.
+
+Sample source code:
+(label a 5)
+(print a)
+(print (* a 5))
+
+(label double (lambda (x) (* x 2)))
+(print (double a))
+
+(print (eval (quote (double (+ 1 2)))))
+
