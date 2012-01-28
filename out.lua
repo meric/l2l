@@ -17,13 +17,6 @@ function hash(v)return v:gsub("%W",function(a)return "_c"..a:byte().."_"end)end
 -- operator
 op_mt = {__call = function(self,...) return self.f(...)end}
 function op(f) return setmt({f=f}, op_mt) end
-quote = op(function(l)
-  if type(l) == "string" then return "[["..l.."]]"
-  elseif type(l) == "number" then return tostring(l)
-  elseif getmt(l) == sym_mt then return "sym(\""..tostring(l).."\")"
-  elseif getmt(l) == list_mt and l[1] == nil and l[2] == nil then return "nil"
-  elseif getmt(l) == list_mt then return "list("..sep(l, quote)..")" end
-end)
 
 -- parser & compiler
 function tolua(l)
@@ -91,6 +84,13 @@ cond = op(function(...)
   local def, r = "(function()", "return "
   for i,v in ipairs({...}) do def=def.."\n  if "..tolua(v[1]).. " then ".. compile(true, unlist(v[2])) .. "end" end
   return def.."\n  end)()" end)
+quote = op(function(l)
+  if type(l) == "string" then return "[["..l.."]]"
+  elseif type(l) == "number" then return tostring(l)
+  elseif getmt(l) == sym_mt then return "sym(\""..tostring(l).."\")"
+  elseif getmt(l) == list_mt and l[1] == nil and l[2] == nil then return "nil"
+  elseif getmt(l) == list_mt then return "list("..sep(l, quote)..")" end
+end)
 
 caar=function(a) return a[1][1] end
 cadr=function(a) return a[2][1] end
