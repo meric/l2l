@@ -9,12 +9,11 @@ function list(v,...)return setmt({v,...~=nil and list(...) or nil},list_mt) end
 function unlist(l,f)f=f or id if l then return f(l[1]), unlist(l[2], f) end end
 function sep(l, f) return table.concat({unlist(l, f)}, ",") end
 
--- symbol
+-- symbol & operator
 sym_mt = {__tostring = function(self) return self.n end}
 function sym(n) return setmt({n=n}, sym_mt) end
 function hash(v)return v:gsub("%W",function(a) 
   if a ~= "." then return "_c"..a:byte().."_" else return "." end end) end
--- operator
 op_mt = {__call = function(self,...) return self.f(...)end}
 function op(f) return setmt({f=f}, op_mt) end
 
@@ -77,7 +76,7 @@ cdr = op(function(a) return tolua(a).."[2]" end)
 eq = op(function(a, b) return tolua(a) .. "==" .. tolua(b) end)
 defun = op(function(n,a,...) return hash(tostr(n)).."="..lambda(a, ...)end)
 lambda = op(function(a, ...) 
-  local def, r = "function("..sep(a, tostr)..") ", "return "
+  local def, r = "function("..(a[1] and sep(a, tostr) or "")..") ", "return "
   for i,v in ipairs({...}) do def=def..(i==#{...}and r or"")..tolua(v).." " end
   return def.."end" end)
 cond = op(function(...)
