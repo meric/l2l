@@ -1,30 +1,25 @@
 Sample source code
 ==================
-    (label a 5)
-    (print a)
-    (print (* a 5))
+    (defun ! (n) 
+      (cond ((eq n 0) 1)
+            ((eq n 1) 1)
+            ('t (* n (! (- n 1))))))
 
-    (label double (lambda (x) (* x 2)))
-    (print (double a))
-
-    (print (eval (quote (double (+ 1 2)))))
+    (print (! 100))
 
 Sample output
 =============
     -- header omitted --
-    a=5
-    print(a)
-    print(a*5)
-    double=function(x) return x*2 end
-    print(double(a))
-    print(eval(list(sym("double"),list(sym("+"),1,2))))
+    _c33_=function(n) return (function()
+      if n==0 then return 1 end
+      if n==1 then return 1 end
+      if sym("t") then return (n*_c33_((n-1))) end
+      end)() end
+    print(_c33_(100))
 
 Sample output output
 ====================
-    5
-    25
-    10
-    6
+    9.3326215443944e+157
 
 Quickstart
 ==========
