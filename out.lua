@@ -92,9 +92,13 @@ cond = op(function(...)
   for i,v in ipairs({...}) do def=def.."\n  if "..tolua(v[1]).. " then ".. compile(true, unlist(v[2])) .. "end" end
   return def.."\n  end)()" end)
 
--- write lua
-if not input or not output then return end
-inf=io.open(input, "r") src = inf:read("*all") inf:close()
-of=io.open(output, "w") lf=io.open("l2l.lua", "r")
-  for i=1,94 do of:write(lf:read("*line").."\n") end lf:close()
-of:write(compile(false, parse(src)).."\n") of:close()
+caar=function(a) return a[1][1] end
+cadr=function(a) return a[2][1] end
+assert(not(nil))
+_c33_=function(n) return (function()
+  if n==0 then return 1 end
+  if n==1 then return 1 end
+  if sym("t") then return (n*_c33_((n-1))) end
+  end)() end
+print(_c33_(100))
+
