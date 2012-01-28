@@ -12,8 +12,8 @@ function sep(l, f) return table.concat({unlist(l, f)}, ",") end
 -- symbol
 sym_mt = {__tostring = function(self) return self.n end}
 function sym(n) return setmt({n=n}, sym_mt) end
-function hash(v)return v:gsub("%W",function(a)return "_c"..a:byte().."_"end)end
-
+function hash(v)return v:gsub("%W",function(a) 
+  if a ~= "." then return "_c"..a:byte().."_" else return "." end end) end
 -- operator
 op_mt = {__call = function(self,...) return self.f(...)end}
 function op(f) return setmt({f=f}, op_mt) end

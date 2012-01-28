@@ -5,3 +5,5 @@
 
 (print (! 100))
 
+(print (string.gsub "hello gibberish world" "gibberish " ""))
+

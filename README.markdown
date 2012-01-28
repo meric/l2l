@@ -7,6 +7,8 @@ Sample source code
 
     (print (! 100))
 
+    (print (string.gsub "hello gibberish world" "gibberish " ""))
+
 Sample output
 =============
     -- header omitted --
@@ -16,10 +18,12 @@ Sample output
       if sym("t") then return (n*_c33_((n-1))) end
       end)() end
     print(_c33_(100))
+    print(string.gsub([[hello gibberish world]],[[gibberish ]],[[]]))
 
 Sample output output
 ====================
     9.3326215443944e+157
+    hello world 1
 
 Quickstart
 ==========
