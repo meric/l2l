@@ -12,26 +12,12 @@ function sep(l, f) return table.concat({unlist(l, f)}, ",") end
 -- symbol & operator
 sym_mt = {__tostring = function(self) return self.n end}
 function sym(n) return setmt({n=n}, sym_mt) end
-function hash(v)return v:gsub("%W",function(a) 
+function hash(v)return tostr(v):gsub("%W",function(a) 
   if a ~= "." then return "_c"..a:byte().."_" else return "." end end) end
 op_mt = {__call = function(self,...) return self.f(...)end}
 function op(f) return setmt({f=f}, op_mt) end
 
 -- parser & compiler
-function tolua(l)
-  if type(l) == "string" then return "[["..l.."]]"
-  elseif type(l) == "number" then return tostring(l)
-  elseif getmt(l) == sym_mt then return hash(tostring(l))
-  elseif getmt(l) == list_mt then
-    local fst = l[1]; if not fst then return nil end
-    if getmt(fst) == sym_mt and getmt(_G[hash(tostring(fst))]) == op_mt then
-      return _G[hash(tostring(fst))](unlist(l[2], id))
-    elseif getmt(fst) == sym_mt then
-      return hash(tostring(fst)) .."("..sep(l[2],tolua)..")"
-    end
-    return tolua(fst).."("..sep(l[2],tolua)..")" 
-  end
-end
 function trim(s) return (s:gsub("^%s*(.-)%s*$", "%1")) end
 function parse(src)
   src = trim(src)
@@ -58,6 +44,20 @@ function parse(src)
     return tonumber(first) or sym(first), parse(rest or "")
   end
 end
+function tolua(l)
+  if type(l) == "string" then return "[["..l.."]]"
+  elseif type(l) == "number" then return tostring(l)
+  elseif getmt(l) == sym_mt then return hash(tostring(l))
+  elseif getmt(l) == list_mt then
+    local fst = l[1]; if not fst then return nil end
+    if getmt(fst) == sym_mt and getmt(_G[hash(tostring(fst))]) == op_mt then
+      return _G[hash(tostring(fst))](unlist(l[2], id))
+    elseif getmt(fst) == sym_mt then
+      return hash(tostring(fst)) .."("..sep(l[2],tolua)..")"
+    end
+    return tolua(fst).."("..sep(l[2],tolua)..")" 
+  end
+end
 function compile(ret, s,...) 
   local c = tolua(s)..(ret and " " or "\n") 
   if ... then return c .. compile(ret, ...) end
@@ -76,7 +76,7 @@ cdr = op(function(a) return tolua(a).."[2]" end)
 eq = op(function(a, b) return tolua(a) .. "==" .. tolua(b) end)
 defun = op(function(n,a,...) return hash(tostr(n)).."="..lambda(a, ...)end)
 lambda = op(function(a, ...) 
-  local def, r = "function("..(a[1] and sep(a, tostr) or "")..") ", "return "
+  local def, r = "function("..(a[1] and sep(a, hash) or "")..") ", "return "
   for i,v in ipairs({...}) do def=def..(i==#{...}and r or"")..tolua(v).." " end
   return def.."end" end)
 cond = op(function(...)
