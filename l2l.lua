@@ -44,7 +44,7 @@ function parse(src)
     return tonumber(first) or sym(first), parse(rest or "")
   end
 end
-function tolua(l)
+function tolua(l) -- l is parse tree
   if type(l) == "string" then return "[["..l.."]]"
   elseif type(l) == "number" then return tostring(l)
   elseif getmt(l) == sym_mt then return hash(tostring(l))
@@ -81,7 +81,8 @@ lambda = op(function(a, ...)
   return def.."end" end)
 cond = op(function(...)
   local def, r = "(function()", "return "
-  for i,v in ipairs({...}) do def=def.."\n  if "..tolua(v[1]).. " then ".. compile(true, unlist(v[2])) .. "end" end
+  for i,v in ipairs({...}) do def=def.."\n  if "..tolua(v[1]).. " then ".. 
+    compile(true, unlist(v[2])) .. "end" end
   return def.."\n  end)()" end)
 quote = op(function(l)
   if type(l) == "string" then return "[["..l.."]]"
