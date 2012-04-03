@@ -12,18 +12,32 @@ Sample source code
 Sample output
 =============
     -- header omitted --
-    _c33_=function(n) return (function()
-      if n==0 then return 1 end
-      if n==1 then return 1 end
-      if sym("t") then return (n*_c33_((n-1))) end
-      end)() end
+    local function _c33_(n)
+      return (function()
+        if n==0 then
+          return 1
+        end
+        if n==1 then
+          return 1
+        end
+        if true then
+          return (n*_c33_((n-1)))
+        end
+      end)()
+    end
     print(_c33_(100))
-    print(string.gsub([[hello gibberish world]],[[gibberish ]],[[]]))
+    local hello_c45_world = "hello gibberish world"
+    print(string.gsub(hello_c45_world,"gibberish ",""))
+    map(print,list(1,2,3))
+
 
 Sample output output
 ====================
     9.3326215443944e+157
     hello world 1
+    1
+    2
+    3
 
 Quickstart
 ==========
