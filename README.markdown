@@ -1,5 +1,12 @@
-Sample source code
-==================
+Lisp to Lua Compiler
+====================
+
+Description
+-----------
+A lisp to lua compiler (with parser) in 100 lines.
+
+Example source code
+-------------------
     (defun ! (n) 
       (cond ((eq n 0) 1)
             ((eq n 1) 1)
@@ -14,8 +21,8 @@ Sample source code
     ; prints all numbers only for lua 5.2, only 5.2 supports __ipairs override.
 
 
-Sample output
-=============
+Example output
+--------------
     -- header omitted --
     local function _c33_(n)
       return (function()
@@ -36,8 +43,8 @@ Sample output
     map(print,list(1,2,3))
 
 
-Sample output output
-====================
+Example output output
+---------------------
     9.3326215443944e+157
     hello world 1
     1
@@ -45,16 +52,13 @@ Sample output output
     3
 
 Quickstart
-==========
+----------
     cd into l2l directory
     lua l2l.lua test.lsp out.lua
     lua out.lua
 
-Description
-===========
-A lisp to lua compiler (with parser) in 100 lines.
 
 Motivated by
-============
+------------
 http://blog.fogus.me/2012/01/25/lisp-in-40-lines-of-ruby/
 
