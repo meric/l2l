@@ -49,7 +49,7 @@
             (indent (compile [...])) 
           "\nend)()"))))
 (print "\n--- Example 8 ---\n")
-(print "\n--- Did you what was printed while compiling? ---\n")
+(print "\n--- Did you see what was printed while compiling? ---\n")
 (do
   (print 1)
   (print 2))
