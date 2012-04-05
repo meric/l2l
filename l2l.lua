@@ -128,10 +128,7 @@ end
 function Dictionary:tolua()
   local t = {}
   for k, v in pairs(self) do
-    if getmetatable(k) == Symbol then
-      k = k:tohash()
-    end
-    table.insert(t, "["..tolua(k).."]".." = ".. generate(v))
+    table.insert(t, "["..generate(k).."]".." = ".. generate(v))
   end
   return "({"..List.concat(map(tostring, t), ",").."})"
 end

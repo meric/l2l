@@ -26,7 +26,7 @@
 
 ; Example 5: Accessor method
 (print "\n--- Example 5 ---\n")
-(.print {print (lambda (self x) (print x))} "hello-world")
+(.write {"write" (lambda (self x) (print x))} "hello-world")
 
 ; Example 6: Anonymous function
 (print "\n--- Example 6 ---\n")
