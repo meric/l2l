@@ -199,7 +199,7 @@ LUAKEYWORDS ={
 }
 
 function Symbol:tohash()
-  local name = tostring(self.name):gsub("[-?!@#$%^&*=_+|\\/{}<>~`,]",
+  local name = tostring(self.name):gsub("[^a-zA-Z0-9.%[%]\"]",
     function(a) 
       if a ~= "." then 
         return hash(a)
@@ -502,9 +502,9 @@ end)
 
 lambda = Operator(function(arguments, ...) 
   local arglist = List.concat(map(function(a)
-      assert(getmetatable(a) == Symbol, "Expected Symbol: "..tostring(a))
+      assert(getmetatable(a) == Symbol, "Expected Symbol: "..tostring(arguments))
       return a:tohash()
-    end, arguments), ",")
+    end, arguments or {}), ",")
   local body = compile({...})
   return "(function("..arglist..")\n"..indent(body).."\nend)" 
 end)
@@ -514,7 +514,7 @@ defun = Operator(function(name, arguments, ...)
   local arglist = List.concat(map(function(a)
       assert(getmetatable(a) == Symbol, "Expected Symbol: "..tostring(a))
       return a:tohash()
-    end, arguments))
+    end, arguments or {}))
   local body = compile({...})
   name = name:tohash()
   return "function "..name.."("..arglist..")\n"..indent(body).."\nend" 

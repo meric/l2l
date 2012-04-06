@@ -7,6 +7,8 @@
 
 (print (! 100))
 
+(defun Σ () (print "ΣΣΣ"))
+
 ; Example 2: Acccessing functions from Lua environment
 (print "\n--- Example 2 ---\n")
 (set hello-world "hello gibberish world")
