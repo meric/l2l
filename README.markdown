@@ -120,23 +120,14 @@ Example Output
 
     (function()
       local a = 2
-      return (function()  
-        if ("1" == a) then
-          return print("a == 1")
-        end
-        if true then
-          return (function()  
-            if (2 == a) then
-              return print("a == 2")
-            end
-            if true then
-              return print("a != 2")
-            end
-          end)()
-        end
-      end)()
+      return ((("1" == a) and
+          (print("a == 1") or true))
+        or (true and
+          ((((2 == a) and
+              (print("a == 2") or true))
+            or (true and
+              (print("a != 2") or true))) or true)))
     end)();
-
     ;
 
     ;
