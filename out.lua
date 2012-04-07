@@ -692,13 +692,25 @@ quasiquote = Operator(function(tree)
   return "List("..List.concat(map(quasiquote, tree),",")..")"
 end)
 
+-- cond = Operator(function(...)
+--   local branches = map(function(branch) 
+--     local body = compile(branch:cdr())
+--     return "if "..generate(branch[1]).." then\n"..indent(body).."\nend" 
+--   end, {...})
+--   local body = indent("\n"..List.concat(branches, "\n"))
+--   return "(function()"..body.."\nend)()" 
+-- end)
+
 cond = Operator(function(...)
   local branches = map(function(branch) 
-    local body = compile(branch:cdr())
-    return "if "..generate(branch[1]).." then\n"..indent(body).."\nend" 
+    local body = List.concat(map(function(f) 
+        return "("..generate(f).." or true)"
+      end, branch:cdr()), " and ")
+
+    return "("..generate(branch[1]).." and\n"..indent(body)..")"
   end, {...})
-  local body = indent("\n"..List.concat(branches, "\n"))
-  return "(function()"..body.."\nend)()" 
+  local body = indent(List.concat(branches, "\nor "))
+  return "("..body:trim()..")"
 end)
 
 -- Compile time code execution
@@ -714,17 +726,12 @@ end)
 print("\n--- Example 1 ---\n");
 
 function __c33__(n)
-  return (function()  
-    if (0 == n) then
-      return 1
-    end
-    if (1 == n) then
-      return 1
-    end
-    if true then
-      return (n * __c33__((n - 1)))
-    end
-  end)()
+  return (((0 == n) and
+      (1 or true))
+    or ((1 == n) and
+      (1 or true))
+    or (true and
+      ((n * __c33__((n - 1))) or true)))
 end;
 
 print(__c33__(100));
@@ -816,21 +823,13 @@ print("\n--- Example 12 ---\n");
 
 (function()
   local a = 2
-  return (function()  
-    if ("1" == a) then
-      return print("a == 1")
-    end
-    if true then
-      return (function()  
-        if (2 == a) then
-          return print("a == 2")
-        end
-        if true then
-          return print("a != 2")
-        end
-      end)()
-    end
-  end)()
+  return ((("1" == a) and
+      (print("a == 1") or true))
+    or (true and
+      ((((2 == a) and
+          (print("a == 2") or true))
+        or (true and
+          (print("a != 2") or true))) or true)))
 end)();
 
 ;
