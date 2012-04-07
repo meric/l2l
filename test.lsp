@@ -7,35 +7,106 @@
 
 (print (! 100))
 
-(defun Σ () (print "ΣΣΣ"))
+; Output:
+; --- Example 1 ---
+;
+; 9.3326215443944e+157
 
-; Example 2: Acccessing functions from Lua environment
+; Example 2: Unicode Symbols
 (print "\n--- Example 2 ---\n")
+(defun Σ () (print "ΣΣΣ"))
+(Σ)
+
+; Output:
+; --- Example 2 ---
+;
+; ΣΣΣ
+
+; Example 3: Acccessing functions from Lua environment
+(print "\n--- Example 3 ---\n")
 (set hello-world "hello gibberish world")
 (print (string.gsub hello-world "gibberish " ""))
 
-; Example 3: Quasiquote and unquote
-(print "\n--- Example 3 ---\n")
+; Output:
+; --- Example 3 ---
+;
+; hello world 1
+
+; Example 4: Quasiquote and unquote
+(print "\n--- Example 4 ---\n")
 (map print `(1 2 3 ,(map (lambda (x) (* x 5)) '(1 2 3))))
 ; Note: prints all numbers only for lua 5.2. only 5.2 supports __ipairs override
 
-; Example 4: Let
-(print "\n--- Example 4 ---\n")
+; Output:
+; --- Example 4 ---
+;
+; 1
+; 2
+; 3
+; (5 10 15)
+
+; Example 5: Let
+(print "\n--- Example 5 ---\n")
 (let (a (+ 1 2) 
       b (+ 3 4))
   (print a)
   (print b))
 
-; Example 5: Accessor method
-(print "\n--- Example 5 ---\n")
+; Output:
+; --- Example 5 ---
+;
+; 3
+; 7
+
+; Example 6: Accessor method
+(print "\n--- Example 6 ---\n")
 (.write {"write" (lambda (self x) (print x))} "hello-world")
 
-; Example 6: Anonymous function
-(print "\n--- Example 6 ---\n")
+; Output:
+; --- Example 6 ---
+;
+; hello-world
+
+; Example 7: Anonymous function
+(print "\n--- Example 7 ---\n")
 (print ((lambda (x y) (+ x y)) 10 20))
 
-; Example 7: Directive (The '#' prefix)
-(print "\n--- Example 7 ---\n")
+; Output:
+; --- Example 7 ---
+;
+; 30
+
+; Example 8: Vector
+(print "\n--- Example 8 ---\n")
+(let (a (* 7 8))
+  (map print [1 2 a 4]))
+
+; Output:
+; --- Example 8 ---
+;
+; 1
+; 2
+; 56
+; 4
+
+; Example 9: Dictionary
+(print "\n--- Example 9 ---\n")
+(let (dict {"a" "b" 1 2 "3" 4})
+  (print dict["a"] "b")
+  (print dict.a "b")
+  (print dict[1] 2)
+  (print dict.3 4))
+
+; Output:
+; --- Example 9 ---
+;
+; b b
+; b b
+; 2 2
+; 4 4
+
+; Example 10: Directive (The '#' prefix)
+(print "\n--- Example 10 ---\n")
 ; The following line will run as soon as it is parsed, no code will be generated
 ; It will add a new "--" operator that will be effective immediately
 #(set -- (Operator (lambda (str) (.. "-- " (tostring str))))) 
@@ -43,18 +114,17 @@
 ; Adds a lua comment to lua executable, using operator we defined.
 (-- "This is a comment") ; Will appear in `out.lua`
 
-; Example 8: Define a do block
-#(print "\n--- Example 8 ---\n")
+; Output:
+; --- Example 10 ---
+;
+
+; Example 11: Define a do block
+#(print "\n--- Example 11 ---\n")
 ; E.g. (do (print 1) (print 2)) will execute (print 1) and (print 2) in sequence
 #(set do (Operator (lambda (...) 
       (.. "(function()\n" 
             (indent (compile [...])) 
           "\nend)()"))))
-(print "\n--- Example 8 ---\n")
-(print "\n--- Did you see what was printed while compiling? ---\n")
-(do
-  (print 1)
-  (print 2))
 
 ; We can now make this program be interpreted by wrapping code in "#(do ...)"!
 
@@ -64,24 +134,100 @@
   (print (.. "1 + 1 = " (+ 1 1) "!"))
   (print "Okay that's enough."))
 
+; Compiler Output:
+; --- Example 11 ---
+
+; I am running this line in the compilation step!
+; This too!
+; 1 + 1 = 2!
+; Okay that's enough.
+
+(print "\n--- Example 11 ---\n")
+(print "\n--- Did you see what was printed while compiling? ---\n")
+(do
+  (print 1)
+  (print 2))
+
+; Output:
+; --- Example 11 ---
+;
+;
+; --- Did you see what was printed while compiling? ---
+;
+; 1
+; 2
+
 ; We've had enough, so let's delete our do Operator
 #(set do nil)
 
 ; Uncommenting the following will result in an error when compiling
 ; #(do (print 1))
 
-; Example 9: Vector
-(print "\n--- Example 9 ---\n")
-(let (a (* 7 8))
-  (map print [1 2 a 4]))
+; Example 12: Macro
+(print "\n--- Example 12 ---\n")
 
-; Example 10: Dictionary
-(print "\n--- Example 10 ---\n")
-(let (dict {"a" "b" 1 2 "3" 4})
-  (print dict["a"] "b")
-  (print dict.a "b")
-  (print dict[1] 2)
-  (print dict.3 4))
+(defmacro if (condition action otherwise)
+  `(cond
+    (,condition ,action)
+    (true ,otherwise)))
 
+(let (a 2)
+  (if (== a "1") (print "a == 1") 
+    (if (== a 2) (print "a == 2") (print "a != 2"))))
 
+; Lua Output:
+; print("\n--- Example 12 ---\n");
+;
+; (function()
+;   local a = 2
+;   return (function()  
+;     if ("1" == a) then
+;       return print("a == 1")
+;     end
+;     if true then
+;       return (function()  
+;         if (2 == a) then
+;           return print("a == 2")
+;         end
+;         if true then
+;           return print("a != 2")
+;         end
+;       end)()
+;     end
+;   end)()
+; end)();
+
+; Output:
+; --- Example 12 ---
+;
+; a == 2
+
+#(print "\n--- Example 12 ---\n")
+
+(defmacro GAMMA () '(+ 1 2))
+(defmacro BETA () '(.. (tostring (GAMMA)) "4"))
+(defmacro ALPHA () '(BETA))
+
+; Macros are compiler-time constructs. They are not visible during run-time.
+; So if we want to view their expansion, we must do it during compile-time too.
+#(print (macroexpand '(ALPHA)))
+
+; View the Lua representation of macro expansion
+; Not really supposed to do this... .lambda is a private variable for Operators.
+; Can only do this during compile time, due to implementation.
+; But just for fun....
+#(print (if.lambda 1 '(print 1) '(print 2)))
+
+; Compiler Output:
+; --- Example 12 ---
+;
+; (.. (tostring (+ 1 2)) 4)
+; (function()  
+;   if 1 then
+;     return print(1)
+;   end
+;   if true then
+;     return print(2)
+;   end
+; end)()
 

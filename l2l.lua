@@ -1,4 +1,12 @@
+-- Lisp to Lua Compiler by Eric Man
+-- License undecided.
+
 local input, output = arg[1] or "test.lsp", arg[2] or "out.lua"
+
+local ENV = _ENV
+local L2L = setmetatable({}, {__index = ENV})
+_ENV = L2L
+
 
 List = {}
 
@@ -18,14 +26,23 @@ setmetatable(List, {__call=function(self, ...)
   return first
 end})
 
+-- Alternative constructor for List
 Pair = function (a, b)
-  return setmetatable({a, b}, List)
+  local pair = setmetatable({a, b}, List)
+  if getmetatable(b) == List then
+    pair.last = b.last
+  end
+  return pair
 end
 
 List.__index = List
 
 function List:__tostring()
   return "("..List.concat(map(tostring, self), " ")..")" 
+end
+
+function List:tolisp()
+  return "("..List.concat(map(tolisp, self), " ")..")" 
 end
 
 function List:tolua()
@@ -81,6 +98,8 @@ function List:cdr()
   return self[2]
 end
 
+-- Vector, Dictionary, Number, Symbol are intermediate types that will only 
+-- exist in parse tree during compile time but not be in code during run-time.
 Vector = {}
 
 -- Create new Vector, e.g. Vector(item1, item2, item3)
@@ -100,6 +119,10 @@ function Vector:tolua()
     table.insert(t, v:tolua())
   end
   return "({"..List.concat(map(tostring, self), ",").."})"
+end
+
+function Vector:tolisp()
+  return tostring(self)
 end
 
 Dictionary = {}
@@ -131,6 +154,10 @@ function Dictionary:tolua()
     table.insert(t, "["..generate(k).."]".." = ".. generate(v))
   end
   return "({"..List.concat(map(tostring, t), ",").."})"
+end
+
+function Dictionary:tolisp()
+  return tostring(self)
 end
 
 -- Map is usable for all types implementing __ipairs
@@ -170,11 +197,16 @@ function Symbol:tolua()
   return "Symbol("..self.name:tolua()..")"
 end
 
-function hash(char)
-  return "_c"..char:byte().."_" 
+function Symbol:tolisp()
+  return tostring(self)
 end
 
-LUAKEYWORDS ={
+function hash(char)
+  return "__c"..char:byte().."__" 
+end
+
+-- Lua keywords that needs to be allowed in Lisp
+L2LNONKEYWORDS ={
   ["and"] = true, 
   ["break"] = true, 
   ["do"] = true, 
@@ -199,17 +231,15 @@ LUAKEYWORDS ={
 }
 
 function Symbol:tohash()
-  local name = tostring(self.name):gsub("[^a-zA-Z0-9.%[%]\"]",
-    function(a) 
-      if a ~= "." then 
-        return hash(a)
-      else 
-        return "." 
-      end 
-    end)
-  if LUAKEYWORDS[name] then
-    name = name:gsub("(.)", hash)
-  end
+  local name = tostring(self.name):gsub("[^_a-zA-Z0-9.%[%]\"]", hash)
+  
+  name = name:gsub("[^.]+", function(word)
+    if L2LNONKEYWORDS[word] then
+      return word:gsub("(.)", hash)
+    end
+    return word
+  end)
+
   if name:sub(1,1) == "." then
     return name
   else
@@ -234,6 +264,10 @@ function Number:tolua()
   return tostring(self.number)
 end
 
+function Number:tolisp()
+  return tostring(self.number)
+end
+
 Operator = {}
 
 setmetatable(Operator, {__call=function(self, lambda)
@@ -247,18 +281,18 @@ function Operator:__call(...)
 end
 
 function Operator:__tostring()
-  if _G[self] then
-    return _G[self]
+  if _ENV[self] then
+    return _ENV[self]
   end
   -- Search and cache name
-  for k, v in pairs(_G) do
+  for k, v in pairs(_ENV) do
     if v == self then
-        _G[self] = k
-        return _G[self]
+        _ENV[self] = k
+        return _ENV[self]
     end
   end
-  _G[self] = "<operator:"..tostring(self.lambda)..">"
-  return _G[self]
+  _ENV[self] = "<operator:"..tostring(self.lambda)..">"
+  return _ENV[self]
 end
 
 -- String additions
@@ -273,8 +307,13 @@ end
 function string.tolua(str) 
   return '"'..str:gsub('"','\\"')..'"' 
 end
+
+function string.tolisp(str) 
+  return '"'..str:gsub('"','\\"')..'"' 
+end
+
 -- These types can be translated directly into Lua
-LUATYPES =
+L2LTYPES =
   {[string] = true,
    [List] = true,
    [Vector] = true,
@@ -282,15 +321,30 @@ LUATYPES =
    [Symbol] = true,
    [Number] = true}
 
+-- Convert parse tree object into lua form.
 function tolua(object)
-  if LUATYPES[getmetatable(object)] or type(object) == "string" then
+  if L2LTYPES[getmetatable(object)] or type(object) == "string" then
     return object:tolua()
   end
-  -- if type(object) == "table" then
-  --   return setmetatable(object, Dictionary):tolua()
-  -- end
   if object == nil then
     return "nil"
+  end
+  if type(object) == "number" then
+    return tostring(object)
+  end
+  error("Internal Error: "..tostring(object)..", "..type(object))
+end
+
+-- Convert parse tree object back into lisp form. (used by macroexpand)
+function tolisp(object)
+  if L2LTYPES[getmetatable(object)] or type(object) == "string" then
+    return object:tolisp()
+  end
+  if object == nil then
+    return "nil"
+  end
+  if type(object) == "number" then
+    return tostring(object)
   end
   error("Internal Error: "..tostring(object)..", "..type(object))
 end
@@ -330,7 +384,7 @@ function parse(str)
   if str:starts("#") then
     local rest = str:sub(2):match("%s*(.*)")
     local node = List(parse(rest)) 
-    return List(Symbol("execute"), node[1]), List.unpack(node[2])
+    return List(Symbol("directive"), node[1]), List.unpack(node[2])
   end
 
   -- Replace with Quasiquote
@@ -384,8 +438,8 @@ function generate(tree)
     local parameters = List.concat(map(generate, tree[2] or {}), ",")
     if getmetatable(first) == Symbol then
       first = first:tohash()
-      if getmetatable(_G[first]) == Operator then
-        return _G[first](List.unpack(tree[2]))
+      if getmetatable(_ENV[first]) == Operator then
+        return _ENV[first](List.unpack(tree[2]))
       end
       if first:sub(1,1)=="." and first ~="..." then
         assert(tree:cdr(), "Accessor method has no owner: "..tostring(first))  
@@ -402,6 +456,7 @@ function generate(tree)
   return tolua(tree)
 end
 
+-- Indent some code by two spaces
 function indent(str) 
   return str:gsub("\n", "\n  "):gsub("^", "  ")
 end 
@@ -418,7 +473,8 @@ end
 
 -- Define primitives
 
-_G[Symbol("=="):tohash()] = Operator(function(first, ...)
+-- Equality operator
+_ENV[Symbol("=="):tohash()] = Operator(function(first, ...)
   local content = 
     List.concat(map(function(node)
       return generate(node).. " == ".. generate(first)
@@ -426,15 +482,18 @@ _G[Symbol("=="):tohash()] = Operator(function(first, ...)
   return "(".. (content == "" and "true" or content) .. ")"
 end)
 
-_G[Symbol("*"):tohash()] = Operator(function(...)
+-- Multiplication operator
+_ENV[Symbol("*"):tohash()] = Operator(function(...)
   return "(".. List.concat(map(generate, {...}), " * ") .. ")"
 end)
 
-_G[Symbol("+"):tohash()] = Operator(function(...)
+-- Addition operator
+_ENV[Symbol("+"):tohash()] = Operator(function(...)
   return "(".. List.concat(map(generate, {...}), " + ") .. ")"
 end)
 
-_G[Symbol("-"):tohash()] = Operator(function(...)
+-- Subtraction and negation operator
+_ENV[Symbol("-"):tohash()] = Operator(function(...)
   local parameters = {...}
   if #parameters == 1 then
     return "(-"..generate(parameters[1])..")"
@@ -442,7 +501,8 @@ _G[Symbol("-"):tohash()] = Operator(function(...)
   return "(".. List.concat(map(generate, parameters), " - ") .. ")"
 end)
 
-_G[Symbol("/"):tohash()] = Operator(function(...)
+-- Division operator
+_ENV[Symbol("/"):tohash()] = Operator(function(...)
   local parameters = {...}
   if #parameters == 1 then
     return "(1 /"..generate(parameters[1])..")"
@@ -450,7 +510,8 @@ _G[Symbol("/"):tohash()] = Operator(function(...)
   return "(".. List.concat(map(generate, parameters), " / ") .. ")"
 end)
 
-_G[Symbol(".."):tohash()] = Operator(function(...)
+-- String concatenation operator
+_ENV[Symbol(".."):tohash()] = Operator(function(...)
   local parameters = {...}
   if #parameters == 1 then
     return generate(parameters[1])
@@ -458,16 +519,12 @@ _G[Symbol(".."):tohash()] = Operator(function(...)
   return "(".. List.concat(map(generate, parameters), " .. ") .. ")"
 end)
 
-
+-- Is this node an atom?
 atom = Operator(function(node) 
   return "(getmetatable("..generate(node)..")~=List)" 
 end)
 
-set = Operator(function(name, value) 
-  assert(getmetatable(name)==Symbol, "Expected Symbol: " .. tostring(name))
-  return generate(name) .." = ".. generate(value)
-end)
-
+-- define local variables and execute some code with those locals in context
 let = Operator(function(labels, ...)
   assert(getmetatable(labels)==List, "Expected List: "..tostring(labels))
   local declarations = {}
@@ -487,6 +544,11 @@ let = Operator(function(labels, ...)
   return "(function()\n"..indent(body).."\nend)()"
 end)
 
+-- works globally unless used on variable defined by (let (a v1 b v2) ...)
+set = Operator(function(name, value) 
+  assert(getmetatable(name)==Symbol, "Expected Symbol: " .. tostring(name))
+  return generate(name) .." = ".. generate(value)
+end)
 car = Operator(function(node)
   return generate(node).."[1]"
 end)
@@ -497,9 +559,10 @@ end)
 
 cons = Operator(function(first, second)
   assert(getmetatable(second) == List, "Expected List: " .. tostring(second))
-  return ("setmetatable({%s, %s}, List)"):format(generate(first), generate(second))
+  return ("Pair(%s, %s)"):format(generate(first), generate(second))
 end)
 
+-- Define anonymous function. e.g. (lambda (a b) (+ a b))
 lambda = Operator(function(arguments, ...) 
   local arglist = List.concat(map(function(a)
       assert(getmetatable(a) == Symbol, "Expected Symbol: "..tostring(arguments))
@@ -509,16 +572,102 @@ lambda = Operator(function(arguments, ...)
   return "(function("..arglist..")\n"..indent(body).."\nend)" 
 end)
 
+-- Like lambda but named.
 defun = Operator(function(name, arguments, ...)
   assert(getmetatable(name) == Symbol, "Expected Symbol: "..tostring(name))
   local arglist = List.concat(map(function(a)
       assert(getmetatable(a) == Symbol, "Expected Symbol: "..tostring(a))
       return a:tohash()
-    end, arguments or {}))
+    end, arguments or {}), ",")
   local body = compile({...})
   name = name:tohash()
   return "function "..name.."("..arglist..")\n"..indent(body).."\nend" 
 end)
+
+
+-- Shortcut function to generate sibling parse trees.
+-- E.g. for block of code in functions.
+function compile(iterable)
+  local body = map(generate, iterable)
+  if body then 
+    body.last[1] = "return "..tostring(body.last[1])
+  end
+  body = List.concat(body, ";\n")
+  return body
+end
+
+defmacro = Operator(function(name, arguments, ...)
+  assert(getmetatable(name) == Symbol, "Expected Symbol: "..tostring(name))
+  local name = name:tohash()
+  local arglist = List.concat(map(function(a)
+      assert(getmetatable(a) == Symbol, "Expected Symbol: "..tostring(a))
+      return a:tohash()
+    end, arguments or {}), ",")
+
+  -- Actual macro body
+  local macrobody = map(generate, {...})
+  if macrobody then 
+    macrobody.last[1] = "return generate("..tostring(macrobody.last[1])..")"
+  end
+  macrobody = List.concat(macrobody, ";\n")
+
+  -- Create macro expand version. 
+  -- (Yes, we're duplicating work just for ease of use)
+  local expandbody  = map(generate, {...})
+  if expandbody then 
+    expandbody.last[1] = "return "..tostring(expandbody.last[1])
+  end
+  expandbody = List.concat(expandbody, ";\n")
+
+  _ENV[name] = Operator(load("return function("..arglist..")\n"..
+    indent(macrobody).."\nend", "defmacro", "t", _ENV)())
+  macroexpand[name] = Operator(load("return function("..arglist..")\n"
+    ..indent(expandbody).."\nend", "defmacro", "t", _ENV)())
+  return ""
+end)
+
+function eval(form)
+  return load("return "..generate(form), "eval", "t", _ENV)()
+end
+
+_ENV[Symbol("macroexpand-1"):tohash()] = function(form)
+  if getmetatable(form) ~= List then
+    return form, false
+  end
+  local first = parse(tolisp(form))[1]
+  if getmetatable(first) ~= Symbol then
+    return form, false
+  end
+  local name = first:tohash()
+  if not macroexpand[name] then 
+    return form, false
+  end
+  local parameters = form:cdr()
+  return macroexpand[name](List.unpack(parameters)), true
+end
+
+-- Creating psuedo-functor object because macroexpand table will be used to
+-- store macroexpand functions for each macros.
+macroexpand = setmetatable({
+  lambda = function (form)
+    local macroexpand1 = _ENV[Symbol("macroexpand-1"):tohash()]
+    if getmetatable(form) ~= List then
+      return form
+    end
+    local expanded, first, rest
+    first = macroexpand(parse(tolisp(form))[1])
+    rest = map(macroexpand, form:cdr() or {})
+    form, expanded = macroexpand1(Pair(first, rest))
+
+    -- Recursively expand while expansion was performed successfully.
+    while expanded do
+      first = macroexpand(parse(tolisp(form))[1])
+      rest = map(macroexpand, form:cdr() or {})
+      form, expanded = macroexpand1(Pair(first, rest))
+    end
+    return form
+  end
+}, {__call = function(self, ...) return self.lambda(...) end})
 
 quote = Operator(function(tree)
   if getmetatable(tree) == List then
@@ -552,8 +701,11 @@ cond = Operator(function(...)
   return "(function()"..body.."\nend)()" 
 end)
 
-execute = Operator(function(statement)
-  load(generate(statement))()
+-- Compile time code execution
+directive = Operator(function(statement)
+  -- run code straight away, while being parsed.
+  load(generate(statement), "directive", "t", _ENV)()
+  -- emit empty lua code
   return ""
 end)
 
@@ -564,6 +716,8 @@ if not input or not output then
   os.exit() 
 end
 
+-- Read file, compile code, write file. 
+-- (And copy prelude from this compiler too)
 source_file = io.open(input, "r") 
 source = source_file:read("*all") 
 source_file:close()
