@@ -3,7 +3,7 @@ Lisp to Lua Compiler
 
 Description
 -----------
-A tail-call-optimized, object-oriented, unicode-enabled lisp that compiles to and runs as fast as lua. Equipped with macros and compile-time compiler manipulation. Comes with all built-in lua functions. 
+A tail-call-optimized, object-oriented, unicode-enabled lisp that compiles to and runs as fast as Lua. Equipped with macros and compile-time compiler manipulation. Comes with all built-in Lua functions. 
 
 Requires Lua 5.2!
 
