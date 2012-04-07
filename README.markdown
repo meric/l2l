@@ -10,7 +10,7 @@ Requires Lua 5.2!
 Example 
 -------
 
-See test.lsp & out.lua for example inputs and outputs respectively.
+See test.lsp and out.lua (Scroll to line 700) for example inputs and outputs respectively.
 
 TODO
 ----
