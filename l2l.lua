@@ -692,13 +692,24 @@ quasiquote = Operator(function(tree)
   return "List("..List.concat(map(quasiquote, tree),",")..")"
 end)
 
+-- cond = Operator(function(...)
+--   local branches = map(function(branch) 
+--     local body = compile(branch:cdr())
+--     return "if "..generate(branch[1]).." then\n"..indent(body).."\nend" 
+--   end, {...})
+--   local body = indent("\n"..List.concat(branches, "\n"))
+--   return "(function()"..body.."\nend)()" 
+-- end)
+
 cond = Operator(function(...)
   local branches = map(function(branch) 
-    local body = compile(branch:cdr())
-    return "if "..generate(branch[1]).." then\n"..indent(body).."\nend" 
+    local body = List.concat(map(function(f) 
+        return "("..generate(f).." or true)"
+      end, branch:cdr()), " and ")
+    return "("..generate(branch[1]).." and\n"..indent(body)..")"
   end, {...})
-  local body = indent("\n"..List.concat(branches, "\n"))
-  return "(function()"..body.."\nend)()" 
+  local body = indent(List.concat(branches, "\nor "))
+  return "("..body:trim()..")"
 end)
 
 -- Compile time code execution
