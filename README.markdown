@@ -1,6 +1,3 @@
--- Statistical Node Language Processor
--- Change Symbol Subsitution so Unicode is allowed
-
 Lisp to Lua Compiler
 ====================
 
