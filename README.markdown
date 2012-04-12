@@ -16,7 +16,7 @@ See out.lua for example output source code.
 TODO
 ----
 
-Proper error messages, with line number tracking
+Import within lisp
 
 Quickstart
 ----------
