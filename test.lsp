@@ -1,12 +1,12 @@
+
+
 ; Example 1: Function declaration
 (print "\n--- Example 1 ---\n")
 (defun ! (n) 
   (cond ((== n 0) 1)
         ((== n 1) 1)
         (true (* n (! (- n 1))))))
-
 (print (! 100))
-
 ; Output:
 ; --- Example 1 ---
 ;
@@ -25,12 +25,15 @@
 ; Example 3: Acccessing functions from Lua environment
 (print "\n--- Example 3 ---\n")
 (set hello-world "hello gibberish world")
-(print (string.gsub hello-world "gibberish " ""))
+; This lisp does not support multiple return, so calls to Lua functions with 
+; multiple return must be wrapped with [ and ] to save all the results into an 
+; array.
+(print (table.concat [ (string.gsub hello-world "gibberish " "") ] " "))
 
 ; Output:
 ; --- Example 3 ---
 ;
-; hello world 1
+; hello world
 
 ; Example 4: Quasiquote and unquote
 (print "\n--- Example 4 ---\n")
@@ -107,9 +110,10 @@
 
 ; Example 10: Directive (The '#' prefix)
 (print "\n--- Example 10 ---\n")
-; The following line will run as soon as it is parsed, no code will be generated
+; The following line will run as soon as it's parsed, no code will be generated
 ; It will add a new "--" operator that will be effective immediately
-#(set -- (Operator (lambda (str) (.. "-- " (tostring str))))) 
+#(set -- (Operator (lambda (str) 
+  (table.insert (.peek META.block) (.. "\n-- " (tostring str)))))) 
 
 ; Adds a lua comment to lua executable, using operator we defined.
 (-- "This is a comment") ; Will appear in `out.lua`
@@ -122,9 +126,8 @@
 #(print "\n--- Example 11 ---\n")
 ; E.g. (do (print 1) (print 2)) will execute (print 1) and (print 2) in sequence
 #(set do (Operator (lambda (...) 
-      (.. "(function()\n" 
-            (indent (compile [...])) 
-          "\nend)()"))))
+    (table.insert (.peek META.block) (genblock [...] (Symbol "_do" true)))
+    nil)))
 
 ; We can now make this program be interpreted by wrapping code in "#(do ...)"!
 
@@ -175,33 +178,6 @@
   (if (== a "1") (print "a == 1") 
     (if (== a 2) (print "a == 2") (print "a != 2"))))
 
-; Lua Output:
-; print("\n--- Example 12 ---\n");
-;
-; (function()
-;   local a = 2
-;   return (function()  
-;     if ("1" == a) then
-;       return print("a == 1")
-;     end
-;     if true then
-;       return (function()  
-;         if (2 == a) then
-;           return print("a == 2")
-;         end
-;         if true then
-;           return print("a != 2")
-;         end
-;       end)()
-;     end
-;   end)()
-; end)();
-
-; Output:
-; --- Example 12 ---
-;
-; a == 2
-
 #(print "\n--- Example 12 ---\n")
 
 (defmacro GAMMA () '(+ 1 2))
@@ -211,23 +187,10 @@
 ; Macros are compiler-time constructs. They are not visible during run-time.
 ; So if we want to view their expansion, we must do it during compile-time too.
 #(print (macroexpand '(ALPHA)))
+(print (ALPHA))
 
-; View the Lua representation of macro expansion
-; Not really supposed to do this... .lambda is a private variable for Operators.
-; Can only do this during compile time, due to implementation.
-; But just for fun....
-#(print (if.lambda 1 '(print 1) '(print 2)))
-
-; Compiler Output:
+; Output:
 ; --- Example 12 ---
 ;
-; (.. (tostring (+ 1 2)) 4)
-; (function()  
-;   if 1 then
-;     return print(1)
-;   end
-;   if true then
-;     return print(2)
-;   end
-; end)()
-
+; a == 2
+; 34

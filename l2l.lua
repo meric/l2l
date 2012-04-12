@@ -7,11 +7,109 @@ local ENV = _ENV
 local L2L = setmetatable({}, {__index = ENV})
 _ENV = L2L
 
+-- Initialize random variables
+math.randomseed(os.time()*os.clock())
+
+--- Trim whitespaces from both ends of a string
+-- @param self The string to be trimmed.
+-- @return The trimmed string.
+function string:trim()
+  return self:gsub("^%s*(.-)%s*$", "%1")
+end
+
+--- Check whether a string begins with a certain prefix.
+-- @param self The string to be checked.
+-- @param str The prefix to be checked against.
+-- @return Whether the string begins with the prefix.
+function string:starts(str)
+  return self:sub(1, #str) == str
+end
+
+--- Convert a string into Lua. Basically just quotes and escapes the string.
+-- @param self The string to be converted.
+-- @return The Lua string.
+function string:tolua() 
+  return '"'..self:gsub('"','\\"')..'"' 
+end
+
+--- Convert a string into lisp. Basically just quotes and escapes the string.
+-- @param self The string to be converted.
+-- @return The lisp string.
+function string:tolisp() 
+  return '"'..self:gsub('"','\\"')..'"' 
+end
+
+--- Split a string into lines, conserving empty lines.
+-- @param self The string to be spliy.
+-- @return An array of string.
+function string:lines()
+  self = self:gsub("\r\n", "\n")
+  local t = {}
+  for line in self:gmatch("([^\n]*)\n") do
+    table.insert(t, line)
+  end
+  table.insert(t, self:match("\n([^\n]*)$"))
+  return t
+end
+
+--- Count how many occurrences of `str` is in the string.
+-- @param self The string to be searched.
+-- @param str The pattern to search for.
+-- @return The number of occurrences.
+function string:count(str)
+  local c  = 0
+  for word in self:gmatch(str) do
+    c = c + 1
+  end
+  return c
+end
+
+function wrap(value)
+  return function() return value end
+end
+
+-- Stack is used for keeping track of macro scope, line numbers, and other 
+-- metadata independent of the parser.
+Stack = {}
+
+-- Create new Stack
+setmetatable(Stack, {__tostring = wrap"Stack", __call=function(self)
+  return setmetatable({count = 0}, Stack)
+end})
+
+Stack.__index = Stack
+
+--- Push an item into the stack.
+-- @param self The stack.
+-- @param item The item to be pushed into the stack.
+-- @return The item pushed into the stack.
+function Stack:push(item)
+  self.count = self.count + 1
+  self[self.count] = item
+  return item
+end
+
+--- Pop an item from the stack. Up to user to make sure the stack is not empty.
+-- @param self The stack.
+-- @return The item popped from the stack.
+function Stack:pop()
+  local item = self[self.count]
+  self[self.count] = nil
+  self.count = self.count - 1
+  return item
+end
+
+--- Peek at the top item in the stack.
+-- @param self The stack.
+-- @return The item at the top.
+function Stack:peek()
+  return self[self.count]
+end
 
 List = {}
 
 -- Create new List, e.g. List(item1, item2, item3)
-setmetatable(List, {__call=function(self, ...)
+setmetatable(List, {__tostring = wrap"List", __call=function(self, ...)
   local parameters = {...}
   local last = setmetatable({nil, nil}, List)
   local first = nil
@@ -27,7 +125,7 @@ setmetatable(List, {__call=function(self, ...)
 end})
 
 -- Alternative constructor for List
-Pair = function (a, b)
+function Pair(a, b)
   local pair = setmetatable({a, b}, List)
   if getmetatable(b) == List then
     pair.last = b.last
@@ -53,12 +151,25 @@ function List:__eq(other)
   return self[1] == other[1] and self[2] == other[2] 
 end
 
+function List:__add(other)
+  local result = Pair()
+  map(function(x) 
+    result:append(x)
+  end, self or {})
+  map(function(x) 
+    result:append(x)
+  end, other or {})
+  return result:cdr()
+end
+
 function List:__ipairs()
+  local index = 0
   return function() 
     if self then 
       local item = self[1] 
       self=self[2] 
-      return item or self, item 
+      index = index + 1
+      return index, item 
     end 
   end 
 end
@@ -103,7 +214,7 @@ end
 Vector = {}
 
 -- Create new Vector, e.g. Vector(item1, item2, item3)
-setmetatable(Vector, {__call=function(self, ...)
+setmetatable(Vector, {__tostring = wrap"Vector", __call=function(self, ...)
   return setmetatable({...}, Vector)
 end})
 
@@ -116,9 +227,9 @@ end
 function Vector:tolua()
   local t = {}
   for i, v in ipairs(self) do
-    table.insert(t, v:tolua())
+    table.insert(t, ({genexpr(v, true)})[1])
   end
-  return "({"..List.concat(map(tostring, self), ",").."})"
+  return "({"..List.concat(map(tostring, t), ",").."})"
 end
 
 function Vector:tolisp()
@@ -128,7 +239,7 @@ end
 Dictionary = {}
 
 -- Create new Dictionary, e.g. Dictionary(key1, item1, key2, item2)
-setmetatable(Dictionary, {__call=function(self, ...)
+setmetatable(Dictionary, {__tostring=wrap"Dictionary",__call=function(self, ...)
   local pair = {...}
   local result =  setmetatable({}, Dictionary)
   for i=1, #pair, 2 do
@@ -151,7 +262,7 @@ end
 function Dictionary:tolua()
   local t = {}
   for k, v in pairs(self) do
-    table.insert(t, "["..generate(k).."]".." = ".. generate(v))
+    table.insert(t, "["..genexpr(k).."]".." = ".. genexpr(v))
   end
   return "({"..List.concat(map(tostring, t), ",").."})"
 end
@@ -160,20 +271,58 @@ function Dictionary:tolisp()
   return tostring(self)
 end
 
+function id(...)
+  return ...
+end
+
 -- Map is usable for all types implementing __ipairs
 function map(f, l) 
   local result = Pair()
+  if type(l)~= "table" then
+    print(l, type(l))
+    require "debug"
+    print(debug.traceback())
+    os.exit()
+  end
   for i, v in ipairs(l) do 
     result:append(f(v))
   end 
   return List.cdr(result)
 end
 
+-- Permute is usable for all types implementing __pairs
+-- Basically a map for both key and value
+function permute(f, l)
+  local result = {}
+  for k, v in pairs(l) do
+    k, v = f(k, v)
+    if k ~= nil then
+      result[k] = v
+    end
+  end
+  return result
+end
 
 Symbol = {}
 
 -- Create new Symbol, e.g. Symbol("somestring")
-setmetatable(Symbol, {__call=function(self, token)
+setmetatable(Symbol, {__tostring=wrap"Symbol",__call=function(self,token,unique)
+  -- If unique==true generate a unique symbol with token as suffix
+  if unique then
+    local suffix = token
+    repeat
+      token = "_"
+      local charset = "1234567890abcdefghijklmnopqrstuvwxyz"
+      for i=1, 4 do
+        local index = math.random(1,#charset)
+        token = token..string.char((charset):byte(index))
+      end
+      token = token..suffix
+    until not META.symbol[token]
+  end
+  -- Mark symbol, so we know if name is taken when we are asked to generate a 
+  -- unique symbol
+  META.symbol[token] = true
   return setmetatable({name=token}, Symbol)
 end})
 
@@ -203,6 +352,10 @@ end
 
 function hash(char)
   return "__c"..char:byte().."__" 
+end
+
+function tohash(sym)
+  return sym:tohash()
 end
 
 -- Lua keywords that needs to be allowed in Lisp
@@ -250,7 +403,7 @@ end
 Number = {}
 
 -- Create new Number, e.g. Number(1)
-setmetatable(Number, {__call=function(self, number)
+setmetatable(Number, {__tostring=wrap"Number",__call=function(self, number)
   return setmetatable({number=number}, Number)
 end})
 
@@ -270,7 +423,7 @@ end
 
 Operator = {}
 
-setmetatable(Operator, {__call=function(self, lambda)
+setmetatable(Operator, {__tostring = wrap"Operator",__call=function(self,lambda)
   return setmetatable({lambda=lambda}, Operator)
 end})
 
@@ -295,39 +448,46 @@ function Operator:__tostring()
   return _ENV[self]
 end
 
--- String additions
-function string:trim()
-  return self:gsub("^%s*(.-)%s*$", "%1")
+String = {}
+
+-- Create new String, e.g. Number(1)
+setmetatable(String, {__tostring = wrap"string", __call=function(self, str)
+  return setmetatable({str=str}, String)
+end})
+
+String.__index = String
+
+function String:__tostring()
+  return tostring(self.str)
 end
 
-function string:starts(str)
-  return self:sub(1, #str) == str
-end
-
-function string.tolua(str) 
-  return '"'..str:gsub('"','\\"')..'"' 
-end
-
-function string.tolisp(str) 
-  return '"'..str:gsub('"','\\"')..'"' 
+for k, v in pairs(string) do
+  String[k] = function(self, ...)
+    return v(self.str, ...)
+  end
 end
 
 -- These types can be translated directly into Lua
 L2LTYPES =
-  {[string] = true,
+  {[String] = true,
    [List] = true,
    [Vector] = true,
    [Dictionary] = true,
    [Symbol] = true,
    [Number] = true}
 
--- Convert parse tree object into lua form.
+--- Convert parse tree object into Lua. 
+-- @param object The object to be converted into Lua string
+-- @return The Lua string.
 function tolua(object)
-  if L2LTYPES[getmetatable(object)] or type(object) == "string" then
+  if L2LTYPES[getmetatable(object)] then
     return object:tolua()
   end
   if object == nil then
     return "nil"
+  end
+  if type(object) == "string" then
+    return object:tolua()
   end
   if type(object) == "number" then
     return tostring(object)
@@ -335,7 +495,9 @@ function tolua(object)
   error("Internal Error: "..tostring(object)..", "..type(object))
 end
 
--- Convert parse tree object back into lisp form. (used by macroexpand)
+--- Convert parse tree object back into lisp form. (used by macroexpand)
+-- @param object The object to be converted into lisp string
+-- @return The lisp string.
 function tolisp(object)
   if L2LTYPES[getmetatable(object)] or type(object) == "string" then
     return object:tolisp()
@@ -349,64 +511,79 @@ function tolisp(object)
   error("Internal Error: "..tostring(object)..", "..type(object))
 end
 
--- Parse string into parse tree
+--- Used by `parse` to generate parse tree out of matching symbols describing 
+-- data for some data structure. This is done using the "%bxy" syntax in the Lua
+-- pattern language. i.e. "()" > List, "{}" > Dictionary, "[]" > Array
+-- @param str The string to be parsed.
+-- @param left The leftmost symbol. Must have length == 1.
+-- @param right The rightmost symbol. Must have length == 1.
+-- @param class The function will be called with contents between left and right
+-- symbols. The function should return the appropriate parse tree object.
+-- @return A variable number of parse trees.
+function read(str, left, right, class)
+  assert(#left == 1 and #right == 1)
+  local lindex, rindex = str:find("%b"..left..right)
+  assert(rindex, "Expected \""..right.."\" to close ..\""..left.."\"")
+  local content = str:sub(2, rindex - 1)
+  META.cursor = META.cursor + 1 
+    -- add 1 for the the "(" parenthesis
+  META.location:push(META.cursor)
+  META.line:push(META.current)
+  local data = {line = META.current, location = META.cursor}
+  --print(getmetatable(parse(content)), parse(content))
+  local collection = class(parse(content))
+  if collection then
+    META[collection] = data
+  end
+  META.current = META.line:pop() + content:count("[\n]")
+  META.cursor = META.location:pop() + #content + 1
+
+  return collection, parse(str:sub(rindex + 1))
+end
+
+--- Used by `parse` to replace syntactical operators with keyword symbols.
+-- E.g. Convert `(+ 1 2) into (quasiquote (+ 1 2))
+-- @param str The symbol to be converted. Must have length == 1.
+-- @param with The keyword to replace the symbol with.
+-- @return A variable number of parse trees.
+function replace(str, with)
+  local rest = str:sub(2):match("%s*(.*)")
+  META.cursor = META.cursor + 1 
+  META.line:push(META.current)
+  META.location:push(META.cursor)
+  local node = List(parse(rest)) 
+  META.current = META.line:pop()
+  META.cursor = META.location:pop()
+  return List(Symbol(with), node[1]), List.unpack(node[2])
+end
+
+--- Parse string into one or more parse trees.
+-- @param str The string to be parsed.
+-- @return A variable number of parse trees.
 function parse(str)
-  str = (str or ""):trim()
-  -- List
-  if str:starts("(") then
-    local lparen, rparen = str:find("%b()")
-    assert(rparen, "Expected \")\" to close \"(\"")
-    local collection = List(parse(str:sub(2, rparen - 1)))
-    return collection, parse(str:sub(rparen + 1))
-  end
+  str = str or ""
+  META.current = META.current + str:match("^(%s*)"):count("[\n]")
+  META.cursor = META.cursor + #str:match("^(%s*)")
+  str = str:trim()
 
-  -- Vector
-  if str:starts("[") then
-    local lbracket, rbracket = str:find("%b[]")
-    local collection = Vector(parse(str:sub(2, rbracket - 1)))
-    return collection, parse(str:sub(rbracket + 1))
-  end
-
-  -- Dictionary
-  if str:starts("{") then
-    local lbrace, rbrace = str:find("%b{}")
-    local collection = Dictionary(parse(str:sub(2, rbrace - 1)))
-    return collection, parse(str:sub(rbrace + 1))
-  end
+  -- Collections
+  if str:starts("(") then return read(str, "(", ")", List) end
+  if str:starts("[") then return read(str, "[", "]", Vector) end
+  if str:starts("{") then return read(str, "{", "}", Dictionary) end
 
   -- Comment
   if str:starts(";") then
-    local rest = str:sub(2):match("%s*.-\n(.*)") 
+    local rest = str:sub(2):match("[^\n]*[\n](.*)") 
+    META.current = META.current + 1
+    META.cursor = META.cursor + 1 + #(str:sub(2):match("([^\n]*[\n])") or "")
     return parse(rest)
   end
 
-  -- Replace with Execute
-  if str:starts("#") then
-    local rest = str:sub(2):match("%s*(.*)")
-    local node = List(parse(rest)) 
-    return List(Symbol("directive"), node[1]), List.unpack(node[2])
-  end
-
-  -- Replace with Quasiquote
-  if str:starts("`") then
-    local rest = str:sub(2):match("%s*(.*)")
-    local node = List(parse(rest)) 
-    return List(Symbol("quasiquote"), node[1]), List.unpack(node[2])
-  end
-
-  -- Replace with Unquote
-  if str:starts(",") then
-    local rest = str:sub(2):match("%s*(.*)")
-    local node = List(parse(rest)) 
-    return List(Symbol("unquote"), node[1]), List.unpack(node[2])
-  end
-
-  -- Replace with Quote
-  if str:starts("'") then
-    local rest = str:sub(2):match("%s*(.*)")
-    local node = List(parse(rest)) 
-    return List(Symbol("quote"), node[1]), List.unpack(node[2])
-  end
+  -- Syntax
+  if str:starts("#") then return replace(str, "directive") end
+  if str:starts("`") then return replace(str, "quasiquote") end
+  if str:starts(",") then return replace(str, "unquote") end
+  if str:starts("'") then return replace(str, "quote") end
 
   -- String
   if str:starts("\"") then
@@ -416,39 +593,65 @@ function parse(str)
       if str:sub(index, index) == "\\" then escaping = true end 
       index = index + 1
     end 
-    return str:sub(2, index-1), parse(str:sub(index+1))
+    local content = str:sub(2, index-1)
+    META.current = META.current + content:count("[\n]")
+    META.cursor = META.cursor + #content + 2
+    return String(content:gsub("\n", "\\n"):gsub("\\\"", "\"")), 
+                  parse(str:sub(index+1))
   end
 
   -- Number and Symbol
   if #str > 0 then
-    local token, rest = str:match("(%S+)"), str:match("%S+%s+(.*)")
+    local token, rest = str:match("(%S+)(.*)")
     local number = tonumber(token)
     if number then
       number = Number(number)
     end
-    return number or Symbol(token), parse(rest)
+    local object = number or Symbol(token)
+    META[object] = {line = META.current, location = META.cursor}
+    META.cursor = META.cursor + #token
+    return object, parse(rest)
   end
 end
 
--- Generate lua from parse tree
-function generate(tree) 
+--- Generate lua from a single parse tree (comprising of `List`s).
+-- @param tree The parse tree.
+-- @return A string of lua.
+function genexpr(tree, multret) 
+  _ENV = META._ENV:peek() 
+  -- _ENV: Current scope for Operators
   if getmetatable(tree) == List then
     local first = tree[1]
     assert(first, "Empty list cannot be executed!")
-    local parameters = List.concat(map(generate, tree[2] or {}), ",")
+    local parameters
+    local uid = tostring(Symbol("_call", true))
+    local declare = "local " .. uid .. " = "
     if getmetatable(first) == Symbol then
       first = first:tohash()
       if getmetatable(_ENV[first]) == Operator then
         return _ENV[first](List.unpack(tree[2]))
       end
       if first:sub(1,1)=="." and first ~="..." then
-        assert(tree:cdr(), "Accessor method has no owner: "..tostring(first))  
-        parameters = List.concat(map(generate, tree:cdr():cdr() or {}), ",")
-        return generate(tree:cdr()[1])..":"..first:sub(2).."("..parameters..")"
+        assert(tree:cdr(), "Accessor method has no owner: "..tostring(first))
+        first = genexpr(tree:cdr()[1])..":"..first:sub(2)
+        parameters = List.concat(map(genexpr, tree:cdr():cdr() or {}), ",")
+        local line = first.."("..parameters..")"
+        if multret then return line end
+        table.insert(META.block:peek(), declare..line)
+        return uid
       end
-      return first.."("..parameters..")"
+      parameters = List.concat(map(genexpr, tree:cdr() or {}), ",")
+      local line = first.."("..parameters..")"
+      if multret then return line end
+      table.insert(META.block:peek(), declare..line)
+      return uid
     end
-    return generate(first).."("..parameters..")"
+    first = genexpr(first)
+    parameters = List.concat(map(genexpr, tree:cdr() or {}), ",")
+    local line = first.."("..parameters..")"
+    if multret then return line end
+    table.insert(META.block:peek(), declare..line)
+    return uid
   end
   if getmetatable(tree) == Symbol then
     return tree:tohash()
@@ -458,17 +661,142 @@ end
 
 -- Indent some code by two spaces
 function indent(str) 
-  return str:gsub("\n", "\n  "):gsub("^", "  ")
+  return ({str:gsub("\n", "\n  "):gsub("^", "  ")})[1]
 end 
 
--- Generate lua for block of parse trees, and return last item in the block
-function compile(iterable)
-  local body = map(generate, iterable)
+
+--- Converts an array of parameter names into a set.
+-- Copies `parameters` array and `parent` set into the set. Hashify Symbols if 
+-- necessary. 
+-- @param parameters An array of parameter names existing in this scope. 
+-- @param parent The parent scope, if available.
+function Scope(parameters, parent)
+  local scope = permute(id, parent or {})
+  map(function(parameter) 
+        if getmetatable(parameter) == Symbol then
+          parameter = tohash(parameter)
+        end
+        scope[parameter] = true 
+      end, parameters or {})
+  return scope
+end
+
+META = {line = Stack(), 
+        block = Stack(), 
+        current = 1, -- line
+        cursor = 0,
+        location = Stack(),
+        scope = Stack(),
+        _ENV = Stack(),
+        read = Stack(),
+        column = {},
+        symbol = {}}
+
+--- Compiles a block of parse trees into lua.
+-- While compiling also manages block & scope metadata. 
+-- If `parameters` is an array of symbol names, returns the last expression.
+-- If `parameters` is a symbol or string, assigns last expression to that symbol
+-- @param iterable An iterable of parse trees in the block
+-- @param parameters An array of names added for this block. (e.g. argument 
+-- names to a function) or A unique id.
+-- @return string Returns a string of lua.
+function genblock(iterable, parameters)
+  local line, location, column = nil, nil, nil
+  for i, v in ipairs(iterable) do
+    if v then 
+      local data = META[v] or {}
+      line = data.line
+      location = data.location
+      column = tostring(META.column[data.location])
+      break
+    end
+  end
+  local uid = nil
+  if type(parameters) == "string" or getmetatable(parameters) == Symbol then
+    uid = parameters
+    if getmetatable(uid) == Symbol then
+      uid = uid:tohash()
+    end
+  end
+  local block = {}
+  META.block:push(block)
+  local scope;
+  if not uid then
+    scope = Scope(parameters, META.scope:peek())
+    local _ENV  = setmetatable({}, {__index = META._ENV:peek()})
+    META.scope:push(scope)
+    META._ENV:push(_ENV)
+  end
+  local body = map(genexpr, iterable)
+  if body then 
+    if uid then
+      body = uid  .. " = "..tostring(body.last[1])
+    else
+      body = "return "..tostring(body.last[1])
+    end
+  end
+  block = META.block:pop()
+  if not uid then
+    scope = META.scope:pop()
+    _ENV = (getmetatable(META._ENV:pop()).__index)
+  end
+  local label = "-- ::LINE_"..tostring(line).."_COLUMN_"..column.."::\n"
+  body = label..table.concat(block, ";\n")..";\n"..tostring(body)
+  return body
+end
+
+--- Compiles lisp into lua.
+-- @param source The lisp string.
+-- @return The Lua string.
+function compile(source)
+  META._ENV:push(_ENV)
+  META.block:push({})
+  META.scope:push({})
+  local body = map(genexpr, {parse(source)})
   if body then 
     body.last[1] = "return "..tostring(body.last[1])
   end
-  body = List.concat(body, ";\n")
+  local block = META.block:pop()
+  local scope = META.scope:pop()
+  META._ENV:pop()
+  -- body = table.concat(block, ";\n").."\n"..List.concat(body, ";\n\n").."\n"
+  body = table.concat(block, ";\n")..";\n"..tostring(body.last[1]).."\n"
   return body
+end
+
+--- Prints error for a parse tree object.
+-- @param item The object.
+-- @param message The error message.
+function except(item, message)
+  local data = META[item] or {}
+  local line = data.line or -1
+  local location = data.location or -1
+  local col = ""
+  if line > -1 then
+    col = META.column[location]
+  end
+  print("line "..line..", column "..col..": "..message)
+  os.exit()
+end
+
+--- Check if item is of target class. Emit error message if it isn't.
+-- @param item The object.
+-- @param kind The expected class.
+function expect(item, kind, alt)
+  if getmetatable(item) ~= kind  then
+    if item == nil and kind == List then
+      return
+    end
+    if kind == string then
+      kind = "string"
+    else
+      kind = tostring(kind)
+    end
+    alt = alt or item
+    except(alt, "Expected "..kind..", found "..tolisp(item).." ("..
+      tostring(getmetatable(item)) .. ").")
+    os.exit()
+  end
 end
 
 -- Define primitives
@@ -477,157 +805,170 @@ end
 _ENV[Symbol("=="):tohash()] = Operator(function(first, ...)
   local content = 
     List.concat(map(function(node)
-      return generate(node).. " == ".. generate(first)
+      return genexpr(node).. " == ".. genexpr(first)
     end, {...}), " and ") 
   return "(".. (content == "" and "true" or content) .. ")"
 end)
 
 -- Multiplication operator
 _ENV[Symbol("*"):tohash()] = Operator(function(...)
-  return "(".. List.concat(map(generate, {...}), " * ") .. ")"
+  return "(".. List.concat(map(genexpr, {...}), " * ") .. ")"
 end)
 
 -- Addition operator
 _ENV[Symbol("+"):tohash()] = Operator(function(...)
-  return "(".. List.concat(map(generate, {...}), " + ") .. ")"
+  return "(".. List.concat(map(genexpr, {...}), " + ") .. ")"
 end)
 
 -- Subtraction and negation operator
 _ENV[Symbol("-"):tohash()] = Operator(function(...)
   local parameters = {...}
   if #parameters == 1 then
-    return "(-"..generate(parameters[1])..")"
+    return "(-"..genexpr(parameters[1])..")"
   end
-  return "(".. List.concat(map(generate, parameters), " - ") .. ")"
+  return "(".. List.concat(map(genexpr, parameters), " - ") .. ")"
 end)
 
 -- Division operator
 _ENV[Symbol("/"):tohash()] = Operator(function(...)
   local parameters = {...}
   if #parameters == 1 then
-    return "(1 /"..generate(parameters[1])..")"
+    return "(1 /"..genexpr(parameters[1])..")"
   end
-  return "(".. List.concat(map(generate, parameters), " / ") .. ")"
+  return "(".. List.concat(map(genexpr, parameters), " / ") .. ")"
 end)
 
 -- String concatenation operator
 _ENV[Symbol(".."):tohash()] = Operator(function(...)
   local parameters = {...}
   if #parameters == 1 then
-    return generate(parameters[1])
+    return genexpr(parameters[1])
   end
-  return "(".. List.concat(map(generate, parameters), " .. ") .. ")"
+  return "(".. List.concat(map(genexpr, parameters), " .. ") .. ")"
 end)
 
 -- Is this node an atom?
 atom = Operator(function(node) 
-  return "(getmetatable("..generate(node)..")~=List)" 
+  return "(getmetatable("..genexpr(node)..")~=List)" 
 end)
+
 
 -- define local variables and execute some code with those locals in context
 let = Operator(function(labels, ...)
-  assert(getmetatable(labels)==List, "Expected List: "..tostring(labels))
+  expect(labels, List)
+  local block = META.block:peek()
+  local uid = tostring(Symbol("_let", true))
   local declarations = {}
-  local index = 0
-  for i, item in ipairs(labels) do
-    index = index + 1
+  for index, item in ipairs(labels) do
     if index % 2 == 1 then 
-      -- name
-      assert(getmetatable(item) == Symbol, "Expected Symbol: "..tostring(item))
-      declarations[(index+1)/2] = "local "..generate(item) .. " = "
+      expect(item, Symbol)
+      declarations[(index+1)/2] = "local "..genexpr(item) .. " = "
     else
-      declarations[index/2] = declarations[index/2]..generate(item)
+      declarations[index/2] = declarations[index/2]..genexpr(item)
     end
   end
-  local body = compile({...})
-  body = List.concat(map(tostring, declarations), "\n").."\n"..body
-  return "(function()\n"..indent(body).."\nend)()"
+  if (#{...} == 0) then
+    except(labels, "Expected Something, found Nothing.")
+  end
+  table.insert(block, "local " .. uid)
+  table.insert(block, "do")
+  for i, v in ipairs(declarations) do
+    table.insert(block, indent(v))
+  end
+  table.insert(block, indent(genblock({...}, uid)))
+  table.insert(block, "end")
+  return uid
 end)
 
 -- works globally unless used on variable defined by (let (a v1 b v2) ...)
 set = Operator(function(name, value) 
-  assert(getmetatable(name)==Symbol, "Expected Symbol: " .. tostring(name))
-  return generate(name) .." = ".. generate(value)
+  expect(name, Symbol)
+  table.insert(META.block:peek(),genexpr(name) .." = ".. genexpr(value))
+  return "nil"
 end)
 car = Operator(function(node)
-  return generate(node).."[1]"
+  return genexpr(node).."[1]"
 end)
 
 cdr = Operator(function(node)
-  return generate(node).."[2]"
+  return genexpr(node).."[2]"
 end)
 
 cons = Operator(function(first, second)
-  assert(getmetatable(second) == List, "Expected List: " .. tostring(second))
-  return ("Pair(%s, %s)"):format(generate(first), generate(second))
+  expect(second, List)
+  return ("Pair(%s, %s)"):format(genexpr(first), genexpr(second))
 end)
 
 -- Define anonymous function. e.g. (lambda (a b) (+ a b))
 lambda = Operator(function(arguments, ...) 
+  expect(arguments, List)
   local arglist = List.concat(map(function(a)
-      assert(getmetatable(a) == Symbol, "Expected Symbol: "..tostring(arguments))
+      expect(a, Symbol)
       return a:tohash()
     end, arguments or {}), ",")
-  local body = compile({...})
+  local body = genblock({...})
   return "(function("..arglist..")\n"..indent(body).."\nend)" 
 end)
 
 -- Like lambda but named.
 defun = Operator(function(name, arguments, ...)
-  assert(getmetatable(name) == Symbol, "Expected Symbol: "..tostring(name))
+  expect(name, Symbol)
+  expect(arguments, List, arguments or name)
   local arglist = List.concat(map(function(a)
-      assert(getmetatable(a) == Symbol, "Expected Symbol: "..tostring(a))
+      expect(a, Symbol)
       return a:tohash()
     end, arguments or {}), ",")
-  local body = compile({...})
+  local body = genblock({...}, map(tohash, arguments or {}))
   name = name:tohash()
-  return "function "..name.."("..arglist..")\n"..indent(body).."\nend" 
+  table.insert(META.block:peek(), "function "..name.."("..arglist..")\n"
+              ..indent(body).."\nend" )
+  return name
 end)
 
 
--- Shortcut function to generate sibling parse trees.
--- E.g. for block of code in functions.
-function compile(iterable)
-  local body = map(generate, iterable)
+defmacro = Operator(function(name, arguments, ...)
+  expect(name, Symbol)
+  local name = name:tohash()
+  local index = 0
+  local has = Scope(arguments or {})
+  local lifted = permute(function(parameter, bool)
+                          if bool and not has[parameter] then
+                            index = index + 1
+                            return index, Symbol(parameter)
+                          end
+                        end, META.scope:peek())
+  arguments = map(tohash, arguments or {})
+
+  local arglist = List.concat(arguments, ",")
+  local prefix = ""
+  for i, v in pairs(lifted or {}) do
+    prefix = prefix .. "local " .. v:tohash() .. " = " .. v:tolua()..";\n"
+  end
+
+  local body = map(genexpr, {...})
+  if body then 
+    body.last[1] = "return genexpr("..tostring(body.last[1])..")"
+  end
+  body = prefix..List.concat(body, ";\n")
+  local f, m = load("return function("..arglist..")\n"..indent(body).."\nend", 
+                    "defmacro", "t", _ENV)
+  if m then print(m, body) end
+  _ENV[name] = Operator(f())
+
+  -- Create macroexpand version. 
+  body = map(genexpr, {...})
   if body then 
     body.last[1] = "return "..tostring(body.last[1])
   end
-  body = List.concat(body, ";\n")
-  return body
-end
-
-defmacro = Operator(function(name, arguments, ...)
-  assert(getmetatable(name) == Symbol, "Expected Symbol: "..tostring(name))
-  local name = name:tohash()
-  local arglist = List.concat(map(function(a)
-      assert(getmetatable(a) == Symbol, "Expected Symbol: "..tostring(a))
-      return a:tohash()
-    end, arguments or {}), ",")
-
-  -- Actual macro body
-  local macrobody = map(generate, {...})
-  if macrobody then 
-    macrobody.last[1] = "return generate("..tostring(macrobody.last[1])..")"
-  end
-  macrobody = List.concat(macrobody, ";\n")
-
-  -- Create macro expand version. 
-  -- (Yes, we're duplicating work just for ease of use)
-  local expandbody  = map(generate, {...})
-  if expandbody then 
-    expandbody.last[1] = "return "..tostring(expandbody.last[1])
-  end
-  expandbody = List.concat(expandbody, ";\n")
-
-  _ENV[name] = Operator(load("return function("..arglist..")\n"..
-    indent(macrobody).."\nend", "defmacro", "t", _ENV)())
-  macroexpand[name] = Operator(load("return function("..arglist..")\n"
-    ..indent(expandbody).."\nend", "defmacro", "t", _ENV)())
+  body = prefix..List.concat(body, ";\n")
+  f, m = load("return function("..arglist..")\n"..indent(body).."\nend", 
+              "defmacro", "t", _ENV)
+  macroexpand[name] = Operator(f())
   return ""
 end)
 
 function eval(form)
-  return load("return "..generate(form), "eval", "t", _ENV)()
+  return load("return "..genexpr(form), "eval", "t", _ENV)()
 end
 
 _ENV[Symbol("macroexpand-1"):tohash()] = function(form)
@@ -680,11 +1021,14 @@ quote = Operator(function(tree)
 end)
 
 quasiquote = Operator(function(tree)
+  if getmetatable(tree) == Vector then
+    return "Vector("..List.concat(map(quasiquote, tree),",")..")"
+  end
   if getmetatable(tree) ~= List then
     return quote(tree)
   end
   if tree[1] == Symbol("unquote") then
-    return generate(tree:cdr()[1])
+    return genexpr(tree:cdr()[1])
   end
   if tree[1] == nil and tree[2] == nil then
     return "nil"
@@ -692,30 +1036,36 @@ quasiquote = Operator(function(tree)
   return "List("..List.concat(map(quasiquote, tree),",")..")"
 end)
 
--- cond = Operator(function(...)
---   local branches = map(function(branch) 
---     local body = compile(branch:cdr())
---     return "if "..generate(branch[1]).." then\n"..indent(body).."\nend" 
---   end, {...})
---   local body = indent("\n"..List.concat(branches, "\n"))
---   return "(function()"..body.."\nend)()" 
--- end)
-
 cond = Operator(function(...)
+  local block = META.block:peek()
+  local uid = tostring(Symbol("_cond", true))
+  table.insert(block, "local " .. uid)
+  table.insert(block, "do")
   local branches = map(function(branch) 
-    local body = List.concat(map(function(f) 
-        return "("..generate(f).." or true)"
-      end, branch:cdr()), " and ")
-    return "("..generate(branch[1]).." and\n"..indent(body)..")"
+    expect(branch, List)
+    local body = genblock(branch:cdr(), uid)
+    local line = "if "..genexpr(branch[1]).." then\n"..
+                    indent(body)..
+                    "\n  goto "..uid..
+                  "\nend" 
+    table.insert(block, indent(line)) 
   end, {...})
-  local body = indent(List.concat(branches, "\nor "))
-  return "("..body:trim()..")"
+  table.insert(block, "::"..uid.."::")
+  table.insert(block, "end")
+  return uid
 end)
 
 -- Compile time code execution
 directive = Operator(function(statement)
-  -- run code straight away, while being parsed.
-  load(generate(statement), "directive", "t", _ENV)()
+  local _ENV = META._ENV:peek()
+  local code
+  META.block:push({})
+  local body = {genexpr(statement)}
+  local block = META.block:pop()
+  body = table.concat(block, ";\n") .. ";\n"
+  local f, m = load(body, "directive", "t", _ENV)
+  if m then except(statement, body .. m) end
+  f()
   -- emit empty lua code
   return ""
 end)
@@ -731,6 +1081,14 @@ end
 -- (And copy prelude from this compiler too)
 source_file = io.open(input, "r") 
 source = source_file:read("*all") 
+local col = 0
+for i = 1, #source do
+  if string.char(source:byte(i)) == "\n" then
+    col = 0
+  end
+  META.column[i]=col
+  col = col + 1
+end
 source_file:close()
 output_file = io.open(output, "w") 
 l2l_file = io.open("l2l.lua", "r")
@@ -740,12 +1098,7 @@ repeat
   output_file:write(line.."\n") 
 until line:match("-- END --") 
 l2l_file:close()
-local body = map(generate, {parse(source)})
-if body then 
-  body.last[1] = "return "..tostring(body.last[1])
-end
-body = List.concat(body, ";\n\n")
-output_file:write(body.."\n") 
+output_file:write(compile(source)) 
 output_file:close()
 
 
