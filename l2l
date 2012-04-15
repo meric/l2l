@@ -1,7 +1,4 @@
--- Lisp to Lua Compiler by Eric Man
--- License undecided.
-
-local input, output = arg[1] or "test.lsp", arg[2] or "out.lua"
+#! /usr/local/bin/lua
 
 local ENV = _ENV
 local L2L = setmetatable({}, {__index = ENV})
@@ -40,7 +37,7 @@ function string:tolisp()
 end
 
 --- Split a string into lines, conserving empty lines.
--- @param self The string to be spliy.
+-- @param self The string to be split.
 -- @return An array of string.
 function string:lines()
   self = self:gsub("\r\n", "\n")
@@ -50,6 +47,17 @@ function string:lines()
   end
   table.insert(t, self:match("\n([^\n]*)$"))
   return t
+end
+
+string.split = function(str, pattern)
+  pattern = pattern or "[^%s]+"
+  if pattern:len() == 0 then pattern = "[^%s]+" end
+  local parts = {__index = table.insert}
+  setmetatable(parts, parts)
+  str:gsub(pattern, parts)
+  setmetatable(parts, nil)
+  parts.__index = nil
+  return parts
 end
 
 --- Count how many occurrences of `str` is in the string.
@@ -278,13 +286,7 @@ end
 -- Map is usable for all types implementing __ipairs
 function map(f, l) 
   local result = Pair()
-  if type(l)~= "table" then
-    print(l, type(l))
-    require "debug"
-    print(debug.traceback())
-    os.exit()
-  end
-  for i, v in ipairs(l) do 
+  for i, v in ipairs(l or {}) do 
     result:append(f(v))
   end 
   return List.cdr(result)
@@ -398,6 +400,13 @@ function Symbol:tohash()
   else
     return name:gsub("[.]([^.]+)", "[\"%1\"]")
   end
+end
+
+function gensym(suffix)
+  if suffix then
+    suffix = "_"..suffix
+  end
+  return Symbol(suffix or "", true)
 end
 
 Number = {}
@@ -520,7 +529,7 @@ end
 -- @param class The function will be called with contents between left and right
 -- symbols. The function should return the appropriate parse tree object.
 -- @return A variable number of parse trees.
-function read(str, left, right, class)
+function collect(str, left, right, class)
   assert(#left == 1 and #right == 1)
   local lindex, rindex = str:find("%b"..left..right)
   assert(rindex, "Expected \""..right.."\" to close ..\""..left.."\"")
@@ -567,9 +576,9 @@ function parse(str)
   str = str:trim()
 
   -- Collections
-  if str:starts("(") then return read(str, "(", ")", List) end
-  if str:starts("[") then return read(str, "[", "]", Vector) end
-  if str:starts("{") then return read(str, "{", "}", Dictionary) end
+  if str:starts("(") then return collect(str, "(", ")", List) end
+  if str:starts("[") then return collect(str, "[", "]", Vector) end
+  if str:starts("{") then return collect(str, "{", "}", Dictionary) end
 
   -- Comment
   if str:starts(";") then
@@ -580,7 +589,9 @@ function parse(str)
   end
 
   -- Syntax
-  if str:starts("#") then return replace(str, "directive") end
+  if str:starts("~") then return replace(str, "unpack") end
+  if str:starts("$") then return replace(str, "directive") end
+  if str:starts("#") then return replace(str, "length") end
   if str:starts("`") then return replace(str, "quasiquote") end
   if str:starts(",") then return replace(str, "unquote") end
   if str:starts("'") then return replace(str, "quote") end
@@ -683,14 +694,13 @@ end
 
 META = {line = Stack(), 
         block = Stack(), 
-        current = 1, -- line
-        cursor = 0,
-        location = Stack(),
-        scope = Stack(),
-        _ENV = Stack(),
-        read = Stack(),
-        column = {},
-        symbol = {}}
+        current = 1,        -- current line number
+        cursor = 0,         -- current string index
+        location = Stack(), 
+        scope = Stack(),    -- Arguments in scope
+        _ENV = Stack(),     -- Actual scope for Operators
+        column = {},        -- Map string index -> column
+        symbol = {}}        -- Set of used symbol names
 
 --- Compiles a block of parse trees into lua.
 -- While compiling also manages block & scope metadata. 
@@ -702,7 +712,7 @@ META = {line = Stack(),
 -- @return string Returns a string of lua.
 function genblock(iterable, parameters)
   local line, location, column = nil, nil, nil
-  for i, v in ipairs(iterable) do
+  for i, v in ipairs(iterable or {}) do
     if v then 
       local data = META[v] or {}
       line = data.line
@@ -712,6 +722,9 @@ function genblock(iterable, parameters)
     end
   end
   local uid = nil
+  if parameters == nil then
+    parameters = gensym()
+  end
   if type(parameters) == "string" or getmetatable(parameters) == Symbol then
     uid = parameters
     if getmetatable(uid) == Symbol then
@@ -740,6 +753,7 @@ function genblock(iterable, parameters)
     scope = META.scope:pop()
     _ENV = (getmetatable(META._ENV:pop()).__index)
   end
+  column = tostring(column)
   local label = "-- ::LINE_"..tostring(line).."_COLUMN_"..column.."::\n"
   body = label..table.concat(block, ";\n")..";\n"..tostring(body)
   return body
@@ -755,12 +769,13 @@ function compile(source)
   local body = map(genexpr, {parse(source)})
   if body then 
     body.last[1] = "return "..tostring(body.last[1])
+    body = ""
   end
   local block = META.block:pop()
   local scope = META.scope:pop()
   META._ENV:pop()
   -- body = table.concat(block, ";\n").."\n"..List.concat(body, ";\n\n").."\n"
-  body = table.concat(block, ";\n")..";\n"..tostring(body.last[1]).."\n"
+  body = table.concat(block, ";\n")..";\n"..tostring(body).."\n"
   return body
 end
 
@@ -795,7 +810,6 @@ function expect(item, kind, alt)
     alt = alt or item
     except(alt, "Expected "..kind..", found "..tolisp(item).." ("..
       tostring(getmetatable(item)) .. ").")
-    os.exit()
   end
 end
 
@@ -810,6 +824,15 @@ _ENV[Symbol("=="):tohash()] = Operator(function(first, ...)
   return "(".. (content == "" and "true" or content) .. ")"
 end)
 
+-- Inequality operator
+_ENV[Symbol("!="):tohash()] = Operator(function(first, ...)
+  local content = 
+    List.concat(map(function(node)
+      return genexpr(node).. " ~= ".. genexpr(first)
+    end, {...}), " and ") 
+  return "(".. (content == "" and "true" or content) .. ")"
+end)
+
 -- Multiplication operator
 _ENV[Symbol("*"):tohash()] = Operator(function(...)
   return "(".. List.concat(map(genexpr, {...}), " * ") .. ")"
@@ -818,6 +841,37 @@ end)
 -- Addition operator
 _ENV[Symbol("+"):tohash()] = Operator(function(...)
   return "(".. List.concat(map(genexpr, {...}), " + ") .. ")"
+end)
+
+-- Greater than operator
+_ENV[Symbol(">"):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " > ") .. ")"
+end)
+
+-- Greater than equal to operator
+_ENV[Symbol(">="):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " >= ") .. ")"
+end)
+
+
+-- Less than operator
+_ENV[Symbol("<"):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " < ") .. ")"
+end)
+
+-- Less than equal to operator
+_ENV[Symbol("<="):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " <= ") .. ")"
+end)
+
+-- And operator
+_ENV[Symbol("and"):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " and ") .. ")"
+end)
+
+-- Or operator
+_ENV[Symbol("or"):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " or ") .. ")"
 end)
 
 -- Subtraction and negation operator
@@ -856,26 +910,30 @@ end)
 -- define local variables and execute some code with those locals in context
 let = Operator(function(labels, ...)
   expect(labels, List)
-  local block = META.block:peek()
   local uid = tostring(Symbol("_let", true))
+  if (#{...} == 0) then
+    except(labels, "Expected Something, found Nothing.")
+  end
+  block = META.block:peek()
+  table.insert(block, "local " .. uid)
+  table.insert(block, "do")
+  block = META.block:push({})
   local declarations = {}
-  for index, item in ipairs(labels) do
+  for index, item in ipairs(labels or {}) do
     if index % 2 == 1 then 
       expect(item, Symbol)
       declarations[(index+1)/2] = "local "..genexpr(item) .. " = "
     else
       declarations[index/2] = declarations[index/2]..genexpr(item)
+      table.insert(block, declarations[index/2])
     end
   end
-  if (#{...} == 0) then
-    except(labels, "Expected Something, found Nothing.")
-  end
-  table.insert(block, "local " .. uid)
-  table.insert(block, "do")
   for i, v in ipairs(declarations) do
-    table.insert(block, indent(v))
   end
-  table.insert(block, indent(genblock({...}, uid)))
+  table.insert(block, genblock({...}, uid))
+  block = META.block:pop()
+  table.insert(META.block:peek(), indent(table.concat(block, ";\n")))
+  block = META.block:peek()
   table.insert(block, "end")
   return uid
 end)
@@ -906,7 +964,7 @@ lambda = Operator(function(arguments, ...)
       expect(a, Symbol)
       return a:tohash()
     end, arguments or {}), ",")
-  local body = genblock({...})
+  local body = genblock({...}, map(tohash, arguments or {}))
   return "(function("..arglist..")\n"..indent(body).."\nend)" 
 end)
 
@@ -1036,6 +1094,10 @@ quasiquote = Operator(function(tree)
   return "List("..List.concat(map(quasiquote, tree),",")..")"
 end)
 
+unpack = Operator(function(item)
+  return "List.unpack(map(id,"..genexpr(item).."))"
+end)
+
 cond = Operator(function(...)
   local block = META.block:peek()
   local uid = tostring(Symbol("_cond", true))
@@ -1053,6 +1115,10 @@ cond = Operator(function(...)
   table.insert(block, "::"..uid.."::")
   table.insert(block, "end")
   return uid
+end)
+
+length = Operator(function(statement)
+  return "#("..genexpr(statement)..")"
 end)
 
 -- Compile time code execution
@@ -1073,32 +1139,42 @@ end)
 ;
 -- END --
 
-if not input or not output then 
-  os.exit() 
+
+local input = arg[1]
+local output = arg[2] or "out.lua"
+
+if input and output then 
+  -- Read file, compile code, write file. 
+  source_file = io.open(input, "r") 
+  source = source_file:read("*all") 
+  local col = 0
+  for i = 1, #source do
+    if string.char(source:byte(i)) == "\n" then
+      col = 0
+    end
+    META.column[i]=col
+    col = col + 1
+  end
+  source_file:close()
+  output_file = io.open(output, "w") 
+  -- output_file:write("#! /usr/local/bin/lua \n") 
+  
+  l2l_file = io.open(arg[0], "r")
+  local line = ""
+  repeat
+    line = l2l_file:read("*line")
+    output_file:write(line.."\n") 
+  until line:match("-- END --") 
+  l2l_file:close()
+  
+  output_file:write(compile(source)) 
+  output_file:write("return _ENV\n") 
+  output_file:close()
+else 
+  print(arg[0]..": no input file")
 end
 
--- Read file, compile code, write file. 
--- (And copy prelude from this compiler too)
-source_file = io.open(input, "r") 
-source = source_file:read("*all") 
-local col = 0
-for i = 1, #source do
-  if string.char(source:byte(i)) == "\n" then
-    col = 0
-  end
-  META.column[i]=col
-  col = col + 1
-end
-source_file:close()
-output_file = io.open(output, "w") 
-l2l_file = io.open("l2l.lua", "r")
-local line = ""
-repeat
-  line = l2l_file:read("*line")
-  output_file:write(line.."\n") 
-until line:match("-- END --") 
-l2l_file:close()
-output_file:write(compile(source)) 
-output_file:close()
+return _ENV
+
 
 

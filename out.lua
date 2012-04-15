@@ -1,7 +1,4 @@
--- Lisp to Lua Compiler by Eric Man
--- License undecided.
-
-local input, output = arg[1] or "test.lsp", arg[2] or "out.lua"
+#! /usr/local/bin/lua
 
 local ENV = _ENV
 local L2L = setmetatable({}, {__index = ENV})
@@ -50,6 +47,17 @@ function string:lines()
   end
   table.insert(t, self:match("\n([^\n]*)$"))
   return t
+end
+
+string.split = function(str, pattern)
+  pattern = pattern or "[^%s]+"
+  if pattern:len() == 0 then pattern = "[^%s]+" end
+  local parts = {__index = table.insert}
+  setmetatable(parts, parts)
+  str:gsub(pattern, parts)
+  setmetatable(parts, nil)
+  parts.__index = nil
+  return parts
 end
 
 --- Count how many occurrences of `str` is in the string.
@@ -278,12 +286,6 @@ end
 -- Map is usable for all types implementing __ipairs
 function map(f, l) 
   local result = Pair()
-  if type(l)~= "table" then
-    print(l, type(l))
-    require "debug"
-    print(debug.traceback())
-    os.exit()
-  end
   for i, v in ipairs(l) do 
     result:append(f(v))
   end 
@@ -398,6 +400,13 @@ function Symbol:tohash()
   else
     return name:gsub("[.]([^.]+)", "[\"%1\"]")
   end
+end
+
+function gensym(suffix)
+  if suffix then
+    suffix = "_"..suffix
+  end
+  return Symbol(suffix or "", true)
 end
 
 Number = {}
@@ -520,7 +529,7 @@ end
 -- @param class The function will be called with contents between left and right
 -- symbols. The function should return the appropriate parse tree object.
 -- @return A variable number of parse trees.
-function read(str, left, right, class)
+function collect(str, left, right, class)
   assert(#left == 1 and #right == 1)
   local lindex, rindex = str:find("%b"..left..right)
   assert(rindex, "Expected \""..right.."\" to close ..\""..left.."\"")
@@ -567,9 +576,9 @@ function parse(str)
   str = str:trim()
 
   -- Collections
-  if str:starts("(") then return read(str, "(", ")", List) end
-  if str:starts("[") then return read(str, "[", "]", Vector) end
-  if str:starts("{") then return read(str, "{", "}", Dictionary) end
+  if str:starts("(") then return collect(str, "(", ")", List) end
+  if str:starts("[") then return collect(str, "[", "]", Vector) end
+  if str:starts("{") then return collect(str, "{", "}", Dictionary) end
 
   -- Comment
   if str:starts(";") then
@@ -683,14 +692,13 @@ end
 
 META = {line = Stack(), 
         block = Stack(), 
-        current = 1, -- line
-        cursor = 0,
-        location = Stack(),
-        scope = Stack(),
-        _ENV = Stack(),
-        read = Stack(),
-        column = {},
-        symbol = {}}
+        current = 1,        -- current line number
+        cursor = 0,         -- current string index
+        location = Stack(), 
+        scope = Stack(),    -- Arguments in scope
+        _ENV = Stack(),     -- Actual scope for Operators
+        column = {},        -- Map string index -> column
+        symbol = {}}        -- Set of used symbol names
 
 --- Compiles a block of parse trees into lua.
 -- While compiling also manages block & scope metadata. 
@@ -712,6 +720,9 @@ function genblock(iterable, parameters)
     end
   end
   local uid = nil
+  if parameters == nil then
+    parameters = gensym()
+  end
   if type(parameters) == "string" or getmetatable(parameters) == Symbol then
     uid = parameters
     if getmetatable(uid) == Symbol then
@@ -755,12 +766,13 @@ function compile(source)
   local body = map(genexpr, {parse(source)})
   if body then 
     body.last[1] = "return "..tostring(body.last[1])
+    body = ""
   end
   local block = META.block:pop()
   local scope = META.scope:pop()
   META._ENV:pop()
   -- body = table.concat(block, ";\n").."\n"..List.concat(body, ";\n\n").."\n"
-  body = table.concat(block, ";\n")..";\n"..tostring(body.last[1]).."\n"
+  body = table.concat(block, ";\n")..";\n"..tostring(body).."\n"
   return body
 end
 
@@ -795,7 +807,6 @@ function expect(item, kind, alt)
     alt = alt or item
     except(alt, "Expected "..kind..", found "..tolisp(item).." ("..
       tostring(getmetatable(item)) .. ").")
-    os.exit()
   end
 end
 
@@ -1072,142 +1083,143 @@ end)
 
 ;
 -- END --
-local _8tu1_call = print("\n--- Example 1 ---\n");
+local _0g3n_call = print("\n--- Example 1 ---\n");
 function __c33__(n)
   -- ::LINE_6_COLUMN_3::
-  local _2b8x_cond;
+  local _3hj0_cond;
   do;
     if (0 == n) then
       -- ::LINE_6_COLUMN_18::
       ;
-      _2b8x_cond = 1
-      goto _2b8x_cond
+      _3hj0_cond = 1
+      goto _3hj0_cond
     end;
     if (1 == n) then
       -- ::LINE_7_COLUMN_18::
       ;
-      _2b8x_cond = 1
-      goto _2b8x_cond
+      _3hj0_cond = 1
+      goto _3hj0_cond
     end;
     if true then
       -- ::LINE_8_COLUMN_15::
-      local _hvyq_call = __c33__((n - 1));
-      _2b8x_cond = (n * _hvyq_call)
-      goto _2b8x_cond
+      local _lhom_call = __c33__((n - 1));
+      _3hj0_cond = (n * _lhom_call)
+      goto _3hj0_cond
     end;
-  ::_2b8x_cond::;
+  ::_3hj0_cond::;
   end;
-  return _2b8x_cond
+  return _3hj0_cond
 end;
-local _8c90_call = __c33__(100);
-local _cd0o_call = print(_8c90_call);
-local _iszb_call = print("\n--- Example 2 ---\n");
+local _778p_call = __c33__(100);
+local _ik5e_call = print(_778p_call);
+local _a234_call = print("\n--- Example 2 ---\n");
 function __c206____c163__()
   -- ::LINE_17_COLUMN_14::
-  local _tase_call = print("ΣΣΣ");
-  return _tase_call
+  local _nqnz_call = print("ΣΣΣ");
+  _kda9 = _nqnz_call
 end;
-local _i26b_call = __c206____c163__();
-local _qtp6_call = print("\n--- Example 3 ---\n");
+local _k2yq_call = __c206____c163__();
+local _15kr_call = print("\n--- Example 3 ---\n");
 hello__c45__world = "hello gibberish world";
-local _7uxz_call = table["concat"](({string["gsub"](hello__c45__world,"gibberish ","")})," ");
-local _460d_call = print(_7uxz_call);
-local _kfj5_call = print("\n--- Example 4 ---\n");
-local _szzo_call = map((function(x)
+local _5ulu_call = table["concat"](({string["gsub"](hello__c45__world,"gibberish ","")})," ");
+local _5nin_call = print(_5ulu_call);
+local _hddd_call = print("\n--- Example 4 ---\n");
+local _vhso_call = map((function(x)
   -- ::LINE_40_COLUMN_38::
   ;
-  return (x * 5)
+  _hb72 = (x * 5)
 end),List(1,2,3));
-local _5loc_call = map(print,List(1,2,3,_szzo_call));
-local _f7lb_call = print("\n--- Example 5 ---\n");
-local _wqrq_let;
+local _v0xx_call = map(print,List(1,2,3,_vhso_call));
+local _36yf_call = print("\n--- Example 5 ---\n");
+local _yf8e_let;
 do;
   local a = (1 + 2);
   local b = (3 + 4);
   -- ::LINE_55_COLUMN_3::
-  local _yxpp_call = print(a);
-  local _37mx_call = print(b);
-  _wqrq_let = _37mx_call;
+  local _rc93_call = print(a);
+  local _vhpu_call = print(b);
+  _yf8e_let = _vhpu_call;
 end;
-local _w0e2_call = print("\n--- Example 6 ---\n");
-local _5w51_call = ({["write"] = (function(self,x)
+local _2uti_call = print("\n--- Example 6 ---\n");
+local _p6um_call = ({["write"] = (function(self,x)
   -- ::LINE_66_COLUMN_35::
-  local _76i1_call = print(x);
-  return _76i1_call
+  local _zhl5_call = print(x);
+  _a9zn = _zhl5_call
 end)}):write("hello-world");
-local _goxg_call = print("\n--- Example 7 ---\n");
-local _undf_call = (function(x,y)
+local _e75q_call = print("\n--- Example 7 ---\n");
+local _4nqq_call = (function(x,y)
   -- ::LINE_75_COLUMN_23::
   ;
-  return (x + y)
+  _1bd9 = (x + y)
 end)(10,20);
-local _se5c_call = print(_undf_call);
-local _fe7n_call = print("\n--- Example 8 ---\n");
-local _hury_let;
+local _km5n_call = print(_4nqq_call);
+local _lacu_call = print("\n--- Example 8 ---\n");
+local _zvyv_let;
 do;
   local a = (7 * 8);
   -- ::LINE_85_COLUMN_3::
-  local _ajfo_call = map(print,({1,2,a,4}));
-  _hury_let = _ajfo_call;
+  local _put1_call = map(print,({1,2,a,4}));
+  _zvyv_let = _put1_call;
 end;
-local _ziti_call = print("\n--- Example 9 ---\n");
-local _g1pv_let;
+local _cujs_call = print("\n--- Example 9 ---\n");
+local _031g_let;
 do;
   local dict = ({[1] = 2,["3"] = 4,["a"] = "b"});
   -- ::LINE_98_COLUMN_3::
-  local _q9cf_call = print(dict["a"],"b");
-  local _l9ud_call = print(dict["a"],"b");
-  local _l9d8_call = print(dict[1],2);
-  local _56ec_call = print(dict["3"],4);
-  _g1pv_let = _56ec_call;
+  local _gq12_call = print(dict["a"],"b");
+  local _0s8d_call = print(dict["a"],"b");
+  local _j5j2_call = print(dict[1],2);
+  local _xdvp_call = print(dict["3"],4);
+  _031g_let = _xdvp_call;
 end;
-local _cx2n_call = print("\n--- Example 10 ---\n");
+local _ym3q_call = print("\n--- Example 10 ---\n");
 
 -- This is a comment;
-local _mo7w_call = print("\n--- Example 11 ---\n");
-local _unl4_call = print("\n--- Did you see what was printed while compiling? ---\n");
--- ::LINE_151_COLUMN_3::
-local _gvf1_call = print(1);
-local _yimy_call = print(2);
-_acij_do = _yimy_call;
-local _5mga_call = print("\n--- Example 12 ---\n");
-local _rh3u_let;
+local _9ann_call = print("\n--- Example 11 ---\n");
+local _fayd_call = print("\n--- Did you see what was printed while compiling? ---\n");
+-- ::LINE_150_COLUMN_3::
+local _lrt3_call = print(1);
+local _nu0g_call = print(2);
+_2w4n = _nu0g_call;
+local _yluc_call = print("\n--- Example 12 ---\n");
+local _lk6d_let;
 do;
   local a = 2;
-  -- ::LINE_178_COLUMN_3::
-  local _lstr_cond;
+  -- ::LINE_177_COLUMN_3::
+  local _97vk_cond;
   do;
     if ("1" == a) then
-      -- ::LINE_178_COLUMN_18::
-      local _z9y6_call = print("a == 1");
-      _lstr_cond = _z9y6_call
-      goto _lstr_cond
+      -- ::LINE_177_COLUMN_18::
+      local _5aib_call = print("a == 1");
+      _97vk_cond = _5aib_call
+      goto _97vk_cond
     end;
     if true then
-      -- ::LINE_179_COLUMN_5::
-      local _rh8a_cond;
+      -- ::LINE_178_COLUMN_5::
+      local _q0ys_cond;
       do;
         if (2 == a) then
-          -- ::LINE_179_COLUMN_18::
-          local _4ply_call = print("a == 2");
-          _rh8a_cond = _4ply_call
-          goto _rh8a_cond
+          -- ::LINE_178_COLUMN_18::
+          local _3abz_call = print("a == 2");
+          _q0ys_cond = _3abz_call
+          goto _q0ys_cond
         end;
         if true then
-          -- ::LINE_179_COLUMN_35::
-          local _wuu7_call = print("a != 2");
-          _rh8a_cond = _wuu7_call
-          goto _rh8a_cond
+          -- ::LINE_178_COLUMN_35::
+          local _eo0p_call = print("a != 2");
+          _q0ys_cond = _eo0p_call
+          goto _q0ys_cond
         end;
-      ::_rh8a_cond::;
+      ::_q0ys_cond::;
       end;
-      _lstr_cond = _rh8a_cond
-      goto _lstr_cond
+      _97vk_cond = _q0ys_cond
+      goto _97vk_cond
     end;
-  ::_lstr_cond::;
+  ::_97vk_cond::;
   end;
-  _rh3u_let = _lstr_cond;
+  _lk6d_let = _97vk_cond;
 end;
-local _icwh_call = tostring((1 + 2));
-local _aa4n_call = print((_icwh_call .. "4"));
-return _aa4n_call
+local _5iio_call = tostring((1 + 2));
+local _koaq_call = print((_5iio_call .. "4"));
+
+return _ENV
