@@ -531,17 +531,20 @@ end
 function collect(str, left, right, class)
   assert(#left == 1 and #right == 1)
   local lindex, rindex = str:find("%b"..left..right)
-  assert(rindex, "Expected \""..right.."\" to close ..\""..left.."\"")
+  if not rindex then
+    except(META.object:peek(), 
+      "expected \""..right.."\" to close ..\""..left.."\"")
+  end
   local content = str:sub(2, rindex - 1)
   META.cursor = META.cursor + 1 
     -- add 1 for the the "(" parenthesis
   META.location:push(META.cursor)
   META.line:push(META.current)
   local data = {line = META.current, location = META.cursor}
-  --print(getmetatable(parse(content)), parse(content))
   local collection = class(parse(content))
   if collection then
     META[collection] = data
+    META.object:push(collection)
   end
   META.current = META.line:pop() + content:count("[\n]")
   META.cursor = META.location:pop() + #content + 1
@@ -554,9 +557,9 @@ end
 -- @param str The symbol to be converted. Must have length == 1.
 -- @param with The keyword to replace the symbol with.
 -- @return A variable number of parse trees.
-function replace(str, with)
-  local rest = str:sub(2):match("%s*(.*)")
-  META.cursor = META.cursor + 1 
+function replace(replaced, str, with)
+  local rest = str:sub(#replaced + 1):match("%s*(.*)")
+  META.cursor = META.cursor + #replaced 
   META.line:push(META.current)
   META.location:push(META.cursor)
   local node = List(parse(rest)) 
@@ -576,6 +579,9 @@ function parse(str)
 
   -- Collections
   if str:starts("(") then return collect(str, "(", ")", List) end
+  if str:starts(")") then 
+    except(META.object:peek(), "unexpected  \")\" after this expression") 
+  end
   if str:starts("[") then return collect(str, "[", "]", Vector) end
   if str:starts("{") then return collect(str, "{", "}", Dictionary) end
 
@@ -588,12 +594,12 @@ function parse(str)
   end
 
   -- Syntax
-  if str:starts("~") then return replace(str, "unpack") end
-  if str:starts("$") then return replace(str, "directive") end
-  if str:starts("#") then return replace(str, "length") end
-  if str:starts("`") then return replace(str, "quasiquote") end
-  if str:starts(",") then return replace(str, "unquote") end
-  if str:starts("'") then return replace(str, "quote") end
+  if str:starts("~") then return replace("~", str, "unpack") end
+  if str:starts("#.") then return replace("#.", str, "directive") end
+  if str:starts("#") then return replace("#", str, "length") end
+  if str:starts("`") then return replace("`", str, "quasiquote") end
+  if str:starts(",") then return replace(",", str, "unquote") end
+  if str:starts("'") then return replace("'", str, "quote") end
 
   -- String
   if str:starts("\"") then
@@ -604,10 +610,12 @@ function parse(str)
       index = index + 1
     end 
     local content = str:sub(2, index-1)
+    local object = String(content:gsub("\n", "\\n"):gsub("\\\"", "\""))
+    META[object] = {line = META.current, location = META.cursor}
+    META.object:push(object)
     META.current = META.current + content:count("[\n]")
     META.cursor = META.cursor + #content + 2
-    return String(content:gsub("\n", "\\n"):gsub("\\\"", "\"")), 
-                  parse(str:sub(index+1))
+    return object, parse(str:sub(index+1))
   end
 
   -- Number and Symbol
@@ -619,6 +627,7 @@ function parse(str)
     end
     local object = number or Symbol(token)
     META[object] = {line = META.current, location = META.cursor}
+    META.object:push(object)
     META.cursor = META.cursor + #token
     return object, parse(rest)
   end
@@ -692,6 +701,7 @@ function Scope(parameters, parent)
 end
 
 META = {line = Stack(), 
+        object = Stack(),   -- Contains all parse tree objects
         block = Stack(), 
         current = 1,        -- current line number
         cursor = 0,         -- current string index
@@ -807,7 +817,7 @@ function expect(item, kind, alt)
       kind = tostring(kind)
     end
     alt = alt or item
-    except(alt, "Expected "..kind..", found "..tolisp(item).." ("..
+    except(alt, "expected "..kind..", found "..tolisp(item).." ("..
       tostring(getmetatable(item)) .. ").")
   end
 end
@@ -911,7 +921,7 @@ let = Operator(function(labels, ...)
   expect(labels, List)
   local uid = tostring(Symbol("_let", true))
   if (#{...} == 0) then
-    except(labels, "Expected Something, found Nothing.")
+    except(labels, "expected Something, found nothing.")
   end
   block = META.block:peek()
   table.insert(block, "local " .. uid)
@@ -1137,26 +1147,25 @@ end)
 
 ;
 -- END --
-local _u36p_call = require("sample02");
-stat = _u36p_call;
-local _evsw_call = stat["sum"](List(1,3,5,7));
-local _n7h6_call = print(_evsw_call);
-local _c3ma_call = print(sum);
-local _p1zs_cond;
+local _myt2_call = require("sample02");
+stat = _myt2_call;
+local _h6p9_call = stat["sum"](List(1,3,5,7));
+local _5jfj_call = print(_h6p9_call);
+local _ksg8_cond;
 do;
   if 1 then
-    -- ::LINE_129_COLUMN_31::
-    local _qwv0_call = print(1);
-    _p1zs_cond = _qwv0_call
-    goto _p1zs_cond
+    -- ::LINE_7_COLUMN_7::
+    local _rvxh_call = print(1);
+    _ksg8_cond = _rvxh_call
+    goto _ksg8_cond
   end;
   if true then
-    -- ::LINE_129_COLUMN_41::
-    local _5jer_call = print(0);
-    _p1zs_cond = _5jer_call
-    goto _p1zs_cond
+    -- ::LINE_7_COLUMN_17::
+    local _c07n_call = print(0);
+    _ksg8_cond = _c07n_call
+    goto _ksg8_cond
   end;
-::_p1zs_cond::;
+::_ksg8_cond::;
 end;
 
 return _ENV
