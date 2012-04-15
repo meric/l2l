@@ -7,21 +7,24 @@ A tail-call-optimized, object-oriented, unicode-enabled lisp that compiles to an
 
 Requires Lua 5.2!
 
+Warning
+-------
+If input file is named foo.lsp, foo.lua will be replaced with the compiler output! 
+
 Example 
 -------
+To compile all the examples:
 
-See test.lsp for example input source code.
-See out.lua for example output source code.
+./l2l sample01.lsp sample02.lsp sample03.lsp
 
-TODO
-----
+To run a particular example:
 
-Import within lisp
+lua sample01.lua
 
 Quickstart
 ----------
     # cd into l2l directory
-    # Use Lua 5.2!
-    lua l2l.lua test.lsp out.lua
-    lua out.lua
+    # Requires Lua 5.2! (Or modify l2l's header)
+    ./l2l sample01.lsp sample02.lsp sample03.lsp
+    lua sample01.lua
 

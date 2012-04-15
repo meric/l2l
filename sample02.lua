@@ -1,4 +1,3 @@
-#! /usr/local/bin/lua
 
 local ENV = _ENV
 local L2L = setmetatable({}, {__index = ENV})
@@ -37,7 +36,7 @@ function string:tolisp()
 end
 
 --- Split a string into lines, conserving empty lines.
--- @param self The string to be spliy.
+-- @param self The string to be split.
 -- @return An array of string.
 function string:lines()
   self = self:gsub("\r\n", "\n")
@@ -286,7 +285,7 @@ end
 -- Map is usable for all types implementing __ipairs
 function map(f, l) 
   local result = Pair()
-  for i, v in ipairs(l) do 
+  for i, v in ipairs(l or {}) do 
     result:append(f(v))
   end 
   return List.cdr(result)
@@ -589,7 +588,9 @@ function parse(str)
   end
 
   -- Syntax
-  if str:starts("#") then return replace(str, "directive") end
+  if str:starts("~") then return replace(str, "unpack") end
+  if str:starts("$") then return replace(str, "directive") end
+  if str:starts("#") then return replace(str, "length") end
   if str:starts("`") then return replace(str, "quasiquote") end
   if str:starts(",") then return replace(str, "unquote") end
   if str:starts("'") then return replace(str, "quote") end
@@ -710,7 +711,7 @@ META = {line = Stack(),
 -- @return string Returns a string of lua.
 function genblock(iterable, parameters)
   local line, location, column = nil, nil, nil
-  for i, v in ipairs(iterable) do
+  for i, v in ipairs(iterable or {}) do
     if v then 
       local data = META[v] or {}
       line = data.line
@@ -751,6 +752,7 @@ function genblock(iterable, parameters)
     scope = META.scope:pop()
     _ENV = (getmetatable(META._ENV:pop()).__index)
   end
+  column = tostring(column)
   local label = "-- ::LINE_"..tostring(line).."_COLUMN_"..column.."::\n"
   body = label..table.concat(block, ";\n")..";\n"..tostring(body)
   return body
@@ -821,6 +823,15 @@ _ENV[Symbol("=="):tohash()] = Operator(function(first, ...)
   return "(".. (content == "" and "true" or content) .. ")"
 end)
 
+-- Inequality operator
+_ENV[Symbol("!="):tohash()] = Operator(function(first, ...)
+  local content = 
+    List.concat(map(function(node)
+      return genexpr(node).. " ~= ".. genexpr(first)
+    end, {...}), " and ") 
+  return "(".. (content == "" and "true" or content) .. ")"
+end)
+
 -- Multiplication operator
 _ENV[Symbol("*"):tohash()] = Operator(function(...)
   return "(".. List.concat(map(genexpr, {...}), " * ") .. ")"
@@ -829,6 +840,37 @@ end)
 -- Addition operator
 _ENV[Symbol("+"):tohash()] = Operator(function(...)
   return "(".. List.concat(map(genexpr, {...}), " + ") .. ")"
+end)
+
+-- Greater than operator
+_ENV[Symbol(">"):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " > ") .. ")"
+end)
+
+-- Greater than equal to operator
+_ENV[Symbol(">="):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " >= ") .. ")"
+end)
+
+
+-- Less than operator
+_ENV[Symbol("<"):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " < ") .. ")"
+end)
+
+-- Less than equal to operator
+_ENV[Symbol("<="):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " <= ") .. ")"
+end)
+
+-- And operator
+_ENV[Symbol("and"):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " and ") .. ")"
+end)
+
+-- Or operator
+_ENV[Symbol("or"):tohash()] = Operator(function(...)
+  return "(".. List.concat(map(genexpr, {...}), " or ") .. ")"
 end)
 
 -- Subtraction and negation operator
@@ -867,26 +909,30 @@ end)
 -- define local variables and execute some code with those locals in context
 let = Operator(function(labels, ...)
   expect(labels, List)
-  local block = META.block:peek()
   local uid = tostring(Symbol("_let", true))
+  if (#{...} == 0) then
+    except(labels, "Expected Something, found Nothing.")
+  end
+  block = META.block:peek()
+  table.insert(block, "local " .. uid)
+  table.insert(block, "do")
+  block = META.block:push({})
   local declarations = {}
-  for index, item in ipairs(labels) do
+  for index, item in ipairs(labels or {}) do
     if index % 2 == 1 then 
       expect(item, Symbol)
       declarations[(index+1)/2] = "local "..genexpr(item) .. " = "
     else
       declarations[index/2] = declarations[index/2]..genexpr(item)
+      table.insert(block, declarations[index/2])
     end
   end
-  if (#{...} == 0) then
-    except(labels, "Expected Something, found Nothing.")
-  end
-  table.insert(block, "local " .. uid)
-  table.insert(block, "do")
   for i, v in ipairs(declarations) do
-    table.insert(block, indent(v))
   end
-  table.insert(block, indent(genblock({...}, uid)))
+  table.insert(block, genblock({...}, uid))
+  block = META.block:pop()
+  table.insert(META.block:peek(), indent(table.concat(block, ";\n")))
+  block = META.block:peek()
   table.insert(block, "end")
   return uid
 end)
@@ -902,7 +948,7 @@ car = Operator(function(node)
 end)
 
 cdr = Operator(function(node)
-  return genexpr(node).."[2]"
+  return genexpr(node)..":cdr()"
 end)
 
 cons = Operator(function(first, second)
@@ -917,7 +963,7 @@ lambda = Operator(function(arguments, ...)
       expect(a, Symbol)
       return a:tohash()
     end, arguments or {}), ",")
-  local body = genblock({...})
+  local body = genblock({...}, map(tohash, arguments or {}))
   return "(function("..arglist..")\n"..indent(body).."\nend)" 
 end)
 
@@ -1047,6 +1093,10 @@ quasiquote = Operator(function(tree)
   return "List("..List.concat(map(quasiquote, tree),",")..")"
 end)
 
+unpack = Operator(function(item)
+  return "List.unpack(map(id,"..genexpr(item).."))"
+end)
+
 cond = Operator(function(...)
   local block = META.block:peek()
   local uid = tostring(Symbol("_cond", true))
@@ -1066,6 +1116,10 @@ cond = Operator(function(...)
   return uid
 end)
 
+length = Operator(function(statement)
+  return "#("..genexpr(statement)..")"
+end)
+
 -- Compile time code execution
 directive = Operator(function(statement)
   local _ENV = META._ENV:peek()
@@ -1083,143 +1137,25 @@ end)
 
 ;
 -- END --
-local _0g3n_call = print("\n--- Example 1 ---\n");
-function __c33__(n)
-  -- ::LINE_6_COLUMN_3::
-  local _3hj0_cond;
+function sum(list)
+  -- ::LINE_121_COLUMN_20::
+  local _gc97_cond;
   do;
-    if (0 == n) then
-      -- ::LINE_6_COLUMN_18::
-      ;
-      _3hj0_cond = 1
-      goto _3hj0_cond
-    end;
-    if (1 == n) then
-      -- ::LINE_7_COLUMN_18::
-      ;
-      _3hj0_cond = 1
-      goto _3hj0_cond
+    if list then
+      -- ::LINE_121_COLUMN_29::
+      local _0bux_call = sum(list:cdr());
+      _gc97_cond = (list[1] + _0bux_call)
+      goto _gc97_cond
     end;
     if true then
-      -- ::LINE_8_COLUMN_15::
-      local _lhom_call = __c33__((n - 1));
-      _3hj0_cond = (n * _lhom_call)
-      goto _3hj0_cond
+      -- ::LINE_121_COLUMN_60::
+      ;
+      _gc97_cond = 0
+      goto _gc97_cond
     end;
-  ::_3hj0_cond::;
+  ::_gc97_cond::;
   end;
-  return _3hj0_cond
+  return _gc97_cond
 end;
-local _778p_call = __c33__(100);
-local _ik5e_call = print(_778p_call);
-local _a234_call = print("\n--- Example 2 ---\n");
-function __c206____c163__()
-  -- ::LINE_17_COLUMN_14::
-  local _nqnz_call = print("ΣΣΣ");
-  _kda9 = _nqnz_call
-end;
-local _k2yq_call = __c206____c163__();
-local _15kr_call = print("\n--- Example 3 ---\n");
-hello__c45__world = "hello gibberish world";
-local _5ulu_call = table["concat"](({string["gsub"](hello__c45__world,"gibberish ","")})," ");
-local _5nin_call = print(_5ulu_call);
-local _hddd_call = print("\n--- Example 4 ---\n");
-local _vhso_call = map((function(x)
-  -- ::LINE_40_COLUMN_38::
-  ;
-  _hb72 = (x * 5)
-end),List(1,2,3));
-local _v0xx_call = map(print,List(1,2,3,_vhso_call));
-local _36yf_call = print("\n--- Example 5 ---\n");
-local _yf8e_let;
-do;
-  local a = (1 + 2);
-  local b = (3 + 4);
-  -- ::LINE_55_COLUMN_3::
-  local _rc93_call = print(a);
-  local _vhpu_call = print(b);
-  _yf8e_let = _vhpu_call;
-end;
-local _2uti_call = print("\n--- Example 6 ---\n");
-local _p6um_call = ({["write"] = (function(self,x)
-  -- ::LINE_66_COLUMN_35::
-  local _zhl5_call = print(x);
-  _a9zn = _zhl5_call
-end)}):write("hello-world");
-local _e75q_call = print("\n--- Example 7 ---\n");
-local _4nqq_call = (function(x,y)
-  -- ::LINE_75_COLUMN_23::
-  ;
-  _1bd9 = (x + y)
-end)(10,20);
-local _km5n_call = print(_4nqq_call);
-local _lacu_call = print("\n--- Example 8 ---\n");
-local _zvyv_let;
-do;
-  local a = (7 * 8);
-  -- ::LINE_85_COLUMN_3::
-  local _put1_call = map(print,({1,2,a,4}));
-  _zvyv_let = _put1_call;
-end;
-local _cujs_call = print("\n--- Example 9 ---\n");
-local _031g_let;
-do;
-  local dict = ({[1] = 2,["3"] = 4,["a"] = "b"});
-  -- ::LINE_98_COLUMN_3::
-  local _gq12_call = print(dict["a"],"b");
-  local _0s8d_call = print(dict["a"],"b");
-  local _j5j2_call = print(dict[1],2);
-  local _xdvp_call = print(dict["3"],4);
-  _031g_let = _xdvp_call;
-end;
-local _ym3q_call = print("\n--- Example 10 ---\n");
-
--- This is a comment;
-local _9ann_call = print("\n--- Example 11 ---\n");
-local _fayd_call = print("\n--- Did you see what was printed while compiling? ---\n");
--- ::LINE_150_COLUMN_3::
-local _lrt3_call = print(1);
-local _nu0g_call = print(2);
-_2w4n = _nu0g_call;
-local _yluc_call = print("\n--- Example 12 ---\n");
-local _lk6d_let;
-do;
-  local a = 2;
-  -- ::LINE_177_COLUMN_3::
-  local _97vk_cond;
-  do;
-    if ("1" == a) then
-      -- ::LINE_177_COLUMN_18::
-      local _5aib_call = print("a == 1");
-      _97vk_cond = _5aib_call
-      goto _97vk_cond
-    end;
-    if true then
-      -- ::LINE_178_COLUMN_5::
-      local _q0ys_cond;
-      do;
-        if (2 == a) then
-          -- ::LINE_178_COLUMN_18::
-          local _3abz_call = print("a == 2");
-          _q0ys_cond = _3abz_call
-          goto _q0ys_cond
-        end;
-        if true then
-          -- ::LINE_178_COLUMN_35::
-          local _eo0p_call = print("a != 2");
-          _q0ys_cond = _eo0p_call
-          goto _q0ys_cond
-        end;
-      ::_q0ys_cond::;
-      end;
-      _97vk_cond = _q0ys_cond
-      goto _97vk_cond
-    end;
-  ::_97vk_cond::;
-  end;
-  _lk6d_let = _97vk_cond;
-end;
-local _5iio_call = tostring((1 + 2));
-local _koaq_call = print((_5iio_call .. "4"));
 
 return _ENV

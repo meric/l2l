@@ -1,4 +1,3 @@
-#! /usr/local/bin/lua
 
 local ENV = _ENV
 local L2L = setmetatable({}, {__index = ENV})
@@ -1138,54 +1137,26 @@ end)
 
 ;
 -- END --
-
-function build(input, output)
-  if input and output then 
-    -- Read file, compile code, write file. 
-    source_file = io.open(input, "r") 
-    source = source_file:read("*all") 
-    local col = 0
-    for i = 1, #source do
-      if string.char(source:byte(i)) == "\n" then
-        col = 0
-      end
-      META.column[i]=col
-      col = col + 1
-    end
-    source_file:close()
-    output_file = io.open(output, "w") 
-    l2l_file = io.open(arg[0], "r")
-    local line = ""
-    l2l_file:read("*line") 
-    -- skip first line, so output can be "require"d by other lua files
-    repeat
-      line = l2l_file:read("*line")
-      output_file:write(line.."\n") 
-    until line:match("-- END --") 
-    l2l_file:close()
-    
-    output_file:write(compile(source)) 
-    output_file:write("return _ENV\n") 
-    output_file:close()
-  else 
-    print(arg[0]..": no input file")
-  end
-end
-
-
-local inputs = {}
-for i, v in ipairs(arg) do
-  if i >= 1 and #v > 0 then
-    table.insert(inputs, v)
-  end
-end
-
-for i, v in ipairs(inputs) do
-  local output = (v:split("[^.]+"))[1] .. ".lua"
-  build(v, output)
-end
+local _u36p_call = require("sample02");
+stat = _u36p_call;
+local _evsw_call = stat["sum"](List(1,3,5,7));
+local _n7h6_call = print(_evsw_call);
+local _c3ma_call = print(sum);
+local _p1zs_cond;
+do;
+  if 1 then
+    -- ::LINE_129_COLUMN_31::
+    local _qwv0_call = print(1);
+    _p1zs_cond = _qwv0_call
+    goto _p1zs_cond
+  end;
+  if true then
+    -- ::LINE_129_COLUMN_41::
+    local _5jer_call = print(0);
+    _p1zs_cond = _5jer_call
+    goto _p1zs_cond
+  end;
+::_p1zs_cond::;
+end;
 
 return _ENV
-
-
-

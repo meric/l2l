@@ -1,4 +1,3 @@
-#! /usr/local/bin/lua
 
 local ENV = _ENV
 local L2L = setmetatable({}, {__index = ENV})
@@ -1138,54 +1137,167 @@ end)
 
 ;
 -- END --
-
-function build(input, output)
-  if input and output then 
-    -- Read file, compile code, write file. 
-    source_file = io.open(input, "r") 
-    source = source_file:read("*all") 
-    local col = 0
-    for i = 1, #source do
-      if string.char(source:byte(i)) == "\n" then
-        col = 0
-      end
-      META.column[i]=col
-      col = col + 1
-    end
-    source_file:close()
-    output_file = io.open(output, "w") 
-    l2l_file = io.open(arg[0], "r")
-    local line = ""
-    l2l_file:read("*line") 
-    -- skip first line, so output can be "require"d by other lua files
-    repeat
-      line = l2l_file:read("*line")
-      output_file:write(line.."\n") 
-    until line:match("-- END --") 
-    l2l_file:close()
-    
-    output_file:write(compile(source)) 
-    output_file:write("return _ENV\n") 
-    output_file:close()
-  else 
-    print(arg[0]..": no input file")
-  end
-end
-
-
-local inputs = {}
-for i, v in ipairs(arg) do
-  if i >= 1 and #v > 0 then
-    table.insert(inputs, v)
-  end
-end
-
-for i, v in ipairs(inputs) do
-  local output = (v:split("[^.]+"))[1] .. ".lua"
-  build(v, output)
-end
+local _zesu_call = print("\n--- Example 1 ---\n");
+function __c33__(n)
+  -- ::LINE_6_COLUMN_3::
+  local _teae_cond;
+  do;
+    if (0 == n) then
+      -- ::LINE_6_COLUMN_18::
+      ;
+      _teae_cond = 1
+      goto _teae_cond
+    end;
+    if (1 == n) then
+      -- ::LINE_7_COLUMN_18::
+      ;
+      _teae_cond = 1
+      goto _teae_cond
+    end;
+    if true then
+      -- ::LINE_8_COLUMN_15::
+      local _ak87_call = __c33__((n - 1));
+      _teae_cond = (n * _ak87_call)
+      goto _teae_cond
+    end;
+  ::_teae_cond::;
+  end;
+  return _teae_cond
+end;
+local _r3pe_call = __c33__(100);
+local _ahh1_call = print(_r3pe_call);
+local _k3rz_call = print("\n--- Example 2 ---\n");
+function __c206____c163__()
+  -- ::LINE_17_COLUMN_14::
+  local _9486_call = print("ΣΣΣ");
+  _21yi = _9486_call
+end;
+local _e16v_call = __c206____c163__();
+local _9son_call = print("\n--- Example 3 ---\n");
+hello__c45__world = "hello gibberish world";
+local _g1m1_call = table["concat"](({string["gsub"](hello__c45__world,"gibberish ","")})," ");
+local _02da_call = print(_g1m1_call);
+local _vvix_call = print("\n--- Example 4 ---\n");
+local _djth_call = map((function(x)
+  -- ::LINE_40_COLUMN_38::
+  ;
+  return (x * 5)
+end),List(1,2,3));
+local _uv0x_call = map(print,List(1,2,3,_djth_call));
+local _hkdw_call = print("\n--- Example 5 ---\n");
+local _ttz4_let;
+do;
+  local a = (1 + 2);
+  local b = (3 + 4);
+  -- ::LINE_55_COLUMN_3::
+  local _ohal_call = print(a);
+  local _3q7k_call = print(b);
+  _ttz4_let = _3q7k_call;
+end;
+local _pq0a_call = print("\n--- Example 6 ---\n");
+local _uats_call = ({["write"] = (function(self,x)
+  -- ::LINE_66_COLUMN_35::
+  local _xjyk_call = print(x);
+  return _xjyk_call
+end)}):write("hello-world");
+local _uia6_call = print("\n--- Example 7 ---\n");
+local _iaa8_call = (function(x,y)
+  -- ::LINE_75_COLUMN_23::
+  ;
+  return (x + y)
+end)(10,20);
+local _81uw_call = print(_iaa8_call);
+local _8hk6_call = print("\n--- Example 8 ---\n");
+local _gw00_let;
+do;
+  local a = (7 * 8);
+  -- ::LINE_85_COLUMN_3::
+  local _rkkh_call = map(print,({1,2,a,4}));
+  _gw00_let = _rkkh_call;
+end;
+local _4hq8_call = print("\n--- Example 9 ---\n");
+local _00fs_let;
+do;
+  local dict = ({[1] = 2,["3"] = 4,["a"] = "b"});
+  -- ::LINE_98_COLUMN_3::
+  local _0anz_call = print(dict["a"],"b");
+  local _giu6_call = print(dict["a"],"b");
+  local _m6kq_call = print(dict[1],2);
+  local _ekqa_call = print(dict["3"],4);
+  _00fs_let = _ekqa_call;
+end;
+local _bsyt_call = print("\n--- Example 10 ---\n");
+local _wb7g_call = Operator((function(str)
+  -- ::LINE_116_COLUMN_3::
+  local _zn9a_call = META["block"]:peek();
+  local _vom1_call = tostring(str);
+  local _7zza_call = table["insert"](_zn9a_call,("\n-- " .. _vom1_call));
+  return _7zza_call
+end));
+__c45____c45__ = _wb7g_call;
+local _banb_call = __c45____c45__("This is a comment");
+local _qkun_call = print("\n--- Example 11 ---\n");
+local _tsse_call = Operator((function(...)
+  -- ::LINE_129_COLUMN_3::
+  local _rngb_call = META["block"]:peek();
+  local _a45v_call = genblock(({...}));
+  local _6kzp_call = table["insert"](_rngb_call,_a45v_call);
+  return _6kzp_call
+end));
+__c100____c111__ = _tsse_call;
+local _h6ex_call = print("I am running this line in the compilation step!");
+local _hs2z_call = print("This too!");
+local _454k_call = print(("1 + 1 = " .. (1 + 1) .. "!"));
+local _6duz_call = print("Okay that's enough.");
+local _quhy_call = __c100____c111__(_h6ex_call,_hs2z_call,_454k_call,_6duz_call);
+local _f644_call = print("\n--- Example 11 ---\n");
+local _ijas_call = print("\n--- Did you see what was printed while compiling? ---\n");
+local _y52d_call = print(1);
+local _cjul_call = print(2);
+local _fy63_call = __c100____c111__(_y52d_call,_cjul_call);
+__c100____c111__ = nil;
+local _luf7_call = print("\n--- Example 12 ---\n");
+local _1yjp_let;
+do;
+  local a = 2;
+  -- ::LINE_177_COLUMN_3::
+  local _v1v2_cond;
+  do;
+    if ("1" == a) then
+      -- ::LINE_177_COLUMN_18::
+      local _camp_call = print("a == 1");
+      _v1v2_cond = _camp_call
+      goto _v1v2_cond
+    end;
+    if true then
+      -- ::LINE_178_COLUMN_5::
+      local _7vj5_cond;
+      do;
+        if (2 == a) then
+          -- ::LINE_178_COLUMN_18::
+          local _hnw4_call = print("a == 2");
+          _7vj5_cond = _hnw4_call
+          goto _7vj5_cond
+        end;
+        if true then
+          -- ::LINE_178_COLUMN_35::
+          local _vvkq_call = print("a != 2");
+          _7vj5_cond = _vvkq_call
+          goto _7vj5_cond
+        end;
+      ::_7vj5_cond::;
+      end;
+      _v1v2_cond = _7vj5_cond
+      goto _v1v2_cond
+    end;
+  ::_v1v2_cond::;
+  end;
+  _1yjp_let = _v1v2_cond;
+end;
+local _urq5_call = print("\n--- Example 12 ---\n");
+local _resp_call = macroexpand(List(Symbol("ALPHA")));
+local _8n2r_call = print(_resp_call);
+local _7s7x_call = tostring((1 + 2));
+local _7wmc_call = print((_7s7x_call .. "4"));
 
 return _ENV
-
-
-
