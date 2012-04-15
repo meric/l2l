@@ -108,11 +108,11 @@
 ; 2 2
 ; 4 4
 
-; Example 10: Directive (The '#' prefix)
+; Example 10: Directive (The '#.' prefix)
 (print "\n--- Example 10 ---\n")
 ; The following line will run as soon as it's parsed, no code will be generated
 ; It will add a new "--" operator that will be effective immediately
-#(set -- (Operator (lambda (str) 
+#.(set -- (Operator (lambda (str) 
   (table.insert (.peek META.block) (.. "\n-- " (tostring str)))))) 
 
 ; Adds a lua comment to lua executable, using operator we defined.
@@ -123,14 +123,14 @@
 ;
 
 ; Example 11: Define a do block
-#(print "\n--- Example 11 ---\n")
+#.(print "\n--- Example 11 ---\n")
 ; E.g. (do (print 1) (print 2)) will execute (print 1) and (print 2) in sequence
-#(set do (Operator (lambda (...) 
+#.(set do (Operator (lambda (...) 
   (table.insert (.peek META.block) (genblock [...])))))
 
 ; We can now make this program be interpreted by wrapping code in "#(do ...)"!
 
-#(do
+#.(do
   (print "I am running this line in the compilation step!")
   (print "This too!")
   (print (.. "1 + 1 = " (+ 1 1) "!"))
@@ -160,10 +160,10 @@
 ; 2
 
 ; We've had enough, so let's delete our do Operator
-#(set do nil)
+#.(set do nil)
 
 ; Uncommenting the following will result in an error when compiling
-; #(do (print 1))
+; #.(do (print 1))
 
 ; Example 12: Macro
 (print "\n--- Example 12 ---\n")
@@ -177,7 +177,7 @@
   (if (== a "1") (print "a == 1") 
     (if (== a 2) (print "a == 2") (print "a != 2"))))
 
-#(print "\n--- Example 12 ---\n")
+#.(print "\n--- Example 12 ---\n")
 
 (defmacro GAMMA () '(+ 1 2))
 (defmacro BETA () '(.. (tostring (GAMMA)) "4"))
@@ -185,7 +185,7 @@
 
 ; Macros are compiler-time constructs. They are not visible during run-time.
 ; So if we want to view their expansion, we must do it during compile-time too.
-#(print (macroexpand '(ALPHA)))
+#.(print (macroexpand '(ALPHA)))
 (print (ALPHA))
 
 ; Output:

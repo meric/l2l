@@ -554,9 +554,9 @@ end
 -- @param str The symbol to be converted. Must have length == 1.
 -- @param with The keyword to replace the symbol with.
 -- @return A variable number of parse trees.
-function replace(str, with)
-  local rest = str:sub(2):match("%s*(.*)")
-  META.cursor = META.cursor + 1 
+function replace(replaced, str, with)
+  local rest = str:sub(#replaced + 1):match("%s*(.*)")
+  META.cursor = META.cursor + #replaced 
   META.line:push(META.current)
   META.location:push(META.cursor)
   local node = List(parse(rest)) 
@@ -588,12 +588,12 @@ function parse(str)
   end
 
   -- Syntax
-  if str:starts("~") then return replace(str, "unpack") end
-  if str:starts("$") then return replace(str, "directive") end
-  if str:starts("#") then return replace(str, "length") end
-  if str:starts("`") then return replace(str, "quasiquote") end
-  if str:starts(",") then return replace(str, "unquote") end
-  if str:starts("'") then return replace(str, "quote") end
+  if str:starts("~") then return replace("~", str, "unpack") end
+  if str:starts("#.") then return replace("#.", str, "directive") end
+  if str:starts("#") then return replace("#", str, "length") end
+  if str:starts("`") then return replace("`", str, "quasiquote") end
+  if str:starts(",") then return replace(",", str, "unquote") end
+  if str:starts("'") then return replace("'", str, "quote") end
 
   -- String
   if str:starts("\"") then
@@ -1137,167 +1137,143 @@ end)
 
 ;
 -- END --
-local _zesu_call = print("\n--- Example 1 ---\n");
+local _t4x0_call = print("\n--- Example 1 ---\n");
 function __c33__(n)
   -- ::LINE_6_COLUMN_3::
-  local _teae_cond;
+  local _pndl_cond;
   do;
     if (0 == n) then
       -- ::LINE_6_COLUMN_18::
       ;
-      _teae_cond = 1
-      goto _teae_cond
+      _pndl_cond = 1
+      goto _pndl_cond
     end;
     if (1 == n) then
       -- ::LINE_7_COLUMN_18::
       ;
-      _teae_cond = 1
-      goto _teae_cond
+      _pndl_cond = 1
+      goto _pndl_cond
     end;
     if true then
       -- ::LINE_8_COLUMN_15::
-      local _ak87_call = __c33__((n - 1));
-      _teae_cond = (n * _ak87_call)
-      goto _teae_cond
+      local _ocw4_call = __c33__((n - 1));
+      _pndl_cond = (n * _ocw4_call)
+      goto _pndl_cond
     end;
-  ::_teae_cond::;
+  ::_pndl_cond::;
   end;
-  return _teae_cond
+  return _pndl_cond
 end;
-local _r3pe_call = __c33__(100);
-local _ahh1_call = print(_r3pe_call);
-local _k3rz_call = print("\n--- Example 2 ---\n");
+local _tsoj_call = __c33__(100);
+local _968u_call = print(_tsoj_call);
+local _lgvd_call = print("\n--- Example 2 ---\n");
 function __c206____c163__()
   -- ::LINE_17_COLUMN_14::
-  local _9486_call = print("ΣΣΣ");
-  _21yi = _9486_call
+  local _7hyw_call = print("ΣΣΣ");
+  _9ax6 = _7hyw_call
 end;
-local _e16v_call = __c206____c163__();
-local _9son_call = print("\n--- Example 3 ---\n");
+local _s2w9_call = __c206____c163__();
+local _7eqx_call = print("\n--- Example 3 ---\n");
 hello__c45__world = "hello gibberish world";
-local _g1m1_call = table["concat"](({string["gsub"](hello__c45__world,"gibberish ","")})," ");
-local _02da_call = print(_g1m1_call);
-local _vvix_call = print("\n--- Example 4 ---\n");
-local _djth_call = map((function(x)
+local _uv9o_call = table["concat"](({string["gsub"](hello__c45__world,"gibberish ","")})," ");
+local _u6jy_call = print(_uv9o_call);
+local _7r49_call = print("\n--- Example 4 ---\n");
+local _y9ud_call = map((function(x)
   -- ::LINE_40_COLUMN_38::
   ;
   return (x * 5)
 end),List(1,2,3));
-local _uv0x_call = map(print,List(1,2,3,_djth_call));
-local _hkdw_call = print("\n--- Example 5 ---\n");
-local _ttz4_let;
+local _2jzk_call = map(print,List(1,2,3,_y9ud_call));
+local _7lfu_call = print("\n--- Example 5 ---\n");
+local _8e9j_let;
 do;
   local a = (1 + 2);
   local b = (3 + 4);
   -- ::LINE_55_COLUMN_3::
-  local _ohal_call = print(a);
-  local _3q7k_call = print(b);
-  _ttz4_let = _3q7k_call;
+  local _1438_call = print(a);
+  local _iho9_call = print(b);
+  _8e9j_let = _iho9_call;
 end;
-local _pq0a_call = print("\n--- Example 6 ---\n");
-local _uats_call = ({["write"] = (function(self,x)
+local _9z09_call = print("\n--- Example 6 ---\n");
+local _abpy_call = ({["write"] = (function(self,x)
   -- ::LINE_66_COLUMN_35::
-  local _xjyk_call = print(x);
-  return _xjyk_call
+  local _jk4t_call = print(x);
+  return _jk4t_call
 end)}):write("hello-world");
-local _uia6_call = print("\n--- Example 7 ---\n");
-local _iaa8_call = (function(x,y)
+local _tfzo_call = print("\n--- Example 7 ---\n");
+local _hfvz_call = (function(x,y)
   -- ::LINE_75_COLUMN_23::
   ;
   return (x + y)
 end)(10,20);
-local _81uw_call = print(_iaa8_call);
-local _8hk6_call = print("\n--- Example 8 ---\n");
-local _gw00_let;
+local _0syb_call = print(_hfvz_call);
+local _12i7_call = print("\n--- Example 8 ---\n");
+local _xzz0_let;
 do;
   local a = (7 * 8);
   -- ::LINE_85_COLUMN_3::
-  local _rkkh_call = map(print,({1,2,a,4}));
-  _gw00_let = _rkkh_call;
+  local _q2r4_call = map(print,({1,2,a,4}));
+  _xzz0_let = _q2r4_call;
 end;
-local _4hq8_call = print("\n--- Example 9 ---\n");
-local _00fs_let;
+local _qy7u_call = print("\n--- Example 9 ---\n");
+local _ei3z_let;
 do;
-  local dict = ({[1] = 2,["3"] = 4,["a"] = "b"});
+  local dict = ({[1] = 2,["a"] = "b",["3"] = 4});
   -- ::LINE_98_COLUMN_3::
-  local _0anz_call = print(dict["a"],"b");
-  local _giu6_call = print(dict["a"],"b");
-  local _m6kq_call = print(dict[1],2);
-  local _ekqa_call = print(dict["3"],4);
-  _00fs_let = _ekqa_call;
+  local _cia5_call = print(dict["a"],"b");
+  local _wo9v_call = print(dict["a"],"b");
+  local _496p_call = print(dict[1],2);
+  local _5ier_call = print(dict["3"],4);
+  _ei3z_let = _5ier_call;
 end;
-local _bsyt_call = print("\n--- Example 10 ---\n");
-local _wb7g_call = Operator((function(str)
-  -- ::LINE_116_COLUMN_3::
-  local _zn9a_call = META["block"]:peek();
-  local _vom1_call = tostring(str);
-  local _7zza_call = table["insert"](_zn9a_call,("\n-- " .. _vom1_call));
-  return _7zza_call
-end));
-__c45____c45__ = _wb7g_call;
-local _banb_call = __c45____c45__("This is a comment");
-local _qkun_call = print("\n--- Example 11 ---\n");
-local _tsse_call = Operator((function(...)
-  -- ::LINE_129_COLUMN_3::
-  local _rngb_call = META["block"]:peek();
-  local _a45v_call = genblock(({...}));
-  local _6kzp_call = table["insert"](_rngb_call,_a45v_call);
-  return _6kzp_call
-end));
-__c100____c111__ = _tsse_call;
-local _h6ex_call = print("I am running this line in the compilation step!");
-local _hs2z_call = print("This too!");
-local _454k_call = print(("1 + 1 = " .. (1 + 1) .. "!"));
-local _6duz_call = print("Okay that's enough.");
-local _quhy_call = __c100____c111__(_h6ex_call,_hs2z_call,_454k_call,_6duz_call);
-local _f644_call = print("\n--- Example 11 ---\n");
-local _ijas_call = print("\n--- Did you see what was printed while compiling? ---\n");
-local _y52d_call = print(1);
-local _cjul_call = print(2);
-local _fy63_call = __c100____c111__(_y52d_call,_cjul_call);
-__c100____c111__ = nil;
-local _luf7_call = print("\n--- Example 12 ---\n");
-local _1yjp_let;
+local _io44_call = print("\n--- Example 10 ---\n");
+
+-- This is a comment;
+local _nvu7_call = print("\n--- Example 11 ---\n");
+local _zmtt_call = print("\n--- Did you see what was printed while compiling? ---\n");
+-- ::LINE_150_COLUMN_3::
+local _w40y_call = print(1);
+local _0agv_call = print(2);
+_bnyy = _0agv_call;
+local _fppl_call = print("\n--- Example 12 ---\n");
+local _qsjy_let;
 do;
   local a = 2;
   -- ::LINE_177_COLUMN_3::
-  local _v1v2_cond;
+  local _ryn7_cond;
   do;
     if ("1" == a) then
       -- ::LINE_177_COLUMN_18::
-      local _camp_call = print("a == 1");
-      _v1v2_cond = _camp_call
-      goto _v1v2_cond
+      local _3l8p_call = print("a == 1");
+      _ryn7_cond = _3l8p_call
+      goto _ryn7_cond
     end;
     if true then
       -- ::LINE_178_COLUMN_5::
-      local _7vj5_cond;
+      local _vype_cond;
       do;
         if (2 == a) then
           -- ::LINE_178_COLUMN_18::
-          local _hnw4_call = print("a == 2");
-          _7vj5_cond = _hnw4_call
-          goto _7vj5_cond
+          local _hcox_call = print("a == 2");
+          _vype_cond = _hcox_call
+          goto _vype_cond
         end;
         if true then
           -- ::LINE_178_COLUMN_35::
-          local _vvkq_call = print("a != 2");
-          _7vj5_cond = _vvkq_call
-          goto _7vj5_cond
+          local _foa7_call = print("a != 2");
+          _vype_cond = _foa7_call
+          goto _vype_cond
         end;
-      ::_7vj5_cond::;
+      ::_vype_cond::;
       end;
-      _v1v2_cond = _7vj5_cond
-      goto _v1v2_cond
+      _ryn7_cond = _vype_cond
+      goto _ryn7_cond
     end;
-  ::_v1v2_cond::;
+  ::_ryn7_cond::;
   end;
-  _1yjp_let = _v1v2_cond;
+  _qsjy_let = _ryn7_cond;
 end;
-local _urq5_call = print("\n--- Example 12 ---\n");
-local _resp_call = macroexpand(List(Symbol("ALPHA")));
-local _8n2r_call = print(_resp_call);
-local _7s7x_call = tostring((1 + 2));
-local _7wmc_call = print((_7s7x_call .. "4"));
+local _nxc3_call = tostring((1 + 2));
+local _gdq2_call = print((_nxc3_call .. "4"));
 
 return _ENV

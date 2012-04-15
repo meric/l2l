@@ -555,9 +555,9 @@ end
 -- @param str The symbol to be converted. Must have length == 1.
 -- @param with The keyword to replace the symbol with.
 -- @return A variable number of parse trees.
-function replace(str, with)
-  local rest = str:sub(2):match("%s*(.*)")
-  META.cursor = META.cursor + 1 
+function replace(replaced, str, with)
+  local rest = str:sub(#replaced + 1):match("%s*(.*)")
+  META.cursor = META.cursor + #replaced 
   META.line:push(META.current)
   META.location:push(META.cursor)
   local node = List(parse(rest)) 
@@ -589,12 +589,12 @@ function parse(str)
   end
 
   -- Syntax
-  if str:starts("~") then return replace(str, "unpack") end
-  if str:starts("$") then return replace(str, "directive") end
-  if str:starts("#") then return replace(str, "length") end
-  if str:starts("`") then return replace(str, "quasiquote") end
-  if str:starts(",") then return replace(str, "unquote") end
-  if str:starts("'") then return replace(str, "quote") end
+  if str:starts("~") then return replace("~", str, "unpack") end
+  if str:starts("#.") then return replace("#.", str, "directive") end
+  if str:starts("#") then return replace("#", str, "length") end
+  if str:starts("`") then return replace("`", str, "quasiquote") end
+  if str:starts(",") then return replace(",", str, "unquote") end
+  if str:starts("'") then return replace("'", str, "quote") end
 
   -- String
   if str:starts("\"") then
