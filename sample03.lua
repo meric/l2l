@@ -120,7 +120,7 @@ setmetatable(List, {__tostring = wrap"List", __call=function(self, ...)
   local parameters = {...}
   local last = setmetatable({nil, nil}, List)
   local first = nil
-  for index = 1, #parameters do
+  for index = 1, table.maxn(parameters) do
     last[2] = setmetatable({parameters[index], nil}, List)
     last = last[2]
     if not first then 
@@ -720,6 +720,7 @@ META = {line = Stack(),
 -- names to a function) or A unique id.
 -- @return string Returns a string of lua.
 function genblock(iterable, parameters)
+  parameters = parameters or {}
   local line, location, column = nil, nil, nil
   for i, v in ipairs(iterable or {}) do
     if v then 
@@ -1147,25 +1148,25 @@ end)
 
 ;
 -- END --
-local _myt2_call = require("sample02");
-stat = _myt2_call;
-local _h6p9_call = stat["sum"](List(1,3,5,7));
-local _5jfj_call = print(_h6p9_call);
-local _ksg8_cond;
+local _32gj_call = require("sample02");
+stat = _32gj_call;
+local _kkfb_call = stat["sum"](List(1,3,5,7));
+local _kgd9_call = print(_kkfb_call);
+local _fris_cond;
 do;
   if 1 then
     -- ::LINE_7_COLUMN_7::
-    local _rvxh_call = print(1);
-    _ksg8_cond = _rvxh_call
-    goto _ksg8_cond
+    local _zwbt_call = print(1);
+    _fris_cond = _zwbt_call
+    goto _fris_cond
   end;
   if true then
     -- ::LINE_7_COLUMN_17::
-    local _c07n_call = print(0);
-    _ksg8_cond = _c07n_call
-    goto _ksg8_cond
+    local _2zuw_call = print(0);
+    _fris_cond = _2zuw_call
+    goto _fris_cond
   end;
-::_ksg8_cond::;
+::_fris_cond::;
 end;
 
 return _ENV

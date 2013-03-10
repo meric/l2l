@@ -120,7 +120,7 @@ setmetatable(List, {__tostring = wrap"List", __call=function(self, ...)
   local parameters = {...}
   local last = setmetatable({nil, nil}, List)
   local first = nil
-  for index = 1, #parameters do
+  for index = 1, table.maxn(parameters) do
     last[2] = setmetatable({parameters[index], nil}, List)
     last = last[2]
     if not first then 
@@ -720,6 +720,7 @@ META = {line = Stack(),
 -- names to a function) or A unique id.
 -- @return string Returns a string of lua.
 function genblock(iterable, parameters)
+  parameters = parameters or {}
   local line, location, column = nil, nil, nil
   for i, v in ipairs(iterable or {}) do
     if v then 
@@ -1149,23 +1150,23 @@ end)
 -- END --
 function sum(list)
   -- ::LINE_7_COLUMN_3::
-  local _s397_cond;
+  local _sbez_cond;
   do;
     if list then
       -- ::LINE_7_COLUMN_12::
-      local _nals_call = sum(list:cdr());
-      _s397_cond = (list[1] + _nals_call)
-      goto _s397_cond
+      local _89kw_call = sum(list:cdr());
+      _sbez_cond = (list[1] + _89kw_call)
+      goto _sbez_cond
     end;
     if true then
       -- ::LINE_7_COLUMN_43::
       ;
-      _s397_cond = 0
-      goto _s397_cond
+      _sbez_cond = 0
+      goto _sbez_cond
     end;
-  ::_s397_cond::;
+  ::_sbez_cond::;
   end;
-  return _s397_cond
+  return _sbez_cond
 end;
 
 return _ENV
