@@ -126,7 +126,7 @@
 #.(print "\n--- Example 11 ---\n")
 ; E.g. (do (print 1) (print 2)) will execute (print 1) and (print 2) in sequence
 #.(set do (Operator (lambda (...) 
-  (table.insert (.peek META.block) (genblock [...])))))
+  (table.insert (.peek META.block) (genblock [...] (gensym "do"))))))
 
 ; We can now make this program be interpreted by wrapping code in "#(do ...)"!
 
