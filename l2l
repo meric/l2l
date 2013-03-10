@@ -121,7 +121,7 @@ setmetatable(List, {__tostring = wrap"List", __call=function(self, ...)
   local parameters = {...}
   local last = setmetatable({nil, nil}, List)
   local first = nil
-  for index = 1, #parameters do
+  for index = 1, table.maxn(parameters) do
     last[2] = setmetatable({parameters[index], nil}, List)
     last = last[2]
     if not first then 
