@@ -744,7 +744,7 @@ function genblock(iterable, parameters)
   end
   local block = {}
   META.block:push(block)
-  local scope;
+  local scope
   if not uid then
     scope = Scope(parameters, META.scope:peek())
     local _ENV  = setmetatable({}, {__index = META._ENV:peek()})
