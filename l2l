@@ -721,6 +721,7 @@ META = {line = Stack(),
 -- names to a function) or A unique id.
 -- @return string Returns a string of lua.
 function genblock(iterable, parameters)
+  parameters = parameters or {}
   local line, location, column = nil, nil, nil
   for i, v in ipairs(iterable or {}) do
     if v then 
