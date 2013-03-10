@@ -765,7 +765,7 @@ function genblock(iterable, parameters)
   end
   column = tostring(column)
   local label = "-- ::LINE_"..tostring(line).."_COLUMN_"..column.."::\n"
-  body = label..table.concat(block, ";\n")..";\n"..tostring(body)
+  body = label..table.concat(block, "\n").."\n"..tostring(body)
   return body
 end
 
@@ -784,8 +784,7 @@ function compile(source)
   local block = META.block:pop()
   local scope = META.scope:pop()
   META._ENV:pop()
-  -- body = table.concat(block, ";\n").."\n"..List.concat(body, ";\n\n").."\n"
-  body = table.concat(block, ";\n")..";\n"..tostring(body).."\n"
+  body = table.concat(block, "\n").."\n"..tostring(body).."\n"
   return body
 end
 
@@ -942,7 +941,7 @@ let = Operator(function(labels, ...)
   end
   table.insert(block, genblock({...}, uid))
   block = META.block:pop()
-  table.insert(META.block:peek(), indent(table.concat(block, ";\n")))
+  table.insert(META.block:peek(), indent(table.concat(block, "\n")))
   block = META.block:peek()
   table.insert(block, "end")
   return uid
@@ -1010,14 +1009,14 @@ defmacro = Operator(function(name, arguments, ...)
   local arglist = List.concat(arguments, ",")
   local prefix = ""
   for i, v in pairs(lifted or {}) do
-    prefix = prefix .. "local " .. v:tohash() .. " = " .. v:tolua()..";\n"
+    prefix = prefix .. "local " .. v:tohash() .. " = " .. v:tolua().."\n"
   end
 
   local body = map(genexpr, {...})
   if body then 
     body.last[1] = "return genexpr("..tostring(body.last[1])..")"
   end
-  body = prefix..List.concat(body, ";\n")
+  body = prefix..List.concat(body, "\n")
   local f, m = load("return function("..arglist..")\n"..indent(body).."\nend", 
                     "defmacro", "t", _ENV)
   if m then print(m, body) end
@@ -1028,7 +1027,7 @@ defmacro = Operator(function(name, arguments, ...)
   if body then 
     body.last[1] = "return "..tostring(body.last[1])
   end
-  body = prefix..List.concat(body, ";\n")
+  body = prefix..List.concat(body, "\n")
   f, m = load("return function("..arglist..")\n"..indent(body).."\nend", 
               "defmacro", "t", _ENV)
   macroexpand[name] = Operator(f())
@@ -1138,7 +1137,7 @@ directive = Operator(function(statement)
   META.block:push({})
   local body = {genexpr(statement)}
   local block = META.block:pop()
-  body = table.concat(block, ";\n") .. ";\n"
+  body = table.concat(block, "\n") .. "\n"
   local f, m = load(body, "directive", "t", _ENV)
   if m then except(statement, body .. m) end
   f()
@@ -1150,23 +1149,23 @@ end)
 -- END --
 function sum(list)
   -- ::LINE_7_COLUMN_3::
-  local _sbez_cond;
-  do;
+  local _77ya_cond
+  do
     if list then
       -- ::LINE_7_COLUMN_12::
-      local _89kw_call = sum(list:cdr());
-      _sbez_cond = (list[1] + _89kw_call)
-      goto _sbez_cond
-    end;
+      local _gwqp_call = sum(list:cdr())
+      _77ya_cond = (list[1] + _gwqp_call)
+      goto _77ya_cond
+    end
     if true then
       -- ::LINE_7_COLUMN_43::
-      ;
-      _sbez_cond = 0
-      goto _sbez_cond
-    end;
-  ::_sbez_cond::;
-  end;
-  return _sbez_cond
-end;
+      
+      _77ya_cond = 0
+      goto _77ya_cond
+    end
+  ::_77ya_cond::
+  end
+  return _77ya_cond
+end
 
 return _ENV
