@@ -1,11 +1,9 @@
-
-
 ; Example 1: Function declaration
 (print "\n--- Example 1 ---\n")
 (defun ! (n) 
-  (cond ((== n 0) 1)
-        ((== n 1) 1)
-        (true (* n (! (- n 1))))))
+  (cond (== n 0) 1
+        (== n 1) 1
+        (* n (! (- n 1)))))
 (print (! 100))
 ; Output:
 ; --- Example 1 ---
@@ -26,9 +24,9 @@
 (print "\n--- Example 3 ---\n")
 (set hello-world "hello gibberish world")
 ; This lisp does not support multiple return, so calls to Lua functions with 
-; multiple return must be wrapped with [ and ] to save all the results into an 
+; multiple return must be wrapped with (pack ...) to save all the results into an 
 ; array.
-(print (table.concat [ (string.gsub hello-world "gibberish " "") ] " "))
+(print (table.concat (pack (string.gsub hello-world "gibberish " "") ) " "))
 
 ; Output:
 ; --- Example 3 ---
@@ -95,10 +93,9 @@
 ; Example 9: Dictionary
 (print "\n--- Example 9 ---\n")
 (let (dict {"a" "b" 1 2 "3" 4})
-  (print dict["a"] "b")
+  (print (. "a" dict) "b")
   (print dict.a "b")
-  (print dict[1] 2)
-  (print dict.3 4))
+  (print (. 1 dict) 2))
 
 ; Output:
 ; --- Example 9 ---
@@ -112,8 +109,9 @@
 (print "\n--- Example 10 ---\n")
 ; The following line will run as soon as it's parsed, no code will be generated
 ; It will add a new "--" operator that will be effective immediately
-#.(set -- (Operator (lambda (str) 
-  (table.insert (.peek META.block) (.. "\n-- " (tostring str)))))) 
+
+(defcompiler -- (block stream str)
+  (table.insert block (.. "\n--" (tostring str))))
 
 ; Adds a lua comment to lua executable, using operator we defined.
 (-- "This is a comment") ; Will appear in `out.lua`
@@ -125,16 +123,26 @@
 ; Example 11: Define a do block
 #.(print "\n--- Example 11 ---\n")
 ; E.g. (do (print 1) (print 2)) will execute (print 1) and (print 2) in sequence
-#.(set do (Operator (lambda (...) 
-  (table.insert (.peek META.block) (genblock [...] (gensym "do"))))))
+
+; `chunk` is a built-in utility function to make it easier to write
+; lisp to lua compilers.
+
+(defcompiler _do (block stream ...)
+  (chunk block (var)
+    "do"
+    (@action (map (lambda (obj)
+      (chunk block ()
+        (@ (compile block stream obj))
+        var "=" @)) (pack ...)))
+    "end"))
 
 ; We can now make this program be interpreted by wrapping code in "#(do ...)"!
 
-#.(do
-  (print "I am running this line in the compilation step!")
-  (print "This too!")
-  (print (.. "1 + 1 = " (+ 1 1) "!"))
-  (print "Okay that's enough."))
+(_do
+  (print "-- I am running this line in the compilation step!")
+  (print "-- This too!")
+  (print (.. "-- 1 + 1 = " (+ 1 1) "!"))
+  (print "-- Okay that's enough."))
 
 ; Compiler Output:
 ; --- Example 11 ---
@@ -146,7 +154,7 @@
 
 (print "\n--- Example 11 ---\n")
 (print "\n--- Did you see what was printed while compiling? ---\n")
-(do
+(_do
   (print 1)
   (print 2))
 
@@ -160,7 +168,7 @@
 ; 2
 
 ; We've had enough, so let's delete our do Operator
-#.(set do nil)
+#.(. (hash "do") _C nil)
 
 ; Uncommenting the following will result in an error when compiling
 ; #.(do (print 1))
@@ -168,14 +176,14 @@
 ; Example 12: Macro
 (print "\n--- Example 12 ---\n")
 
-(defmacro if (condition action otherwise)
+(defmacro _if (condition action otherwise)
   `(cond
-    (,condition ,action)
-    (true ,otherwise)))
+    ,condition ,action
+    ,otherwise))
 
 (let (a 2)
-  (if (== a "1") (print "a == 1") 
-    (if (== a 2) (print "a == 2") (print "a != 2"))))
+  (_if (== a "1") (print "a == 1") 
+    (_if (== a 2) (print "a == 2") (print "a != 2"))))
 
 #.(print "\n--- Example 12 ---\n")
 
@@ -185,7 +193,7 @@
 
 ; Macros are compiler-time constructs. They are not visible during run-time.
 ; So if we want to view their expansion, we must do it during compile-time too.
-#.(print (macroexpand '(ALPHA)))
+; #.(print (macroexpand '(ALPHA)))
 (print (ALPHA))
 
 ; Output:

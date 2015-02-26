@@ -3,48 +3,47 @@
 (defun tree (i u n) 
   (let (d (/ 1 u))
     (cond 
-      ((> n 0)
+      (> n 0)
         `(,i 
           ,(tree (* i u) u (- n 1))
-          ,(tree (* i d) u (- n 1))))
-      (true nil))))
+          ,(tree (* i d) u (- n 1)))
+      nil)))
 
 (defun at (tree)
   (car tree))
 
 (defun up (tree)
   (cond 
-    ((cdr tree) (car (cdr tree)))
-    (true nil)))
+    (cdr tree) (car (cdr tree))
+    nil))
 
 (defun down (tree)
   (cond 
-    ((== (cdr tree) nil) nil)
-    ((cdr (cdr tree)) (car (cdr (cdr tree))))
-    (true nil)))
+    (== (cdr tree) nil) nil
+    (cdr (cdr tree)) (car (cdr (cdr tree)))
+    nil))
 
 (defun draw-row (tree)
   (cond 
-    ((== tree nil) "")
-    (true
-      (..
-        (tostring (at tree))
-        "\t- "
-        (draw-row (up tree))))))
+    (== tree nil) ""
+    (..
+      (tostring (at tree))
+      "\t- "
+      (draw-row (up tree)))))
 
 (defun draw (tree indent)
   (cond 
-    ((== tree nil) "")
-    (true (..
+    (== tree nil) ""
+    (..
       (draw-row tree)
       "\n"
-      (draw (down tree))))))
+      (draw (down tree)))))
 
 (let 
   (
     ;; years
     period 0.5                                      
-    count(period) 2 
+    count_period 2 
     ;; standard deviation
     volatility 0.32                    
     ;; up factor             
@@ -55,11 +54,11 @@
     r (math.exp (* 0.5 0.1))     
     ;; dollars after 6 months                   
     dividend 1 
-    PV(dividend) (/ dividend r)
+    PV_dividend_ (/ dividend r)
     price_0 70
     ;; initial price without dividend
-    price_0-PV(dividend) (- price_0 PV(dividend))
-    p0 price_0-PV(dividend)
+    price_0-PV_dividend_ (- price_0 PV_dividend_)
+    p0 price_0-PV_dividend_
   )
 
   (print (draw (tree p0 u 3)))

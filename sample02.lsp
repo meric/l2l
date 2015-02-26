@@ -1,8 +1,8 @@
-(defmacro if (condition action otherwise)
+(defmacro if1 (condition action otherwise)
   `(cond
-    (,condition ,action)
-    (true ,otherwise)))
+    ,condition ,action
+    ,otherwise))
 
-(defun sum (list)
-  (if list (+ (car list) (sum (cdr list))) 0))
+(defun sum (l)
+  (if l (+ (car l) (sum (cdr l))) 0))
 
