@@ -138,7 +138,7 @@
 
 ; We can now make this program be interpreted by wrapping code in "#(do ...)"!
 
-(_do
+#. (_do
   (print "-- I am running this line in the compilation step!")
   (print "-- This too!")
   (print (.. "-- 1 + 1 = " (+ 1 1) "!"))

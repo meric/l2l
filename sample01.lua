@@ -1,6 +1,10 @@
 
 --- Example 11 ---
 
+-- I am running this line in the compilation step!
+-- This too!
+-- 1 + 1 = 2!
+-- Okay that's enough.
 
 --- Example 12 ---
 
@@ -119,46 +123,14 @@ table.insert(_var1, "end")
 return var
 end
 _var1=_C[hash("_do")]
-local _var50
-do
-_var50
-=
-print("-- I am running this line in the compilation step!")
-_var50
-=
-print("-- This too!")
-local _var58
-_var58
-=(
-(
-"-- 1 + 1 = "
-)
-..
-(
-(1 + 1)
-)
-..
-(
-"!"
-)
-..
-""
-)
-_var50
-=
-print(_var58)
-_var50
-=
-print("-- Okay that's enough.")
-end
 _var1=print("\n--- Example 11 ---\n")
 _var1=print("\n--- Did you see what was printed while compiling? ---\n")
-local _var84
+local _var52
 do
-_var84
+_var52
 =
 print(1)
-_var84
+_var52
 =
 print(2)
 end
@@ -173,28 +145,28 @@ end
 return _var1
 end
 _var1=_C[hash("_if")]
-local _var96
+local _var64
 do
 local a=2
-local _var99
+local _var67
 do
 if (a=="1") then
-_var99=print("a == 1")
-goto _var99
+_var67=print("a == 1")
+goto _var67
 end
-local _var105
+local _var73
 do
 if (a==2) then
-_var105=print("a == 2")
-goto _var105
+_var73=print("a == 2")
+goto _var73
 end
-_var105=print("a != 2")
-::_var105::
+_var73=print("a != 2")
+::_var73::
 end
-_var99=_var105
-::_var99::
+_var67=_var73
+::_var67::
 end
-_var96=_var99
+_var64=_var67
 end
 _C[hash("GAMMA")]=function (block, stream)
 local _var0
@@ -226,8 +198,8 @@ end
 return _var1
 end
 _var1=_C[hash("ALPHA")]
-local _var125
-_var125
+local _var93
+_var93
 =(
 (
 tostring((1 + 2))
@@ -239,6 +211,6 @@ tostring((1 + 2))
 ..
 ""
 )
-_var1=print(_var125)
+_var1=print(_var93)
 return _var1
 end)()
