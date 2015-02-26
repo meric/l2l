@@ -31,6 +31,9 @@ How To
 
 * `./l2l sample01.lsp` to compile `sample01.lsp` and output Lua to stdout.
 * `./l2l sample01.lsp | lua` to compile and run `sample01.lsp` immediately.
+* `./l2l sample02.lsp sample03.lsp` to compile two lisp files where one 
+    requires the other.
+
 * Change prompt string by setting the `_P` global variable.
 
         >->o (set _P ">> ")
