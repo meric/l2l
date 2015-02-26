@@ -1,7 +1,7 @@
 Lisp to Lua Compiler
 ====================
 
-A Lisp to Lua compiler, compatible with LuaJIT (built with DLUAJIT_ENABLE_LUA52COMPAT) or Lua5.3.
+A Lisp to Lua compiler, compatible with LuaJIT (built with -DLUAJIT_ENABLE_LUA52COMPAT) or Lua5.3.
 
 Features
 -----------
