@@ -1,30 +1,28 @@
 Lisp to Lua Compiler
 ====================
 
-Description
+A Lisp to Lua compiler, compatible with LuaJIT or Lua5.3.
+
+Features
 -----------
-A object-oriented, unicode-enabled lisp that compiles to and runs as fast as Lua. Equipped with macros and compile-time compiler manipulation. Comes with all built-in Lua functions. 
+* Reader Macros
+* Macros
+* Lua functions
+* Compiler modification on-the-fly.
+* Compiler partially implemented by itself. See https://github.com/meric/l2l/blob/master/compiler.lua#L596
 
-Requires Lua 5.2!
 
-Warning
--------
-If input file is named foo.lsp, foo.lua will be replaced with the compiler output! 
+How To
+------
 
-Example 
--------
-To compile all the examples:
+* `./l2l` to launch REPL.
 
-./l2l sample01.lsp sample02.lsp sample03.lsp
+        ;; Welcome to Lua-To-Lisp REPL!
+        ;; Type '(print "hello world!") to start.
+        >->o (print "Hello world!")
+        Hello world!
+        =   nil
+        >->o 
 
-To run a particular example:
-
-lua sample01.lua
-
-Quickstart
-----------
-    # cd into l2l directory
-    # Requires Lua 5.2! (Or modify l2l's header to point to Lua 5.2 executable)
-    ./l2l sample01.lsp sample02.lsp sample03.lsp
-    lua sample01.lua
-
+* `./l2l sample01.lsp` to compile `sample01.lsp` and output Lua to stdout.
+* `./l2l sample01.lsp | lua` to compile and run `sample01.lsp` immediately.
