@@ -129,12 +129,12 @@
 
 (defcompiler _do (block stream ...)
   (chunk block (var)
-    "do"
+    "\ndo"
     (@action (map (lambda (obj)
       (chunk block ()
         (@ (compile block stream obj))
         var "=" @)) (pack ...)))
-    "end"))
+    "\nend"))
 
 ; We can now make this program be interpreted by wrapping code in "#(do ...)"!
 

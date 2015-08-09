@@ -26,10 +26,10 @@ How To
 
         ;; Welcome to Lua-To-Lisp REPL!
         ;; Type '(print "hello world!") to start.
-        >->o (print "Hello world!")
+        >> (print "Hello world!")
         Hello world!
         =   nil
-        >->o 
+        >> 
 
 * `./l2l sample01.lsp` to compile `sample01.lsp` and output Lua to stdout.
 * `./l2l sample01.lsp | lua` to compile and run `sample01.lsp` immediately.
@@ -38,31 +38,31 @@ How To
 
 * Change prompt string by setting the `_P` global variable.
 
-        >->o (set _P ">> ")
+        >> (set _P ">->o ")
         =   >> 
-        >> (print "Hello World")
+        >->o (print "Hello World")
         Hello World
         =   nil
-        >> 
+        >->o 
 
 * The read macro table is `_R`. `_R.META` stores locations of all read symbols.
 
-        >->o (set _R.META {}) ;; _R.META is too big.
+        >> (set _R.META {}) ;; _R.META is too big.
         =   table: 0x7fcf90c54c90
-        >->o (show _R)
+        >> (show _R)
         =   {"}" function: 0x7fcf90c1a930 "META" {(show _R) {1 6 2 9 0 6}} ";" function: 0x7fcf90c1a8c0 "position" function: 0x7fcf90c1b1a0 ")" function: 0x7fcf90c1a8e0 "(" function: 0x7fcf90c1ac10 "'" function: 0x7fcf90c1ad30 "," function: 0x7fcf90c1adb0 "[" function: 0x7fcf90c1aab0 "#" function: 0x7fcf90c1adf0 "\"" function: 0x7fcf90c1a9d0 "]" function: 0x7fcf90c1a980 "`" function: 0x7fcf90c1ad70 "{" function: 0x7fcf90c1ab80}
-        >->o 
+        >> 
 
 * The dispatch read macro table is `_D`.
 
-        >->o (show _D)
+        >> (show _D)
         =   {"." function: 0x7fcf90c27360 " " function: 0x7fcf90c1a890 "'" function: 0x7fcf90c1acf0}
 
 * The compiler table is `_C`.
 
-        >->o (show _C)
+        >> (show _C)
         =   {"_60_61" function: 0x7fac1bc1e4d0 "_105_102" function: 0x7fac1bc948f0 "_" function: 0x7fac1bc26280 "defcompiler" function: 0x7fac1bc266a0 "defun" function: 0x7fac1bc26820 "_111_114" function: 0x7fac1bc261c0 "quasiquote" function: 0x7fac1bc26460 "_119_104_105_108_101" function: 0x7fac1bc3b300 "cadr" function: 0x7fac1bc26780 "_35" function: 0x7fac1bc26370 "_100_111" function: 0x7fac1bc64040 "car" function: 0x7fac1bc26720 "_58" function: 0x7fac1bc26330 "_62" function: 0x7fac1bc1e570 "cond" function: 0x7fac1bc264b0 "_47" function: 0x7fac1bc262c0 "chunk" function: 0x7fac1bc4a340 "_46_46" function: 0x7fac1bc0be00 "_43" function: 0x7fac1bc26240 "_110_111_116" function: 0x7fac1bc26190 "_46" function: 0x7fac1bc26300 "_62_61" function: 0x7fac1bc26090 "quote" function: 0x7fac1bc26420 "_98_114_101_97_107" function: 0x7fac1bc6bc30 "set" function: 0x7fac1bc263a0 "table_quote" function: 0x7fac1bc263e0 "_61_61" function: 0x7fac1bc1e3d0 "defmacro" function: 0x7fac1bc717b0 "let" function: 0x7fac1bc267b0 "_42" function: 0x7fac1bc26200 "lambda" function: 0x7fac1bc26650 "_60" function: 0x7fac1bc1e450 "_97_110_100" function: 0x7fac1bc26130 "cdr" function: 0x7fac1bc26750}
-        >->o 
+        >> 
 
 * The format of a compiler is a function with at least two arguments.
     For example: 

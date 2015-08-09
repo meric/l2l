@@ -12,8 +12,10 @@ setmetatable(_G, {__index=function(self, key)
   error("undefined '"..key.."'")
 end})
 
+_PROMPT = "> "
+
 -- Prompt string.
-_P = ">->o "
+_P = ">> "
 
 -- Only act as a compiler if this file is invoked directly through the shell.
 -- Does not act on any arguments when this file is executed by

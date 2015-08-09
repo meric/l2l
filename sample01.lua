@@ -87,18 +87,9 @@ _var1=print("\n--- Example 10 ---\n")
 _C[hash("--")]=function (block, stream, str)
 local _var0
 local _var1
-_var1
-=(
-(
-"\n--"
-)
-..
-(
-tostring(str)
-)
-..
-""
-)
+_var1 =( (
+"\n--" ) .. (
+tostring(str) ) .. "" )
 return table.insert(block, _var1)
 end
 _var1=_C[hash("--")]
@@ -109,30 +100,28 @@ local _var0
 local _var1
 _var1=block
 local var = declare(_var1)
-table.insert(_var1, "do")
+_var1[#_var1]=_var1[#_var1].." "..tostring("\ndo")
 local _64action=map((function (obj)
 local _var0
 local _var1
 _var1=block
 local _64=compile(block, stream, obj)
 table.insert(_var1, var)
-table.insert(_var1, "=")
+_var1[#_var1]=_var1[#_var1].." "..tostring("=")
 table.insert(_var1, _64)
 end), pack(...))
-table.insert(_var1, "end")
+_var1[#_var1]=_var1[#_var1].." "..tostring("\nend")
 return var
 end
 _var1=_C[hash("_do")]
 _var1=print("\n--- Example 11 ---\n")
 _var1=print("\n--- Did you see what was printed while compiling? ---\n")
-local _var52
+local _var52 
 do
-_var52
-=
+_var52 =
 print(1)
-_var52
-=
-print(2)
+_var52 =
+print(2) 
 end
 _var1=print("\n--- Example 12 ---\n")
 _C[hash("_if")]=function (block, stream, condition, action, otherwise)
@@ -145,28 +134,28 @@ end
 return _var1
 end
 _var1=_C[hash("_if")]
-local _var64
+local _var60
 do
 local a=2
-local _var67
+local _var63
 do
 if (a=="1") then
-_var67=print("a == 1")
-goto _var67
+_var63=print("a == 1")
+goto _var63
 end
-local _var73
+local _var69
 do
 if (a==2) then
-_var73=print("a == 2")
-goto _var73
+_var69=print("a == 2")
+goto _var69
 end
-_var73=print("a != 2")
-::_var73::
+_var69=print("a != 2")
+::_var69::
 end
-_var67=_var73
-::_var67::
+_var63=_var69
+::_var63::
 end
-_var64=_var67
+_var60=_var63
 end
 _C[hash("GAMMA")]=function (block, stream)
 local _var0
@@ -198,19 +187,10 @@ end
 return _var1
 end
 _var1=_C[hash("ALPHA")]
-local _var93
-_var93
-=(
-(
-tostring((1 + 2))
-)
-..
-(
-"4"
-)
-..
-""
-)
-_var1=print(_var93)
+local _var89
+_var89 =( (
+tostring((1 + 2)) ) .. (
+"4" ) .. "" )
+_var1=print(_var89)
 return _var1
 end)()

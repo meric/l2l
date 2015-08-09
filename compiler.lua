@@ -607,7 +607,7 @@ local stream = reader.tofile([[
       (map
         (lambda (obj)
           (cond 
-            (== (type obj) "string") (add (show obj))
+            (== (type obj) "string") (append (show obj))
             (== (getmetatable obj) list)
               (insert (.. "local " (hash (car obj)) "="
                 (compile block stream (cadr obj))))
@@ -627,7 +627,7 @@ local stream = reader.tofile([[
 
   (defcompiler while (block stream condition ...)
     (chunk block (var)
-      "while true do"
+      "\nwhile true do\n"
       (@condition (compile block stream condition))
       "if not (" @condition ") then break end"
       (@placeholder (map (lambda (obj)
@@ -635,25 +635,25 @@ local stream = reader.tofile([[
           (@action (compile block stream obj))
           var "=" @action
         )) (pack ...)))
-      "end"))
+      "\nend"))
 
   (defcompiler break (block stream)
     (chunk block (var)
-      "break"))
+      "\nbreak"))
 
   (defcompiler do (block stream ...)
     (chunk block (var)
-      "do"
+      "\ndo"
       (@action (map (lambda (obj)
         (chunk block ()
           (@ (compile block stream obj))
           var "=" @)) (pack ...)))
-      "end"))
+      "\nend"))
 
   (defcompiler if (block stream condition action otherwise)
     (chunk block (var)
       (@condition (compile block stream condition))
-      "if" @condition "then"
+      "\nif" @condition "then"
       (@action (cond action (compile block stream action) @condition))
       var "=" @action
       (@placeholder (cond otherwise
@@ -661,7 +661,7 @@ local stream = reader.tofile([[
           "else"
               (@otherwise (compile block stream otherwise))
             var "=" @otherwise)))
-      "end"))
+      "\nend"))
 
   (defcompiler defmacro (block stream name parameters ...)
     (let 
