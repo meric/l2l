@@ -108,7 +108,7 @@ if debug.getinfo(3) == nil then
     if (err) then
       print(src)
       error(err)
-    else
+    elseif not script then
       local name = arg[i]:match("^([^.]+)")
       if #name == 0 then
         error("Invalid module name " + arg[i])
@@ -116,8 +116,7 @@ if debug.getinfo(3) == nil then
       print("local " .. hash(name) .. "= (function() ")
       print(src)
       print("end)()")
-    end
-    if script then
+    elseif script then
       f()
     end
   end
