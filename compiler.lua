@@ -617,8 +617,8 @@ local stream = reader.tofile([[
         (or @var nil)))
 
   (defcompiler .. (block stream ...)
-    (chunk block (var)
-      var "=(" (@placeholder (map (lambda (obj)
+    (chunk block (return)
+      return "=(" (@placeholder (map (lambda (obj)
         (chunk block ()
           (@value (compile block stream obj))
           "(" @value ")"
@@ -626,41 +626,41 @@ local stream = reader.tofile([[
       "\"\"" ")"))
 
   (defcompiler while (block stream condition ...)
-    (chunk block (var)
+    (chunk block (return)
       "\nwhile true do\n"
       (@condition (compile block stream condition))
       "if not (" @condition ") then break end"
       (@placeholder (map (lambda (obj)
         (chunk block ()
           (@action (compile block stream obj))
-          var "=" @action
+          return "=" @action
         )) (pack ...)))
       "\nend"))
 
   (defcompiler break (block stream)
-    (chunk block (var)
+    (chunk block (return)
       "\nbreak"))
 
   (defcompiler do (block stream ...)
-    (chunk block (var)
+    (chunk block (return)
       "\ndo"
       (@action (map (lambda (obj)
         (chunk block ()
           (@ (compile block stream obj))
-          var "=" @)) (pack ...)))
+          return "=" @)) (pack ...)))
       "\nend"))
 
   (defcompiler if (block stream condition action otherwise)
-    (chunk block (var)
+    (chunk block (return)
       (@condition (compile block stream condition))
       "\nif" @condition "then"
       (@action (cond action (compile block stream action) @condition))
-      var "=" @action
+      return "=" @action
       (@placeholder (cond otherwise
         (chunk block ()
           "else"
               (@otherwise (compile block stream otherwise))
-            var "=" @otherwise)))
+            return "=" @otherwise)))
       "\nend"))
 
   (defcompiler defmacro (block stream name parameters ...)
