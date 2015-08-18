@@ -35,6 +35,8 @@ How To
 * `./l2l sample01.lsp | lua` to compile and run `sample01.lsp` immediately.
 * `./l2l sample02.lsp sample03.lsp` to compile two lisp files where one 
     requires the other.
+* `make -C sample04` to run the makefile in the sample04 directory. It
+   demonstrates how to use l2l from another directory.
 
 * Change prompt string by setting the `_P` global variable.
 
