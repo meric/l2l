@@ -200,7 +200,6 @@ local function map(f, objs, ...)
       last=last[2]
     end 
     return orig[2]
-
   end
 end
 

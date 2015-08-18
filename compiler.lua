@@ -590,7 +590,7 @@ local stream = reader.tofile([[
     ; A small DSL for defining compilers.
     (let (
       @block (declare block)
-      @var (if vars (hash (car vars)) nil)
+      @vars (map hash vars)
       insert (bind (.insert table) block)
       add (lambda (...)
         (insert
@@ -602,8 +602,9 @@ local stream = reader.tofile([[
             "[#" @block "]=" @block "[#" @block "]..\" \"..tostring(" obj ")"
             ))))
       (insert (.. @block "=" (compile block stream _block)))
-      (if @var
-        (insert (.. "local " @var " = declare(" @block ")")))
+      (map
+        (lambda (@var) (insert (.. "local " @var " = declare(" @block ")")))
+        @vars)
       (map
         (lambda (obj)
           (cond 
@@ -614,7 +615,7 @@ local stream = reader.tofile([[
             (if (== (getmetatable obj) symbol)
               (add (hash obj)))))
         (pack ...))
-        (or @var nil)))
+        (or (and @vars (car @vars)) nil)))
 
   (defcompiler .. (block stream ...)
     (chunk block (return)
@@ -671,6 +672,16 @@ local stream = reader.tofile([[
           (compile block stream (fn ,(list.unpack parameters))))))
       (eval code)
       (compile block stream code)))
+
+  (defcompiler for (block stream fn iterable)
+    (chunk block (return var1 var2 var3)
+      (@iterable (compile block stream iterable))
+      (@fn (compile block stream fn))
+      "\nlocal" return "= {}"
+      "\nfor" var1 "," var2 "," var3 "in" @iterable "do\n"
+          "local" var1 "=" @fn "(" var1 ")"
+          "table.insert(" return "," var1 ")"
+      "\nend"))
 ]])
 
 compiler = {
