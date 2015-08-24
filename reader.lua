@@ -331,6 +331,16 @@ local function read_quasiquote_eval(stream, byte)
   return pair({symbol('quasiquote-eval'), list({read(stream)})})
 end
 
+local function read_negative(stream, byte)
+  local byte = stream:read(1)
+  stream:seek("cur", -1)
+  if not byte:match(" ") then
+    return pair({symbol('-'), list({read(stream)})})
+  else
+    return symbol('-')
+  end
+end
+
 local function read_dispatch_macro(stream, byte)
   local byte = stream:read(1)
   if not byte then
@@ -381,6 +391,7 @@ _R = {
   ['`'] = read_quasiquote,
   [','] = read_quasiquote_eval,
   ["'"] = read_quote,
+  ['-'] = read_negative,
 }
 
 return {

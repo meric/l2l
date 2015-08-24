@@ -228,6 +228,9 @@ local function compile_add(block, stream, ...)
 end
 
 local function compile_subtract(block, stream, ...)
+  if select("#", ...) == 1 then
+    return "(-"..compile(block, stream, ...)..")"
+  end
   return "("..map(bind(compile, block, stream), {...}):concat(" - ")..")"
 end
 
