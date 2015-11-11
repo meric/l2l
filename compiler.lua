@@ -13,7 +13,8 @@ local FunctionArgumentException =
     return "Argument is not a ".. (tostring(...) or "symbol")
   end)
 
-local list, pair = itertools.list, itertools.pair
+local list, pair, last = itertools.list, itertools.pair, itertools.last
+local slice = itertools.slice
 local map, fold, zip = itertools.map, itertools.fold, itertools.zip
 local bind = itertools.bind
 local pack = itertools.pack
@@ -207,6 +208,14 @@ local compile_greater_than = bind(compile_comparison, ">")
 local compile_greater_than_equals = bind(compile_comparison, ">=")
 
 local function compile_and(block, stream, ...)
+  if last({...}) == symbol("...") then
+    local literals = slice({...}, 1, -1)
+    local first = ""
+    if #literals > 0 then
+       first = map(bind(compile, block, stream), literals):concat(" and ")..","
+    end
+    return ("("..hash("and").."("..first.."...))")
+  end
   return "("..map(bind(compile, block, stream), {...}):concat(" and ")..")"
 end
 
@@ -215,19 +224,45 @@ local function compile_not(block, stream, obj)
 end
 
 local function compile_or(block, stream, ...)
+  if last({...}) == symbol("...") then
+    local literals = slice({...}, 1, -1)
+    local first = ""
+    if #literals > 0 then
+       first = map(bind(compile, block, stream), literals):concat(" or ")..","
+    end
+    return ("("..hash("or").."("..first.."...))")
+  end
   return "("..map(bind(compile, block, stream), {...}):concat(" or ")..")"
 end
 
 local function compile_multiply(block, stream, ...)
+  if select("#", ...) == 1 and ... == symbol("...") then
+    return "(".. hash("*").."(...))"
+  end
   return "("..map(bind(compile, block, stream), {...}):concat(" * ")..")"
 end
 
 local function compile_add(block, stream, ...)
+  if last({...}) == symbol("...") then
+    local literals = slice({...}, 1, -1)
+    local first = ""
+    if #literals > 0 then
+       first = map(bind(compile, block, stream), literals):concat(" + ")..","
+    end
+    return ("("..hash("+").."("..first.."...))")
+  end
   return "("..map(bind(compile, block, stream), false, ...):concat(" + ")..")"
-  -- return "("..map(bind(compile, block, stream), false, ...):concat(" + ")..")"
 end
 
 local function compile_subtract(block, stream, ...)
+  if last({...}) == symbol("...") then
+    local literals = slice({...}, 1, -1)
+    local first = ""
+    if #literals > 0 then
+       first = map(bind(compile, block, stream), literals):concat(" - ")..","
+    end
+    return ("("..hash("-").."("..first.."...))")
+  end
   if select("#", ...) == 1 then
     return "(-"..compile(block, stream, ...)..")"
   end
@@ -235,6 +270,17 @@ local function compile_subtract(block, stream, ...)
 end
 
 local function compile_divide(block, stream, ...)
+  if last({...}) == symbol("...") then
+    local literals = slice({...}, 1, -1)
+    local first = ""
+    if #literals > 0 then
+       first = map(bind(compile, block, stream), literals):concat(" / ")..","
+    end
+    return ("("..hash("/").."("..first.."...))")
+  end
+  if select("#", ...) == 1 then
+    return "(1/("..compile(block, stream, ...).."))"
+  end
   return "("..map(bind(compile, block, stream), {...}):concat(" / ")..")"
 end
 
@@ -586,6 +632,23 @@ _D['.'] = reader.read_execute
 
 
 local stream = reader.tofile([[
+  (defun + (a ...)
+    (if (> (select "#" ...) 0) (let (op +) (+ a (op ...))) a))
+  (defun - (a ...)
+    (if (> (select "#" ...) 0) (let (op -) (- a (op ...))) -a))
+  (defun * (a ...)
+    (if (> (select "#" ...) 0) (let (op *) (* a (op ...))) a))
+  (defun / (a ...)
+    (if (> (select "#" ...) 0) (let (op /) (/ a (op ...))) (/ a)))
+  (defun or (a ...)
+    (if (> (select "#" ...) 0) (let (op or) (or a (op ...))) a))
+  (defun and (a ...)
+    (if (> (select "#" ...) 0) (let (op and) (and a (op ...))) a))
+  (defun not (a) (not a))
+  (defun car (a) (car a))
+  (defun cdr (a) (cdr a))
+  (defun # (a) (# a))
+
   (defun .. (...)
     ((.concat list) (map tostring (pack ...)) ""))
 

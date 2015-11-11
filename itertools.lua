@@ -203,6 +203,38 @@ local function map(f, objs, ...)
   end
 end
 
+local function contains(objs, target)
+  for i, v in pairs(objs or {}) do
+    if v == target then
+      return target
+    end
+  end
+  return false
+end
+
+local function last(objs)
+  return objs[#objs]
+end
+
+--- Returns array inclusive of start and finish indices.
+-- 1 is first position. 0 is last position. -1 is second last position.
+-- @objs iterable to slice.
+-- @start first index.
+-- @finsih second index
+local function slice(objs, start, finish)
+  if finish <= 0 then
+    finish = #objs + finish
+  end
+
+  local orig = {}
+  for i, v in ipairs(objs) do
+    if i >= start and i <= finish then
+      table.insert(orig, v)
+    end
+  end
+  return orig
+end
+
 return {
   vector=vector,
   dict=dict,
@@ -216,5 +248,8 @@ return {
   foreach=foreach,
   pack=pack,
   resolve=resolve,
-  bind=bind
+  bind=bind,
+  contains=contains,
+  last=last,
+  slice=slice
 }
