@@ -40,7 +40,7 @@ end
 -- targeted line in `src` to point at the target character.
 -- @param src The string.
 -- @param index The character index.
--- @return A string representing the arrow.
+-- @return string representing the arrow.
 -- @see formatsource
 local function pointat(src, index)
   local line, start, finish = lineat(src, index)
@@ -59,7 +59,7 @@ end
 -- This function is 1-based. The first line is line 1.
 -- @param src The string to look at.
 -- @param index The character index.
--- @return The number of lines until `index` in the string `src`.
+-- @return number of lines until `index` in the string `src`.
 local function numberat(src, index)
   local count = 1
   for i=1, #src:sub(0, index) do
@@ -87,7 +87,7 @@ end
 -- @param src The string.
 -- @param message The message to show, appended with line number and index.
 -- @param index The character index.
--- @return An array of strings.
+-- @return array of strings.
 local function formatsource(src, message, index)
   local messages = {}
   local linenumber = numberat(src, index)
