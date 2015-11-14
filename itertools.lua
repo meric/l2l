@@ -220,7 +220,7 @@ end
 -- 1 is first position. 0 is last position. -1 is second last position.
 -- @objs iterable to slice.
 -- @start first index.
--- @finsih second index
+-- @finish second index
 local function slice(objs, start, finish)
   if finish <= 0 then
     finish = #objs + finish
