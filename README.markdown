@@ -100,6 +100,43 @@ How To
 
     and the code will be output directly as "-- This is a comment" into the
     Lua source code.
+    
+    The following information about `defcompiler` is relevant for compilers
+    taking variable arguments, i.e. `...`, like the add operator.
+    `(+ 1 2 3...)`:
+
+    Caveat: `...` in a compiler arguments as cannot be expanded in a 
+    compilation context, because the code isn't compiled yet, the data cannot
+    be accessed.
+
+    Currently the work around is to write a function with the same name,
+    and in the `defcompiler`, if `...` is in the arguments, call that function
+    to recursively unroll `...` and call it into the compiler function.
+
+
+    For example, the add operator, here is the compiler definition.
+
+        local function compile_add(block, stream, ...)
+          if last({...}) == symbol("...") then
+            local literals = slice({...}, 1, -1)
+            local first = ""
+            if #literals > 0 then
+               first = map(bind(compile, block, stream), literals):concat(" + ")..","
+            end
+            return ("("..hash("+").."("..first.."...))")
+          end
+          return "("..map(bind(compile, block, stream), false, ...):concat(" + ")..")"
+        end
+
+    When "..." is an argument, it will output code representing a call to the
+    `+` function.
+
+        (defun + (a ...)
+            (if (> (select "#" ...) 0) (let (op +) (+ a (op ...))) a))
+
+    This will unroll `...` into individual values and call the compiler with
+    the variable arguments expanded.
+
 * `defmacro` is currently implemented like so:
 
 
