@@ -387,13 +387,26 @@ local function compile_cond(block, stream, ...)
       else
         assign(block, reference, expression)
         if index % 2 == 0 then
-          -- The 'else' part that does not need to close an "if" statement.
-          insert("goto "..uid)
-          insert("end")
+          -- Lua 5.1 does not have goto and ::labels::.
+          if _VERSION == "Lua 5.1" then
+            insert("else")
+          else
+            insert("goto "..uid)
+            insert("end")
+          end
         end
       end
     end, pack(...))
-  insert("::"..uid.."::")
+  if _VERSION == "Lua 5.1" then
+    map(
+      function(parameter, index)
+        if index % 2 == 0 then
+          insert("end")
+        end
+      end, pack(...))
+  else
+    insert("::"..uid.."::")
+  end
   insert("end")
   return reference
 end

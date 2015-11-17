@@ -1,5 +1,7 @@
 #! /usr/local/bin/lua
 
+require("compat")
+
 local reader = require("reader")
 local import = require("import")
 local compiler = require("compiler")

@@ -3,7 +3,10 @@ Lisp to Lua Compiler
 
 [![Join the chat at https://gitter.im/meric/l2l](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/meric/l2l?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-A Lisp to Lua compiler, compatible with LuaJIT (built with -DLUAJIT_ENABLE_LUA52COMPAT) or Lua5.3.
+A Lisp to Lua compiler, compatible with LuaJIT or Lua5.1+. Lua 5.2+ or 
+LuaJIT (built with -DLUAJIT_ENABLE_LUA52COMPAT) recommended for higher
+performance.
+
 
 Features
 -----------
