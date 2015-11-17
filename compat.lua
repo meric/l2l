@@ -6,18 +6,25 @@ if _VERSION == "Lua 5.1" then
     -- metatable method. This is a global `ipairs` override, to implement
     -- `__ipairs` metatable method.
 
-    local _ipairs = ipairs
+    local new_ipairs = false
 
-    function ipairs(iterable)
-        if type(iterable) == "table" then
-            local metatable = getmetatable(iterable)
-            if metatable and metatable.__ipairs then
-                return metatable.__ipairs(iterable)
+    ipairs(setmetatable({}, {__ipairs=function() new_ipairs=true end}))
+
+    if not new_ipairs then
+        local _ipairs = ipairs
+
+        function ipairs(iterable)
+            if type(iterable) == "table" then
+                local metatable = getmetatable(iterable)
+                if metatable and metatable.__ipairs then
+                    return metatable.__ipairs(iterable)
+                end
             end
+            return _ipairs(iterable)
         end
-        return _ipairs(iterable)
     end
 
+    if not pcall(load, "ipairs({})") then
 --[[
 The `check_chunk_type` and `load` compatibility functions are credited to
 https://github.com/davidm. The code is copied from
@@ -45,47 +52,48 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ]]-- 
 
-    local function check_chunk_type(s, mode)
-      local nmode = mode or 'bt' 
-      local is_binary = s and #s > 0 and s:byte(1) == 27
-      if is_binary and not nmode:match'b' then
-        return nil, ("attempt to load a binary chunk (mode is '%s')"
-            ):format(mode)
-      elseif not is_binary and not nmode:match't' then
-        return nil, ("attempt to load a text chunk (mode is '%s')"
-            ):format(mode)
-      end
-      return true
-    end
-
-    -- Global `load` implementation, which is absent in Lua 5.1
-    function load(ld, source, mode, env)
-        local f
-        if type(ld) == 'string' then
-            local s = ld
-            local ok, err = check_chunk_type(s, mode)
-            if not ok then return ok, err end
-            local err; f, err = loadstring(s, source)
-            if not f then return f, err end
-        elseif type(ld) == 'function' then
-            local ld2 = ld
-            if (mode or 'bt') ~= 'bt' then
-            local first = ld()
-            local ok, err = check_chunk_type(first, mode)
-            if not ok then return ok, err end
-            ld2 = function()
-              if first then
-                local chunk=first; first=nil; return chunk
-              else return ld() end
-            end
-            end
-            local err; f, err = load(ld2, source);
-            if not f then return f, err end
-        else
-          error(("bad argument #1 to 'load' (function expected, got %s)")
-                :format(type(ld)), 2)
+        local function check_chunk_type(s, mode)
+          local nmode = mode or 'bt' 
+          local is_binary = s and #s > 0 and s:byte(1) == 27
+          if is_binary and not nmode:match'b' then
+            return nil, ("attempt to load a binary chunk (mode is '%s')"
+                ):format(mode)
+          elseif not is_binary and not nmode:match't' then
+            return nil, ("attempt to load a text chunk (mode is '%s')"
+                ):format(mode)
+          end
+          return true
         end
-        if env then setfenv(f, env) end
-        return f
-      end
+
+        -- Global `load` implementation, which is absent in Lua 5.1
+        function load(ld, source, mode, env)
+            local f
+            if type(ld) == 'string' then
+                local s = ld
+                local ok, err = check_chunk_type(s, mode)
+                if not ok then return ok, err end
+                local err; f, err = loadstring(s, source)
+                if not f then return f, err end
+            elseif type(ld) == 'function' then
+                local ld2 = ld
+                if (mode or 'bt') ~= 'bt' then
+                local first = ld()
+                local ok, err = check_chunk_type(first, mode)
+                if not ok then return ok, err end
+                ld2 = function()
+                  if first then
+                    local chunk=first; first=nil; return chunk
+                  else return ld() end
+                end
+                end
+                local err; f, err = load(ld2, source);
+                if not f then return f, err end
+            else
+              error(("bad argument #1 to 'load' (function expected, got %s)")
+                    :format(type(ld)), 2)
+            end
+            if env then setfenv(f, env) end
+            return f
+        end
+    end
 end
