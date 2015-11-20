@@ -593,7 +593,8 @@ end
 
 local compiler
 
-eval = function (obj, stream, env)
+eval = function (obj, stream, env, G)
+  G = G or _G
   -- Include the following into the `core` library. The `core` library is
   -- automatically imported into _G in all compiled programs.
   -- See `compiler.build`.
@@ -624,7 +625,7 @@ eval = function (obj, stream, env)
   
   local code = table.concat(block, "\n") .. "\nreturn ".. reference
   local f, err = load(code, code, nil, setmetatable(env or {},
-      {__newindex=_G, __index = setmetatable(core, {__index=_G})}))
+      {__newindex=G, __index = setmetatable(core, {__index=G})}))
   if f then
     local objs, count = pack(pcall(f))
     local ok = table.remove(objs, 1)
@@ -685,7 +686,7 @@ end
 _D['.'] = reader.read_execute
 
 
-local stream = reader.tofile([[
+local src = [[
   (defun + (...) (+ ...))
   (defun - (...) (- ...))
   (defun * (...) (- ...))
@@ -785,9 +786,9 @@ local stream = reader.tofile([[
           "local" var1 "=" @fn "(" var1 ")"
           "table.insert(" return "," var1 ")"
       "\nend"))
-]])
+]]
 
-compiler = {
+local compiler = {
   chunk = chunk,
   eval = eval,
   compile_parameters = compile_parameters,
@@ -827,20 +828,44 @@ compiler = {
   compile_let = compile_let,
 }
 
-
-local ok, form
-repeat
-  ok, obj = pcall(reader.read, stream)
-  if ok then
-    eval(obj, stream, {
-      assign = assign,
-      declare = declare
-    })
-  end
-until not ok
-
-if getmetatable(obj) ~= reader.EOFException then
-  error(obj)
+--- Returns the minimal environment required to bootstrap l2l.
+local function environment()
+  return {
+    table = table,
+    print = print,
+    tostring = tostring,
+    type = type,
+    getmetatable = getmetatable,
+    next = next,
+    symbol = symbol,
+    _C = _C
+  }
 end
 
+--- Modifies the given environment and bootstrap l2l on it.
+-- The given `G` argument must have all elements returned by a table returned
+-- by `minimal()`. For example, bootstrap(environment()).
+-- @G environment table
+-- @return environment table
+local function bootstrap(G)
+  local stream = reader.tofile(src)
+  local ok, form
+  repeat
+    ok, obj = pcall(reader.read, stream)
+    if ok then
+      eval(obj, stream, {
+        assign = assign,
+        declare = declare,
+        _C = _C,
+      }, G)
+    end
+  until not ok
+  if getmetatable(obj) ~= reader.EOFException then
+    error(obj)
+  end
+  return G
+end
+
+compiler.environment = environment
+compiler.bootstrap = bootstrap
 return compiler

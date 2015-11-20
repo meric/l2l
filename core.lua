@@ -82,6 +82,8 @@ local function interpret()
 end
 
 if debug.getinfo(3) == nil then
+  compiler.bootstrap(_G)
+
   local script = false
   for i=1, #arg do
     if arg[i] == "--script" then
