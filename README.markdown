@@ -41,6 +41,37 @@ How To
 * `make -C sample04` to run the makefile in the sample04 directory. It
    demonstrates how to use l2l from another directory.
 
+Differences from other lisps
+----------------------------
+
+While l2l is not a Scheme or Common Lisp implementation, it shares
+many features of these languages.
+
+It is a [Lisp-1](https://hornbeck.wordpress.com/2009/07/05/lisp-1-vs-lisp-2/)
+like Scheme, which means that functions are treated like other values
+rather than being stored in a separate namespace. However, the macro
+system uses a much simpler `defmacro` like CL and Clojure instead of
+Scheme's hygenic macros.
+
+The `let` macro for binding locals works more like Clojure--it does
+not require each name/value pair to be wrapped in its own parens:
+
+```lisp
+(let (x 12
+      y 30)
+  (+ x (* y 22)))
+```
+
+The syntax for [varargs](https://en.wikipedia.org/wiki/Variadic_function)
+is taken from Lua rather than any existing lisp dialect; it uses three dots:
+
+```lisp
+(defun myfun (...) (cdr (pack ...)))
+```
+
+Internals
+---------
+
 * Change prompt string by setting the `_P` global variable.
 
         >> (set _P ">->o ")
@@ -158,4 +189,3 @@ TODO
 
 * The `_R.META` does not record locations accurately enough during the compiler 
 stage.
-
