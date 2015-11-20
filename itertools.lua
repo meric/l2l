@@ -180,7 +180,7 @@ local function cons(a, b)
   return pair({a, b})
 end
 
-local function map(f, objs, ...) 
+local function map(f, objs, ...)
   if objs == nil then
     return nil
   end
@@ -188,7 +188,7 @@ local function map(f, objs, ...)
   local last = orig
   if objs ~= false then
     for i, v in ipairs(objs or {}) do
-      last[2] = pair({f(v, i), nil})
+      last[2] = pair({f(v), nil})
       last=last[2]
     end 
     return orig[2]
@@ -196,7 +196,7 @@ local function map(f, objs, ...)
     local count = select('#', ...)
     for i=1, count do
       local v = select(i, ...)
-      last[2] = pair({f(v, i), nil})
+      last[2] = pair({f(v), nil})
       last=last[2]
     end 
     return orig[2]
@@ -210,10 +210,6 @@ local function contains(objs, target)
     end
   end
   return false
-end
-
-local function last(objs)
-  return objs[#objs]
 end
 
 --- Returns array inclusive of start and finish indices.
