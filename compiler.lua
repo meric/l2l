@@ -286,6 +286,14 @@ local compile_multiply = variadic(
     return reference .. " * " .. value
   end, "1")
 
+local compile_concat = variadic(
+  function(block, stream, parameters)
+    return list.concat(map(bind(compile, block, stream), parameters), " .. ")
+  end,
+  function(reference, value)
+    return reference .. " .. " .. value
+  end, "\"\"")
+
 local compile_add = variadic(
   function(block, stream, parameters)
     return list.concat(map(bind(compile, block, stream), parameters), " + ")
@@ -646,6 +654,7 @@ _C = {
   [hash("and")] = compile_and,
   [hash("or")] = compile_or,
   [hash("not")] = compile_not,
+  [hash("..")] = compile_concat,
   [hash("*")] = compile_multiply,
   [hash("+")] = compile_add,
   [hash("-")] = compile_subtract,
@@ -677,25 +686,17 @@ _D['.'] = reader.read_execute
 
 
 local stream = reader.tofile([[
-  (defun + (a ...)
-    (if (> (select "#" ...) 0) (let (op +) (+ a (op ...))) a))
-  (defun - (a ...)
-    (if (> (select "#" ...) 0) (let (op -) (- a (op ...))) -a))
-  (defun * (a ...)
-    (if (> (select "#" ...) 0) (let (op *) (* a (op ...))) a))
-  (defun / (a ...)
-    (if (> (select "#" ...) 0) (let (op /) (/ a (op ...))) (/ a)))
-  (defun or (a ...)
-    (if (> (select "#" ...) 0) (let (op or) (or a (op ...))) a))
-  (defun and (a ...)
-    (if (> (select "#" ...) 0) (let (op and) (and a (op ...))) a))
+  (defun + (...) (+ ...))
+  (defun - (...) (- ...))
+  (defun * (...) (- ...))
+  (defun / (...) (- ...))
+  (defun and (...) (- ...))
+  (defun or (...) (- ...))
   (defun not (a) (not a))
   (defun car (a) (car a))
   (defun cdr (a) (cdr a))
   (defun # (a) (# a))
-
-  (defun .. (...)
-    ((.concat list) (map tostring (pack ...)) ""))
+  (defun .. (...) (.. ...))
 
   (defcompiler chunk (block stream _block vars ...)
     ; A small DSL for defining compilers.
@@ -727,15 +728,6 @@ local stream = reader.tofile([[
               (add (hash obj)))))
         (pack ...))
         (or (and @vars (car @vars)) nil)))
-
-  (defcompiler .. (block stream ...)
-    (chunk block (return)
-      return "=(" (@placeholder (map (lambda (obj)
-        (chunk block ()
-          (@value (compile block stream obj))
-          "(" @value ")"
-          "..")) (pack ...)))
-      "\"\"" ")"))
 
   (defcompiler while (block stream condition ...)
     (chunk block (return)
