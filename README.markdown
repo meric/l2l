@@ -189,3 +189,10 @@ TODO
 
 * The `_R.META` does not record locations accurately enough during the compiler 
 stage.
+
+License
+=======
+
+Copyright © 2012-2015, Eric Man and contributors
+Released under the 2-clause BSD license, see LICENSE
+
