@@ -99,7 +99,15 @@ local function read(input, suppress_eof_error)
     if _R[byte] then
       objs, count = pack(_R[byte](input, byte))
     elseif byte then
-      if byte:match('[0-9]') then
+      if byte:match('-') then
+        if input:read(1):match('[0-9]') then
+          input:seek("cur", -1)
+          objs, count = pack(read_number(input, byte))
+        else
+          input:seek("cur", -1)
+          objs, count = pack(read_symbol(input, byte))
+        end
+      elseif byte:match('[0-9]') then
         objs, count = pack(read_number(input, byte))
       elseif not byte:match('%s') then
         objs, count = pack(read_symbol(input, byte))
@@ -331,16 +339,6 @@ local function read_quasiquote_eval(stream, byte)
   return pair({symbol('quasiquote-eval'), list({read(stream)})})
 end
 
-local function read_negative(stream, byte)
-  local byte = stream:read(1)
-  stream:seek("cur", -1)
-  if not byte:match(" ") then
-    return pair({symbol('-'), list({read(stream)})})
-  else
-    return symbol('-')
-  end
-end
-
 local function read_dispatch_macro(stream, byte)
   local byte = stream:read(1)
   if not byte then
@@ -391,7 +389,6 @@ _R = {
   ['`'] = read_quasiquote,
   [','] = read_quasiquote_eval,
   ["'"] = read_quote,
-  ['-'] = read_negative,
 }
 
 return {
@@ -406,7 +403,6 @@ return {
   read_attribute = read_attribute,
   read_number = read_number,
   read_symbol = read_symbol,
-  read_number = read_number,
   read_quasiquote = read_quasiquote,
   read_string = read_string,
   read_vector = read_vector,
