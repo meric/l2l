@@ -61,12 +61,16 @@
 
 ; Example 6: Accessor method
 (print "\n--- Example 6 ---\n")
-(.write {"write" (lambda (self x) (print x))} "hello-world")
+(:write {"write" (lambda (self x) (print x))} "hello-world")
+
+; Print out the function
+(print (.write {"write" (lambda (self x) (print x))} "hello-world"))
 
 ; Output:
 ; --- Example 6 ---
 ;
 ; hello-world
+; function: 0x7fcf38e28fa0
 
 ; Example 7: Anonymous function
 (print "\n--- Example 7 ---\n")
@@ -92,10 +96,11 @@
 
 ; Example 9: Dictionary
 (print "\n--- Example 9 ---\n")
-(let (dict {"a" "b" 1 2 "3" 4})
-  (print (. "a" dict) "b")
-  (print dict.a "b")
-  (print (. 1 dict) 2))
+(let (d {"a" "b" 1 2 "3" 4})
+  (print (. "a" d) "b")
+  (print d.a "b")
+  (print (. 1 d) 2)
+  (print (. "3" d) 4))
 
 ; Output:
 ; --- Example 9 ---
@@ -114,7 +119,7 @@
   (table.insert block (.. "\n--" (tostring str))))
 
 ; Adds a lua comment to lua executable, using operator we defined.
-(-- "This is a comment") ; Will appear in `out.lua`
+(-- "This is a comment") ; Will appear in `sample01.lua`
 
 ; Output:
 ; --- Example 10 ---
@@ -144,13 +149,13 @@
   (print (.. "-- 1 + 1 = " (+ 1 1) "!"))
   (print "-- Okay that's enough."))
 
-; Compiler Output:
+; Compiler Output (`lua l2l sample01.lsp`):
 ; --- Example 11 ---
 
-; I am running this line in the compilation step!
-; This too!
-; 1 + 1 = 2!
-; Okay that's enough.
+; -- I am running this line in the compilation step!
+; -- This too!
+; -- 1 + 1 = 2!
+; -- Okay that's enough.
 
 (print "\n--- Example 11 ---\n")
 (print "\n--- Did you see what was printed while compiling? ---\n")

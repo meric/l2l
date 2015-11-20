@@ -24,7 +24,14 @@ if (n==1) then
 _var1=1
 goto _var1
 end
-_var1=(n * _bang((n - 1)))
+local _var11
+_var11=n
+local _var13
+local _var14
+for _var13, _var14 in next, {_bang(n - 1)} do
+_var11 = _var11 * _var14
+end
+_var1=_var11
 ::_var1::
 end
 return _var1
@@ -42,17 +49,21 @@ _var1=print(table.concat(pack(string.gsub(hello_world, "gibberish ", "")), " "))
 _var1=print("\n--- Example 4 ---\n")
 _var1=map(print, list({1,2,3,map((function (x)
 local _var0
-return (x * 5)
+return x * 5
 end), list({1,2,3}))}))
 _var1=print("\n--- Example 5 ---\n")
 local _var18
 do
-local a=(1 + 2)
-local b=(3 + 4)
+local a=1 + 2
+local b=3 + 4
 _var18=print(a)
 _var18=print(b)
 end
 _var1=print("\n--- Example 6 ---\n")
+_var1=dict("write", (function (self, x)
+local _var0
+return print(x)
+end)):write("hello-world")
 dict("write", (function (self, x)
 local _var0
 return print(x)
@@ -60,36 +71,47 @@ end))["write"]=dict("write", (function (self, x)
 local _var0
 return print(x)
 end))
-_var1=dict("write", (function (self, x)
+_var1=print(dict("write", (function (self, x)
 local _var0
 return print(x)
-end))["write"]
+end))["write"])
 _var1=print("\n--- Example 7 ---\n")
 _var1=print((function (x, y)
 local _var0
-return (x + y)
+local _var1
+_var1=x
+local _var3
+local _var4
+for _var3, _var4 in next, {y} do
+_var1 = _var1 + _var4
+end
+return _var1
 end)(10, 20))
 _var1=print("\n--- Example 8 ---\n")
-local _var31
+local _var32
 do
-local a=(7 * 8)
-_var31=map(print, vector(1, 2, a, 4))
+local a=7 * 8
+_var32=map(print, vector(1, 2, a, 4))
 end
 _var1=print("\n--- Example 9 ---\n")
-local _var37
+local _var38
 do
-local dict=dict("a", "b", 1, 2, "3", 4)
-_var37=print(dict["a"], "b")
-_var37=print(dict.a, "b")
-_var37=print(dict[1], 2)
+local d=dict("a", "b", 1, 2, "3", 4)
+_var38=print(d["a"], "b")
+_var38=print(d.a, "b")
+_var38=print(d[1], 2)
+_var38=print(d["3"], 4)
 end
 _var1=print("\n--- Example 10 ---\n")
 _C[hash("--")]=function (block, stream, str)
 local _var0
 local _var1
-_var1 =( (
-"\n--" ) .. (
-tostring(str) ) .. "" )
+_var1="\n--"
+local _var3
+local _var4
+for _var3, _var4 in next, {tostring(str)} do
+_var1 = _var1 .. _var4
+end
 return table.insert(block, _var1)
 end
 _var1=_C[hash("--")]
@@ -116,11 +138,11 @@ end
 _var1=_C[hash("_do")]
 _var1=print("\n--- Example 11 ---\n")
 _var1=print("\n--- Did you see what was printed while compiling? ---\n")
-local _var52 
+local _var54 
 do
-_var52 =
+_var54 =
 print(1)
-_var52 =
+_var54 =
 print(2) 
 end
 _var1=print("\n--- Example 12 ---\n")
@@ -134,28 +156,28 @@ end
 return _var1
 end
 _var1=_C[hash("_if")]
-local _var60
+local _var62
 do
 local a=2
-local _var63
+local _var65
 do
 if (a=="1") then
-_var63=print("a == 1")
-goto _var63
+_var65=print("a == 1")
+goto _var65
 end
-local _var69
+local _var71
 do
 if (a==2) then
-_var69=print("a == 2")
-goto _var69
+_var71=print("a == 2")
+goto _var71
 end
-_var69=print("a != 2")
-::_var69::
+_var71=print("a != 2")
+::_var71::
 end
-_var63=_var69
-::_var63::
+_var65=_var71
+::_var65::
 end
-_var60=_var63
+_var62=_var65
 end
 _C[hash("GAMMA")]=function (block, stream)
 local _var0
@@ -187,10 +209,6 @@ end
 return _var1
 end
 _var1=_C[hash("ALPHA")]
-local _var89
-_var89 =( (
-tostring((1 + 2)) ) .. (
-"4" ) .. "" )
-_var1=print(_var89)
+_var1=print(tostring(1 + 2) .. "4")
 return _var1
 end)()
