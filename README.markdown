@@ -73,9 +73,9 @@ The `-` and `/` operators do not have a unary mode. `(- 4)` and `(/ 4)` both
 returns 4. Implementing unary mode would prevent implementing these two
 operators directly in the form of `(a - b - c - d...)` and `(a / b / c / d)`.
 There are complications that can arise because of Lua's vararg mechanics - 
-Should `(- (somefunction x))` be a unary call or a unary call? `somefunction`
+Should `(- (somefunction x))` be a unary call or a non-unary call? `somefunction`
 can return 1 or more values, and it is impossible to know which, in the 
-compiler stage.
+compiling stage, before the particular call is evaluated.
 
 Internals
 ---------
