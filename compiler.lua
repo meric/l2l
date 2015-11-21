@@ -172,7 +172,7 @@ local function is_variadic(argument)
   if type(argument) == "number" or type(argument) == "string" then
     return false
   end
-  if getmetatable(argument) == "symbol" and argument ~= symbol("...") then
+  if getmetatable(argument) == symbol and argument ~= symbol("...") then
     return false
   end
   -- symbol("...") and function calls are variadic arguments.
@@ -180,6 +180,9 @@ local function is_variadic(argument)
 end
 
 --- Quick way to define a variadic compiler function
+-- prefix and suffix are placed before and after each execution for
+-- each variadic argument. E.g. can be used to implement stopping evaluation
+-- in an AND operator.
 local function variadic(f, step, initial, prefix, suffix)
   return function(block, stream, ...)
     local last = select("#", ...) > 0 and select(-1, ...)
