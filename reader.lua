@@ -1,8 +1,9 @@
-local import = require("import")
-local exception = require("exception")
+local module_path = (...):gsub('reader$', '')
+local import = require(module_path .. "import")
+local exception = require(module_path .. "exception")
 local raise = exception.raise
 
-local itertools = require("itertools")
+local itertools = require(module_path .. "itertools")
 local pack, pair, list = itertools.pack, itertools.pair, itertools.list
 
 

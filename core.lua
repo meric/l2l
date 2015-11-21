@@ -1,12 +1,14 @@
 #!/usr/bin/env lua
 
-require("compat")
+local module_path = (... or ""):gsub('core$', '')
 
-local reader = require("reader")
-local import = require("import")
-local compiler = require("compiler")
-local exception = require("exception")
-local itertools = require("itertools")
+require(module_path .. "compat")
+
+local reader = require(module_path .. "reader")
+local import = require(module_path .. "import")
+local compiler = require(module_path .. "compiler")
+local exception = require(module_path .. "exception")
+local itertools = require(module_path .. "itertools")
 
 local hash = compiler.hash
 
@@ -128,7 +130,7 @@ end
 
 local core = {
   repl = repl,
-  import = require("import"),
+  import = require(module_path .. "import"),
   compile = compiler.compile,
   compiler = compiler,
   hash = hash,
