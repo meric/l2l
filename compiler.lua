@@ -316,7 +316,7 @@ local compile_divide = variadic(
 local compile_subtract = variadic(
   function(block, stream, parameters)
     if #parameters == 1 then
-      return "(-"..compile(block, stream, parameters[1])..")"
+      return "("..compile(block, stream, parameters[1])..")"
     end
     return list.concat(map(bind(compile, block, stream), parameters), " - ")
   end,
