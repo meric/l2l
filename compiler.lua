@@ -847,8 +847,8 @@ compiler = {
   compile_let = compile_let,
 }
 
---- Returns the minimal environment required to bootstrap l2l.
-local function environment()
+--- Returns the minimal environment required to bootstrap l2l
+local function _minimal()
   return {
     table = table,
     print = print,
@@ -863,7 +863,7 @@ end
 
 --- Modifies the given environment and bootstrap l2l on it.
 -- The given `G` argument must have all elements returned by a table returned
--- by `minimal()`. For example, bootstrap(environment()).
+-- by `_minimal()`. For example, bootstrap(_minimal()).
 -- @G environment table
 -- @return environment table
 local function bootstrap(G)
@@ -887,6 +887,11 @@ local function bootstrap(G)
     error(form)
   end
   return G
+end
+
+--- Returns the minimal environment required to bootstrap l2l, and bootstrap.
+local function environment()
+  return bootstrap(_minimal())
 end
 
 compiler.environment = environment
