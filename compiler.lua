@@ -13,7 +13,7 @@ local FunctionArgumentException =
     return "Argument is not a ".. (tostring(...) or "symbol")
   end)
 
-local list, pair, last = itertools.list, itertools.pair, itertools.last
+local list, pair = itertools.list, itertools.pair
 local slice = itertools.slice
 local map, fold, zip = itertools.map, itertools.fold, itertools.zip
 local foreach = itertools.foreach
@@ -26,7 +26,7 @@ local raise = exception.raise
 -- Keyword table. All symbols that match those in this table will be compiled
 -- down into Lua as a symbol that is valid in Lua. Uniquess probable but not
 -- guaranteed. See `hash`.
-_K ={
+local _K ={
   ["and"] = true, 
   ["break"] = true, 
   ["do"] = true, 
@@ -47,6 +47,7 @@ _K ={
   ["while"] = true
 }
 
+local _C
 
 local function hash(str)
   if tostring(str) == "..." then
@@ -209,9 +210,9 @@ local function variadic(f, step, initial, prefix, suffix)
   end
 end
 
-macro = {}
+local macro = {}
 
-function macroexpand(obj)
+local function macroexpand(obj)
   if getmetatable(obj) ~= list then
     return obj
   end
@@ -349,8 +350,8 @@ end
 local function compile_set(block, stream, name, value)
   if getmetatable(name) == list then
     local names = {}
-    for i, name in ipairs(name) do
-      table.insert(names, compile(block, stream, name))
+    for i, n in ipairs(name) do
+      table.insert(names, compile(block, stream, n))
       table.insert(block, table.concat(names, ", ") .. "=" .. compile(block, stream, value))
     end
     return table.unpack(names)
@@ -393,7 +394,6 @@ local function compile_quote(block, stream, form)
   else
     return _C[hash("table-quote")](block, stream, form)
   end
-  error("quote error ".. tostring(form))
 end
 
 local function compile_quasiquote(block, stream, form)
@@ -485,7 +485,7 @@ local function defun(block, stream, name, arguments, ...)
   table.insert(block, "function "..name.."("..arguments..")")
   local body = {}
   local reference = declare(body)
-  local count = select("#", ...)
+  count = select("#", ...)
   for i=1, count-1 do
     assign(body, reference, compile(body, stream, select(i, ...)))
   end
@@ -788,8 +788,7 @@ local src = [[
       "\nend"))
 ]]
 
-local compiler = {
-  chunk = chunk,
+compiler = {
   eval = eval,
   compile_parameters = compile_parameters,
   compile = compile,
@@ -851,17 +850,17 @@ local function bootstrap(G)
   local stream = reader.tofile(src)
   local ok, form
   repeat
-    ok, obj = pcall(reader.read, stream)
+    ok, form = pcall(reader.read, stream)
     if ok then
-      eval(obj, stream, {
+      eval(form, stream, {
         assign = assign,
         declare = declare,
         _C = _C,
       }, G)
     end
   until not ok
-  if getmetatable(obj) ~= reader.EOFException then
-    error(obj)
+  if getmetatable(form) ~= reader.EOFException then
+    error(form)
   end
   return G
 end

@@ -162,7 +162,7 @@ list = setmetatable({
 }, {__call = function(self, t)
     local orig = setmetatable({}, list)
     local last = orig
-    local maxn = table.maxn or function(t) return #t end
+    local maxn = table.maxn or function(tb) return #tb end
     for i=1, maxn(t) do
       last[2] = setmetatable({t[i], nil}, list)
       last = last[2]
@@ -246,6 +246,5 @@ return {
   resolve=resolve,
   bind=bind,
   contains=contains,
-  last=last,
   slice=slice
 }
