@@ -69,6 +69,14 @@ is taken from Lua rather than any existing lisp dialect; it uses three dots:
 (defun myfun (...) (cdr (pack ...)))
 ```
 
+The `-` and `/` operators do not have a unary mode. `(- 4)` and `(/ 4)` both
+returns 4. Implementing unary mode would prevent implementing these two
+operators directly in the form of `(a - b - c - d...)` and `(a / b / c / d)`.
+There are complications that can arise because of Lua's vararg mechanics - 
+Should `(- (somefunction x))` be a unary call or a unary call? `somefunction`
+can return 1 or more values, and it is impossible to know which, in the 
+compiler stage.
+
 Internals
 ---------
 
