@@ -1,10 +1,10 @@
 #! /usr/local/bin/lua
 
-local reader = require("reader")
-local import = require("import")
-local compiler = require("compiler")
-local exception = require("exception")
-local itertools = require("itertools")
+local reader = require("l2l.reader")
+local import = require("l2l.import")
+local compiler = require("l2l.compiler")
+local exception = require("l2l.exception")
+local itertools = require("l2l.itertools")
 
 local hash = compiler.hash
 
@@ -19,7 +19,7 @@ _P = ">> "
 
 -- Only act as a compiler if this file is invoked directly through the shell.
 -- Does not act on any arguments when this file is executed by
--- `require("core")`.
+-- `require("l2l.core")`.
 local function repl()
   print(";; Welcome to Lua-To-Lisp REPL!")
   print(";; Type '(print \"hello world!\") to start.")
@@ -124,7 +124,7 @@ end
 
 local core = {
   repl = repl,
-  import = require("import"),
+  import = require("l2l.import"),
   compile = compiler.compile,
   compiler = compiler,
   hash = hash,

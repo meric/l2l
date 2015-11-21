@@ -1,5 +1,5 @@
 local sample02= (function() 
-require('core').import('core')
+require('l2l.core').import('l2l.core')
 local _var1
 _C[hash("if1")]=function (block, stream, condition, action, otherwise)
 local _var0
@@ -30,7 +30,7 @@ end
 return _var1
 end)()
 local sample03= (function() 
-require('core').import('core')
+require('l2l.core').import('l2l.core')
 local _var1
 _var1=print(sum(list({1,3,5,7})))
 local _var3

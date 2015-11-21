@@ -1,7 +1,7 @@
-local import = require("import")
-local reader = require("reader")
-local itertools = require("itertools")
-local exception = require("exception")
+local import = require("l2l.import")
+local reader = require("l2l.reader")
+local itertools = require("l2l.itertools")
+local exception = require("l2l.exception")
 
 
 local IllegalFunctionCallException =
@@ -471,7 +471,7 @@ end
 
 local function build(stream)
   local src = {
-    "require(\'core\').import(\'core\')"
+    "require(\'l2l.core\').import(\'l2l.core\')"
   }
   local reference = declare(src)
   local ok, obj
@@ -499,7 +499,7 @@ eval = function (obj, stream, env)
   -- automatically imported into _G in all compiled programs.
   -- See `compiler.build`.
   local core = {
-    import = require("import"),
+    import = require("l2l.import"),
     compile = compile,
     compiler = compiler,
     hash = hash,
