@@ -10,10 +10,8 @@ local obj = core.read(core.reader.tofile([[
         (print (map add_one '(1 2 3))))
 ]]))
 
-local G = core.compiler.environment()
-
 core.eval(obj, nil, {
     add_one = function(x) return x + 1 end
-}, G)
+}, core.compiler.environment())
 
 assert(_G.myvar == nil)
