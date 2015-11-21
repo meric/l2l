@@ -584,6 +584,16 @@ local function build(stream)
   if #src > 0 then
     src[#src+1] = "return " .. reference
   end
+
+  -- For each core method used in the code, declare it as a local variable
+  -- as an optimizaiton.
+  local code = table.concat(src, "\n")
+  for k, _ in pairs(require(module_path.."core")) do
+    if code:match("%f[%a]"..k.."%f[%A]") then
+      table.insert(src, 2, "local "..k.." = ".. k)
+    end
+  end
+
   return table.concat(src, "\n")
 end
 
