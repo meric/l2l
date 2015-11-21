@@ -23,6 +23,13 @@ local pack = itertools.pack
 local show = itertools.show
 local raise = exception.raise
 
+local function with_C(newC, f, ...)
+  local C = _C
+  _G._C = setmetatable(newC, {__index = C})
+  local objs, count = pack(f(...))
+  _G._C = C
+  return table.unpack(objs, 1, count)
+end
 
 -- Keyword table. All symbols that match those in this table will be compiled
 -- down into Lua as a symbol that is valid in Lua. Uniquess probable but not
@@ -494,7 +501,6 @@ local function defun(block, stream, name, arguments, ...)
   return name
 end
 
-
 local function compile_lambda(block, stream, arguments, ...)
   local src = {}
   defun(src, stream, nil, arguments, ...)
@@ -502,19 +508,6 @@ local function compile_lambda(block, stream, arguments, ...)
 end
 
 local eval;
-local function compile_defcompiler(block, stream, name, arguments, ...)
-  local reference = "_C[hash(\""..show(name).."\")]"
-  local src = {}
-  -- Serialize the compiler into the source code.
-  defun(src, stream, nil, arguments, ...)
-  table.insert(block, reference.."="..table.concat(src, "\n"))
-  -- Load the compiler immediately.
-  _C[hash(name)] = eval(list({symbol("lambda"), arguments, ...}), stream, {
-    hash = hash,
-    declare = declare
-  })
-  return reference
-end
 
 local function compile_car(block, stream, form)
   return "(("..compile(block, stream, form) .. ")[1])"
@@ -599,6 +592,20 @@ end
 
 local compiler
 
+local function compile_defcompiler(block, stream, name, arguments, ...)
+  local reference = "_C[hash(\""..show(name).."\")]"
+  local src = {}
+  -- Serialize the compiler into the source code.
+  defun(src, stream, nil, arguments, ...)
+  table.insert(block, reference.."="..table.concat(src, "\n"))
+  -- Load the compiler immediately.
+  _C[hash(name)] = eval(list({symbol("lambda"), arguments, ...}), stream, {
+    hash = hash,
+    declare = declare
+  })
+  return reference
+end
+
 eval = function (obj, stream, env, G)
   G = G or _G
   -- Include the following into the `core` library. The `core` library is
@@ -627,19 +634,26 @@ eval = function (obj, stream, env, G)
   if stream == nil then
     stream=reader.tofile(show(obj))
   end
-  local reference = compile(block, stream, obj, _R.position(obj))
+
+  local reference
+
+  if G ~= _G then
+    reference = with_C(G._C, compile, block, stream, obj, _R.position(obj))
+  else
+    reference = compile(block, stream, obj, _R.position(obj))
+  end
   
   local code = table.concat(block, "\n") .. "\nreturn ".. reference
+
   local f, err = load(code, code, nil, setmetatable(env or {},
       {__newindex=G, __index = setmetatable(core, {__index=G})}))
   if f then
     local objs, count = pack(pcall(f))
     local ok = table.remove(objs, 1)
     if ok then
-      -- print(code)
       return table.unpack(objs, 1, count - 1)
     else
-      -- print(code)
+      print(code)
       error(objs[1])
     end
   else
@@ -843,7 +857,7 @@ local function environment()
     getmetatable = getmetatable,
     next = next,
     symbol = symbol,
-    _C = _C
+    _C = setmetatable({}, {__index=_C})
   }
 end
 
@@ -853,6 +867,10 @@ end
 -- @G environment table
 -- @return environment table
 local function bootstrap(G)
+  -- l2l errors when an undefined global variable is accessed.
+  setmetatable(G, {__index=function(self, key)
+    error("undefined '"..key.."'")
+  end})
   local stream = reader.tofile(src)
   local ok, form
   repeat

@@ -17,10 +17,6 @@ local itertools = require(module_path .. "itertools")
 
 local hash = compiler.hash
 
-setmetatable(_G, {__index=function(self, key)
-  error("undefined '"..key.."'")
-end})
-
 _PROMPT = "> "
 
 -- Prompt string.
