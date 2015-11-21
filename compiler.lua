@@ -308,25 +308,19 @@ local compile_add = variadic(
 
 local compile_divide = variadic(
   function(block, stream, parameters)
-    if #parameters == 1 then
-      return "(1 / ("..compile(block, stream, parameters[1]).."))"
-    end
     return list.concat(map(bind(compile, block, stream), parameters), " / ")
   end,
   function(reference, value)
-    return reference .. " / " .. value
-  end, "1")
+    return reference .." and "..reference.." / "..value .." or "..value
+  end, "nil")
 
 local compile_subtract = variadic(
-  function(block, stream, parameters)
-    if #parameters == 1 then
-      return "(-"..compile(block, stream, parameters[1])..")"
-    end
+  function(block, stream, parameters, is_unary)
     return list.concat(map(bind(compile, block, stream), parameters), " - ")
   end,
   function(reference, value)
-    return reference .. " - " .. value
-  end, "0")
+    return reference .." and "..reference.." - " ..value .." or "..value
+  end, "nil")
 
 local function compile_table_attribute(block, stream, attribute, parent, value)
   local reference = compile(block, stream, parent) .. "[" .. 
