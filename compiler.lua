@@ -507,8 +507,6 @@ local function compile_lambda(block, stream, arguments, ...)
   return "(" .. table.concat(src, "\n") .. ")"
 end
 
-local eval;
-
 local function compile_car(block, stream, form)
   return "(("..compile(block, stream, form) .. ")[1])"
 end
@@ -557,6 +555,22 @@ local function compile_defun(block, stream, name, arguments, ...)
   return defun(block, stream, name, arguments, ...)
 end
 
+local eval
+
+local function compile_defcompiler(block, stream, name, arguments, ...)
+  local reference = "_C[hash(\""..show(name).."\")]"
+  local src = {}
+  -- Serialize the compiler into the source code.
+  defun(src, stream, nil, arguments, ...)
+  table.insert(block, reference.."="..table.concat(src, "\n"))
+  -- Load the compiler immediately.
+  _C[hash(name)] = eval(list({symbol("lambda"), arguments, ...}), stream, {
+    hash = hash,
+    declare = declare
+  })
+  return reference
+end
+
 local function build(stream)
   local src = {
     "require(" .. module_path .. "\'core\').import(\'core\')"
@@ -591,20 +605,6 @@ local function build(stream)
 end
 
 local compiler
-
-local function compile_defcompiler(block, stream, name, arguments, ...)
-  local reference = "_C[hash(\""..show(name).."\")]"
-  local src = {}
-  -- Serialize the compiler into the source code.
-  defun(src, stream, nil, arguments, ...)
-  table.insert(block, reference.."="..table.concat(src, "\n"))
-  -- Load the compiler immediately.
-  _C[hash(name)] = eval(list({symbol("lambda"), arguments, ...}), stream, {
-    hash = hash,
-    declare = declare
-  })
-  return reference
-end
 
 eval = function (obj, stream, env, G)
   G = G or _G
@@ -653,7 +653,7 @@ eval = function (obj, stream, env, G)
     if ok then
       return table.unpack(objs, 1, count - 1)
     else
-      print(code)
+      -- print(code)
       error(objs[1])
     end
   else
