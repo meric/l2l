@@ -48,8 +48,6 @@ local _K ={
   ["while"] = true
 }
 
-local _C
-
 local function hash(str)
   if tostring(str) == "..." then
     return "..."
