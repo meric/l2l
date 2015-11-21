@@ -2,6 +2,11 @@
 
 local module_path = (... or ""):gsub('core$', '')
 
+if debug.getinfo(3) == nil then
+  -- if core.lua is the main script, module_path is "".
+  module_path = ""
+end
+
 require(module_path .. "compat")
 
 local reader = require(module_path .. "reader")
