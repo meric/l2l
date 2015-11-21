@@ -188,7 +188,7 @@ local function map(f, objs, ...)
   local last = orig
   if objs ~= false then
     for i, v in ipairs(objs or {}) do
-      last[2] = pair({f(v), nil})
+      last[2] = pair({f(v, i), nil})
       last=last[2]
     end 
     return orig[2]
