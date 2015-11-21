@@ -1,7 +1,8 @@
-local import = require("import")
-local reader = require("reader")
-local itertools = require("itertools")
-local exception = require("exception")
+local module_path = (...):gsub('compiler$', '')
+local import = require(module_path .. "import")
+local reader = require(module_path .. "reader")
+local itertools = require(module_path .. "itertools")
+local exception = require(module_path .. "exception")
 
 
 local IllegalFunctionCallException =
@@ -570,7 +571,7 @@ end
 
 local function build(stream)
   local src = {
-    "require(\'core\').import(\'core\')"
+    "require(" .. module_path .. "\'core\').import(\'core\')"
   }
   local reference = declare(src)
   local ok, obj
@@ -599,7 +600,7 @@ eval = function (obj, stream, env, G)
   -- automatically imported into _G in all compiled programs.
   -- See `compiler.build`.
   local core = {
-    import = require("import"),
+    import = require(module_path .. "import"),
     compile = compile,
     compiler = compiler,
     hash = hash,
