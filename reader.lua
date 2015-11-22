@@ -1,5 +1,4 @@
 local module_path = (...):gsub('reader$', '')
-local import = require(module_path .. "import")
 local exception = require(module_path .. "exception")
 local raise = exception.raise
 
@@ -16,7 +15,7 @@ symbol = setmetatable({
     return getmetatable(self) == getmetatable(other) and
       tostring(self) == tostring(other)
   end
-}, {__call = function(self, name)
+}, {__call = function(_, name)
     return setmetatable({name}, symbol)
   end})
 symbol.__index = symbol
@@ -48,7 +47,7 @@ local UnmatchedRightParenException =
 
 local UnmatchedLeftParenException = 
   exception.exception(
-    function(self, stream, position)
+    function(_, stream, position)
       local index = stream:seek("cur")
       local src = stream:seek("set", 0) and stream:read("*all")
       stream:seek("set", index)
@@ -150,25 +149,25 @@ local function with_R(newR, f, ...)
   return table.unpack(objs, 1, count)
 end
 
-local function read_hash_literal(stream, byte)
+local function read_hash_literal(_)
   return symbol("#")
 end
 
-local function read_comment(stream, byte)
+local function read_comment(stream)
   repeat
-    byte = stream:read(1)
+    local byte = stream:read(1)
   until not byte or byte == "\n"
 end
 
-local function read_right_paren(stream, byte)
+local function read_right_paren(stream)
   raise(UnmatchedRightParenException(stream))
 end
 
-local function read_right_brace(stream, byte)
+local function read_right_brace(stream)
   raise(UnmatchedRightBraceException(stream))
 end
 
-local function read_right_bracket(stream, byte)
+local function read_right_bracket(stream)
   raise(UnmatchedRightBracketException(stream))
 end
 
@@ -205,7 +204,7 @@ local function read_attribute(stream, byte)
 
   local act = nil
   local attr = _read(stream, {
-      [UnmatchedRightParenException] = function(Exception)
+      [UnmatchedRightParenException] = function(_)
         act = false
       end
     })
@@ -216,7 +215,7 @@ local function read_attribute(stream, byte)
   end
   
   local obj = _read(stream, {
-      [UnmatchedRightParenException] = function(Exception)
+      [UnmatchedRightParenException] = function(_)
         act = false
         stream:seek("set", position)
       end
@@ -232,16 +231,15 @@ end
 local read_method = read_attribute
 
 
-local function read_vector(stream, byte)
-  local orig = {}
+local function read_vector(stream)
   local parameters = {}
   while true do
     local rightbracket = false
     local append, count = pack(_read(stream, {
-      [UnmatchedRightBracketException] = function(Exception)
+      [UnmatchedRightBracketException] = function(_)
         rightbracket = true
       end,
-      [EOFException] = function(Exception)
+      [EOFException] = function()
         raise(UnmatchedLeftBracketException(stream))
       end
     }))
@@ -255,16 +253,15 @@ local function read_vector(stream, byte)
   end
 end
 
-local function read_table(stream, byte)
-  local orig = {}
+local function read_table(stream)
   local parameters = {}
   while true do
     local rightbrace = false
     local append, count = pack(_read(stream, {
-      [UnmatchedRightBraceException] = function(Exception)
+      [UnmatchedRightBraceException] = function(_)
         rightbrace = true
       end,
-      [EOFException] = function(Exception)
+      [EOFException] = function(_)
         raise(UnmatchedLeftBraceException(stream))
       end
     }))
@@ -278,7 +275,7 @@ local function read_table(stream, byte)
   end
 end
 
-local function read_list(stream, byte)
+local function read_list(stream)
   local objs = nil
   local orig = nil
   local position = stream:seek("cur")
@@ -293,10 +290,10 @@ local function read_list(stream, byte)
     while true do
       local rightparen = false
       local append, count = pack(_read(stream, {
-        [UnmatchedRightParenException] = function(Exception)
+        [UnmatchedRightParenException] = function(_)
           rightparen = true
         end,
-        [EOFException] = function(Exception)
+        [EOFException] = function(_)
           raise(UnmatchedLeftParenException(stream, position))
         end
       }))
@@ -338,16 +335,6 @@ end
 
 local function read_quasiquote_eval(stream)
   return pair({symbol('quasiquote-eval'), list({read(stream)})})
-end
-
-local function read_negative(stream)
-  local byte = stream:read(1)
-  stream:seek("cur", -1)
-  if not byte:match(" ") then
-    return pair({symbol('-'), list({read(stream)})})
-  else
-    return symbol('-')
-  end
 end
 
 local function read_dispatch_macro(stream)

@@ -1,5 +1,4 @@
 local module_path = (...):gsub('compiler$', '')
-local import = require(module_path .. "import")
 local reader = require(module_path .. "reader")
 local itertools = require(module_path .. "itertools")
 local exception = require(module_path .. "exception")
@@ -10,11 +9,11 @@ local IllegalFunctionCallException =
 
 
 local FunctionArgumentException =
-  exception.exception(function(self, stream, ...)
+  exception.exception(function(_, _, ...)
     return "Argument is not a ".. (tostring(...) or "symbol")
   end)
 
-local list, pair = itertools.list, itertools.pair
+local list = itertools.list
 local slice = itertools.slice
 local map, fold, zip = itertools.map, itertools.fold, itertools.zip
 local foreach = itertools.foreach
@@ -278,7 +277,7 @@ local compile_and = variadic(
     return reference .. " and " .. value
   end, "true",
   function(var) return "if "..var.." then" end,
-  function(var) return "end" end)
+  function(_) return "end" end)
 
 local compile_or = variadic(
   function(block, stream, parameters)
@@ -321,7 +320,7 @@ local compile_divide = variadic(
   end, "nil")
 
 local compile_subtract = variadic(
-  function(block, stream, parameters, is_unary)
+  function(block, stream, parameters)
     return list.concat(map(bind(compile, block, stream), parameters), " - ")
   end,
   function(reference, value)
@@ -353,7 +352,7 @@ end
 local function compile_set(block, stream, name, value)
   if getmetatable(name) == list then
     local names = {}
-    for i, n in ipairs(name) do
+    for _, n in ipairs(name) do
       table.insert(names, compile(block, stream, n))
       table.insert(block, table.concat(names, ", ") .. "=" .. compile(block, stream, value))
     end
@@ -375,7 +374,7 @@ local function compile_table_quote(block, stream, form)
     return "symbol("..show(hash(form))..")"
   elseif getmetatable(form) == list then
     local parameters = {}
-    for i, v in ipairs(form) do
+    for _, v in ipairs(form) do
       table.insert(parameters, _C[hash("table-quote")](block, stream, v))
     end
     return "({" .. table.concat(parameters, ",") .."})"
@@ -388,7 +387,7 @@ end
 local function compile_quote(block, stream, form)
   if getmetatable(form) == list then
     local parameters = {}
-    for i, v in ipairs(form) do
+    for _, v in ipairs(form) do
       table.insert(parameters, _C['quote'](block, stream, v))
     end
     return "list({" .. table.concat(parameters, ",") .."})"
@@ -442,7 +441,7 @@ local function compile_cond(block, stream, ...)
     end, pack(...))
   if _VERSION == "Lua 5.1" then
     map(
-      function(parameter, index)
+      function(_, index)
         if index % 2 == 0 then
           insert("end")
         end
@@ -475,8 +474,7 @@ end
 
 local function defun(block, stream, name, arguments, ...) 
   local parameters = {}
-  local vararg = nil
-  local count = fold(function(a, b) return a + 1 end, 0, arguments)
+  local count = fold(function(a, _) return a + 1 end, 0, arguments)
   for i, param in ipairs(arguments or {}) do
     table.insert(parameters, hash(param))
     if hash(param) == "..." and i ~= count then
@@ -501,7 +499,7 @@ local function defun(block, stream, name, arguments, ...)
   return name
 end
 
-local function compile_lambda(block, stream, arguments, ...)
+local function compile_lambda(_, stream, arguments, ...)
   local src = {}
   defun(src, stream, nil, arguments, ...)
   return "(" .. table.concat(src, "\n") .. ")"
@@ -624,7 +622,7 @@ eval = function (obj, stream, env, G)
   }
 
   -- Copy all itertools into the `core` table.
-  for i, lib in ipairs({itertools}) do
+  for _, lib in ipairs({itertools}) do
     for index, value in pairs(lib) do
       core[index] = value
     end
@@ -698,7 +696,7 @@ _C = {
   quasiquote = compile_quasiquote,
 }
 
-function reader.read_execute(stream, byte)
+function reader.read_execute(stream)
   local obj = reader.read(stream)
   eval(obj, stream)
 end
@@ -868,7 +866,7 @@ end
 -- @return environment table
 local function bootstrap(G)
   -- l2l errors when an undefined global variable is accessed.
-  setmetatable(G, {__index=function(self, key)
+  setmetatable(G, {__index=function(_, key)
     error("undefined '"..key.."'")
   end})
   local stream = reader.tofile(src)
