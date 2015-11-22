@@ -14,5 +14,5 @@ samples:
 	./l2l sample04/main.lsp
 	./l2l sample05.lsp
 
-test:
-	echo "TODO: write some actual tests"
+test: tests/*.lsp tests/init.lua *.lua
+	lua tests/init.lua
