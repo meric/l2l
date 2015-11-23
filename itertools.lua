@@ -186,21 +186,24 @@ local function map(f, objs, ...)
   end
   local orig = pair({nil})
   local last = orig
-  if objs ~= false then
-    for i, v in ipairs(objs or {}) do
-      last[2] = pair({f(v, i), nil})
-      last=last[2]
-    end 
-    return orig[2]
-  else
-    local count = select('#', ...)
-    for i=1, count do
-      local v = select(i, ...)
-      last[2] = pair({f(v), nil})
-      last=last[2]
-    end 
-    return orig[2]
+  for i, v in ipairs(objs or {}) do
+    last[2] = pair({f(v), nil})
+    last=last[2]
+  end 
+  return orig[2]
+end
+
+local function each(f, objs, ...)
+  if objs == nil then
+    return nil
   end
+  local orig = pair({nil})
+  local last = orig
+  for i, v in ipairs(objs or {}) do
+    last[2] = pair({f(v, i), nil})
+    last=last[2]
+  end 
+  return orig[2]
 end
 
 local function contains(objs, target)
@@ -246,5 +249,6 @@ return {
   resolve=resolve,
   bind=bind,
   contains=contains,
-  slice=slice
+  slice=slice,
+  each=each
 }
