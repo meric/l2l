@@ -14,7 +14,7 @@ local FunctionArgumentException =
     return "Argument is not a ".. (tostring(...) or "symbol")
   end)
 
-local list, pair = itertools.list, itertools.pair
+local list, tolist, pair = itertools.list, itertools.tolist, itertools.pair
 local slice = itertools.slice
 local map, fold, zip = itertools.map, itertools.fold, itertools.zip
 local foreach = itertools.foreach
@@ -95,8 +95,8 @@ local function compile_parameters(block, stream, parent, data)
       table.insert(objs, compile(block, stream, datum, position))
     end
   end
-  if list(objs) then
-    return "("..list(objs):concat(", ")..")"
+  if tolist(objs) then
+    return "("..tolist(objs):concat(", ")..")"
   end
   return "()"
 end
@@ -109,7 +109,7 @@ compile = function(block, stream, data, position)
     stream = show(data)
   end
   if type(data) == "table" and not getmetatable(data) then
-    data = list(data)
+    data = tolist(data)
   end
   if data == nil then
     -- Empty list
@@ -233,7 +233,7 @@ local function macroexpand(obj)
   end
   local orig, form
   repeat
-    orig = list({
+    orig = tolist({
       macroexpand(obj[1]),
       map(macroexpand, obj[2])})
     form = macroexpand(orig)
@@ -248,7 +248,7 @@ local function compile_comparison(operator, block, stream, ...)
   if (select('#', ...) == 1) then
     return "true"
   end
-  local objs = (list({...}) or {})
+  local objs = (list(...) or {})
   return list.concat((map(function(tuple)
       return
       "("..
@@ -338,7 +338,7 @@ local function compile_table_attribute(block, stream, attribute, parent, value)
 end
 
 local function compile_table_call(block, stream, attribute, parent, ...)
-  local arguments = list({...})
+  local arguments = list(...)
   local parameters = list.concat(map(function(argument)
       return compile(block, stream, argument)
     end, arguments), ",")
@@ -391,7 +391,7 @@ local function compile_quote(block, stream, form)
     for i, v in ipairs(form) do
       table.insert(parameters, _C['quote'](block, stream, v))
     end
-    return "list({" .. table.concat(parameters, ",") .."})"
+    return "tolist({" .. table.concat(parameters, ",") .."})"
   elseif form == nil then
     return "nil"
   else
@@ -408,7 +408,7 @@ local function compile_quasiquote(block, stream, form)
       hash(form[1]) == hash("quasiquote-eval") then
     return compile(block, stream, form[2][1])
   end
-  return "list({"..list.concat(map(quasiquote, form), ",") .. "})"
+  return "tolist({"..list.concat(map(quasiquote, form), ",") .. "})"
 end
 
 
@@ -564,7 +564,7 @@ local function compile_defcompiler(block, stream, name, arguments, ...)
   defun(src, stream, nil, arguments, ...)
   table.insert(block, reference.."="..table.concat(src, "\n"))
   -- Load the compiler immediately.
-  _C[hash(name)] = eval(list({symbol("lambda"), arguments, ...}), stream, {
+  _C[hash(name)] = eval(tolist({symbol("lambda"), arguments, ...}), stream, {
     hash = hash,
     declare = declare
   })

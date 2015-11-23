@@ -80,31 +80,6 @@ end
 
 local list, pair
 
-local function zip(...)
-  local parameters = {}
-  local smallest
-  for i=1, select("#", ...) do
-    local collection = select(i, ...)
-    local count = 0
-    for j, obj in ipairs(collection) do
-      if smallest and j > smallest then
-        break
-      end
-      if i == 1 then
-        parameters[j] = {}
-      end
-      parameters[j][i] = obj
-      count = count + 1
-    end
-    smallest = math.min(smallest or count, count)
-  end
-  local trimmed = {}
-  for i = 1, smallest do
-    trimmed[i] = parameters[i]
-  end
-  return list(trimmed)
-end
-
 list = setmetatable({
   unpack = function(self)
     if self then
@@ -159,18 +134,53 @@ list = setmetatable({
     until not self
     return str .. ")"
   end
-}, {__call = function(self, t)
+}, {__call = function(self, ...)
     local orig = setmetatable({}, list)
     local last = orig
-    local maxn = table.maxn or function(tb) return #tb end
-    for i=1, maxn(t) do
-      last[2] = setmetatable({t[i], nil}, list)
+    for i=1, select('#', ...) do
+      last[2] = setmetatable({select(i, ...), nil}, list)
       last = last[2]
     end
     return orig[2]
   end})
 
 list.__index = list
+
+local function tolist(t)
+  local orig = setmetatable({}, list)
+  local last = orig
+  local maxn = table.maxn or function(tb) return #tb end
+  for i=1, maxn(t) do
+    last[2] = setmetatable({t[i], nil}, list)
+    last = last[2]
+  end
+  return orig[2]
+end
+
+local function zip(...)
+  local parameters = {}
+  local smallest
+  for i=1, select("#", ...) do
+    local collection = select(i, ...)
+    local count = 0
+    for j, obj in ipairs(collection) do
+      if smallest and j > smallest then
+        break
+      end
+      if i == 1 then
+        parameters[j] = {}
+      end
+      parameters[j][i] = obj
+      count = count + 1
+    end
+    smallest = math.min(smallest or count, count)
+  end
+  local trimmed = {}
+  for i = 1, smallest do
+    trimmed[i] = parameters[i]
+  end
+  return tolist(trimmed)
+end
 
 pair = function(t)
   return setmetatable(t, list)
@@ -250,5 +260,6 @@ return {
   bind=bind,
   contains=contains,
   slice=slice,
-  each=each
+  each=each,
+  tolist=tolist
 }

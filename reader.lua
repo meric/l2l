@@ -4,7 +4,7 @@ local exception = require(module_path .. "exception")
 local raise = exception.raise
 
 local itertools = require(module_path .. "itertools")
-local pack, pair, list = itertools.pack, itertools.pair, itertools.list
+local pack, pair, tolist = itertools.pack, itertools.pair, itertools.tolist
 
 
 -- Create a new type `symbol`.
@@ -250,7 +250,7 @@ local function read_vector(stream, byte)
       table.insert(parameters, obj)
     end
     if rightbracket then
-      return pair({symbol("vector"), list(parameters)})
+      return pair({symbol("vector"), tolist(parameters)})
     end
   end
 end
@@ -273,7 +273,7 @@ local function read_table(stream, byte)
       table.insert(parameters, obj)
     end
     if rightbrace then
-      return pair({symbol("dict"), list(parameters)})
+      return pair({symbol("dict"), tolist(parameters)})
     end
   end
 end
@@ -325,26 +325,26 @@ local function read_list(stream, byte)
 end
 
 local function read_table_quote(stream)
-  return pair({symbol('table-quote'), list({read(stream)})})
+  return pair({symbol('table-quote'), tolist({read(stream)})})
 end
 
 local function read_quote(stream)
-  return pair({symbol('quote'), list({read(stream)})})
+  return pair({symbol('quote'), tolist({read(stream)})})
 end
 
 local function read_quasiquote(stream)
-  return pair({symbol('quasiquote'), list({read(stream)})})
+  return pair({symbol('quasiquote'), tolist({read(stream)})})
 end
 
 local function read_quasiquote_eval(stream)
-  return pair({symbol('quasiquote-eval'), list({read(stream)})})
+  return pair({symbol('quasiquote-eval'), tolist({read(stream)})})
 end
 
 local function read_negative(stream)
   local byte = stream:read(1)
   stream:seek("cur", -1)
   if not byte:match(" ") then
-    return pair({symbol('-'), list({read(stream)})})
+    return pair({symbol('-'), tolist({read(stream)})})
   else
     return symbol('-')
   end
