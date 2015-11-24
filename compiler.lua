@@ -637,7 +637,7 @@ eval = function (obj, stream, env, G)
 
   local reference
 
-  if G ~= _G then
+  if G ~= _G and G._C then
     reference = with_C(G._C, compile, block, stream, obj, _R.position(obj))
   else
     reference = compile(block, stream, obj, _R.position(obj))
