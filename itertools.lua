@@ -146,6 +146,10 @@ list = setmetatable({
 
 list.__index = list
 
+local function id(...)
+  return ...
+end
+
 local function tolist(t)
   local orig = setmetatable({}, list)
   local last = orig
@@ -261,5 +265,6 @@ return {
   contains=contains,
   slice=slice,
   each=each,
-  tolist=tolist
+  tolist=tolist,
+  id=id
 }

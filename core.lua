@@ -58,8 +58,7 @@ local function repl()
         stream:seek("set", position)
         print("Unexpected input: "..stream:read("*all*"))
       else
-        local _, result = pcall(compiler.eval, form)
-        print("=", result)
+        print("=", select(2, pcall(compiler.eval, form)))
       end
     end
   end
