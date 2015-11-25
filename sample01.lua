@@ -9,7 +9,7 @@
 --- Example 12 ---
 
 local sample01= (function() 
-require('core').import('core')
+require('l2l.core').import('l2l.core')
 local _var1
 _var1=print("\n--- Example 1 ---\n")
 function _bang(n)

@@ -1,5 +1,5 @@
 local sample05= (function() 
-require('core').import('core')
+require('l2l.core').import('l2l.core')
 local _var1
 function tree(i, u, n)
 local _var0
