@@ -1,4 +1,5 @@
-local module_path = (...):gsub('compiler$', '')
+--local module_path = (...):gsub('compiler$', '')
+local module_path = "l2l."
 local import = require(module_path .. "import")
 local reader = require(module_path .. "reader")
 local itertools = require(module_path .. "itertools")
@@ -573,7 +574,7 @@ end
 
 local function build(stream)
   local src = {
-    "require(" .. module_path .. "\'core\').import(\'core\')"
+    "require(\'l2l.core\').import(\'l2l.core\')"
   }
   local reference = declare(src)
   local ok, obj
