@@ -332,7 +332,7 @@ local function compile_table_attribute(block, stream, attribute, parent, value)
   local reference = compile(block, stream, parent) .. "[" .. 
     compile(block, stream, attribute) .. "]"
   if value ~= nil then
-    table.insert(block, reference .."=" .. compile(block, stream, parent))
+    table.insert(block, reference .."=" .. compile(block, stream, value))
   end
   return reference
 end
@@ -355,8 +355,8 @@ local function compile_set(block, stream, name, value)
     local names = {}
     for i, n in ipairs(name) do
       table.insert(names, compile(block, stream, n))
-      table.insert(block, table.concat(names, ", ") .. "=" .. compile(block, stream, value))
     end
+    table.insert(block, table.concat(names, ", ") .. "=" .. compile(block, stream, value))
     return table.unpack(names)
   else
     name = compile(block, stream, name)
