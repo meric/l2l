@@ -695,7 +695,7 @@ _C = {
   defun = compile_defun,
   lambda = compile_lambda,
   set = compile_set,
-  quasiquote = compile_quasiquote,
+  quasiquote = compile_quasiquote
 }
 
 local src = [[
