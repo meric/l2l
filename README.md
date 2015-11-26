@@ -44,13 +44,12 @@ How To
 Use in Lua
 ----------
         
-        lua
-        Lua 5.2.4  Copyright (C) 1994-2015 Lua.org, PUC-Rio
-        > require("l2l.eval").loadstring("(print 1) (print 2)")
-        > require("l2l.eval").loadstring("(print 1) (print 2)")()
-        1
-        2
-        > 
+    lua
+    Lua 5.2.4  Copyright (C) 1994-2015 Lua.org, PUC-Rio
+    > require("l2l.eval").loadstring("(print 1) (print 2)")()
+    1
+    2
+    > 
 
 
 Differences from other lisps
