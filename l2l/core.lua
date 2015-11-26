@@ -94,6 +94,14 @@ if debug.getinfo(3) == nil then
     end
   end
 
+  for i=1, #arg do
+    if arg[i] == "--enable" then
+      table.remove(arg, i)
+      local enable = table.remove(arg, i)
+      require("l2l.opt."..enable)
+    end
+  end
+
   if #arg == 0 then
     if not script then
       repl()

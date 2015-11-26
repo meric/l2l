@@ -698,14 +698,6 @@ _C = {
   quasiquote = compile_quasiquote,
 }
 
-function reader.read_execute(stream, byte)
-  local obj = reader.read(stream)
-  eval(obj, stream)
-end
-
-_D['.'] = reader.read_execute
-
-
 local src = [[
   (defun + (...) (+ ...))
   (defun - (...) (- ...))

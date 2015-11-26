@@ -1,3 +1,5 @@
+; Run using `bin/l2l --enable read_execute sample01.lsp | lua`
+
 ; Example 1: Function declaration
 (print "\n--- Example 1 ---\n")
 (defun ! (n) 
