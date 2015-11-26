@@ -286,7 +286,9 @@ local compile_or = variadic(
   end,
   function(reference, value)
     return reference .. " or " .. value
-  end, "false")
+  end, "false",
+  function(var) return "if not "..var.." then" end,
+  function(var) return "end" end)
 
 local compile_multiply = variadic(
   function(block, stream, parameters)
