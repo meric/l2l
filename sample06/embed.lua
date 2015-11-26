@@ -2,7 +2,7 @@
 -- lua program.
 -- Run using: lua sample06/embed.lua
 
-local core = require("core")
+local core = require("l2l.core")
 
 local obj = core.read(core.reader.tofile([[
     (do
