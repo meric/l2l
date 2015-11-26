@@ -35,11 +35,23 @@ How To
         >> 
 
 * `./bin/l2l --enable read_execute sample01.lsp` to compile `sample01.lsp` and output Lua to stdout.
-* `./bin/l2l sample01.lsp | lua` to compile and run `sample01.lsp` immediately.
+* `./bin/l2l --enable read_execute sample01.lsp | lua` to compile and run `sample01.lsp` immediately.
 * `./bin/l2l sample02.lsp sample03.lsp` to compile two lisp files where one 
     requires the other.
 * `make -C sample04` to run the makefile in the sample04 directory. It
    demonstrates how to use l2l from another directory.
+
+Use in Lua
+----------
+        
+        lua
+        Lua 5.2.4  Copyright (C) 1994-2015 Lua.org, PUC-Rio
+        > require("l2l.eval").loadstring("(print 1) (print 2)")
+        > require("l2l.eval").loadstring("(print 1) (print 2)")()
+        1
+        2
+        > 
+
 
 Differences from other lisps
 ----------------------------
