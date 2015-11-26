@@ -17,7 +17,7 @@ local FunctionArgumentException =
 local list, tolist, pair = itertools.list, itertools.tolist, itertools.pair
 local slice = itertools.slice
 local map, fold, zip = itertools.map, itertools.fold, itertools.zip
-local foreach = itertools.foreach
+local foreach, each = itertools.foreach, itertools.each
 local bind = itertools.bind
 local pack = itertools.pack
 local show = itertools.show
@@ -441,7 +441,7 @@ local function compile_cond(block, stream, ...)
       end
     end, pack(...))
   if _VERSION == "Lua 5.1" then
-    map(
+    each(
       function(parameter, index)
         if index % 2 == 0 then
           insert("end")
