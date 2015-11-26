@@ -5,4 +5,4 @@ run: build
 	LUA_PATH=$(L2L_DIR)/?.lua lua main.lua
 
 build:
-	LUA_PATH=$(L2L_DIR)/?.lua $(L2L_DIR)/l2l main.lsp > main.lua;
+	LUA_PATH=$(L2L_DIR)/?.lua $(L2L_DIR)/bin/l2l main.lsp > main.lua;
