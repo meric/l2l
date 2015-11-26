@@ -1,3 +1,6 @@
+-- luajit sample07.lua
+
+
 local eval = require("l2l.eval")
 
 setmetatable(_G, {__newindex=function(self, name, value)
@@ -5,9 +8,7 @@ setmetatable(_G, {__newindex=function(self, name, value)
 end})
 
 local env = eval.environment({
-    x=3,
-    setmetatable=setmetatable,
-    pcall=pcall
+    x=3
 })
 
 local f = eval.loadstring("(set y 1) (print x 1)")

@@ -4,6 +4,10 @@ local module_path = (...):gsub('eval$', '')
 local reader = require(module_path .. "reader")
 local compiler = require(module_path .. "compiler")
 
+local pcall = pcall
+local getmetatable = getmetatable
+local error = error
+
 local evaluate = function(str, env)
   -- returns a function, when evaluated, will evaluate each form in `str`.
   return function()
