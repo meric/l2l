@@ -25,7 +25,7 @@ Play around. Make issues. Submit pull requests. :)
 How To
 ------
 
-* `./l2l` to launch REPL.
+* `./bin/l2l` to launch REPL.
 
         ;; Welcome to Lua-To-Lisp REPL!
         ;; Type '(print "hello world!") to start.
@@ -34,9 +34,9 @@ How To
         =   nil
         >> 
 
-* `./l2l sample01.lsp` to compile `sample01.lsp` and output Lua to stdout.
-* `./l2l sample01.lsp | lua` to compile and run `sample01.lsp` immediately.
-* `./l2l sample02.lsp sample03.lsp` to compile two lisp files where one 
+* `./bin/l2l --enable read_execute sample01.lsp` to compile `sample01.lsp` and output Lua to stdout.
+* `./bin/l2l sample01.lsp | lua` to compile and run `sample01.lsp` immediately.
+* `./bin/l2l sample02.lsp sample03.lsp` to compile two lisp files where one 
     requires the other.
 * `make -C sample04` to run the makefile in the sample04 directory. It
    demonstrates how to use l2l from another directory.
@@ -146,38 +146,6 @@ Internals
     The following information about `defcompiler` is relevant for compilers
     taking variable arguments, i.e. `...`, like the add operator.
     `(+ 1 2 3...)`:
-
-    Caveat: `...` in a compiler arguments as cannot be expanded in a 
-    compilation context, because the code isn't compiled yet, the data cannot
-    be accessed.
-
-    Currently the work around is to write a function with the same name,
-    and in the `defcompiler`, if `...` is in the arguments, call that function
-    to recursively unroll `...` and call it into the compiler function.
-
-
-    For example, the add operator, here is the compiler definition.
-
-        local function compile_add(block, stream, ...)
-          if last({...}) == symbol("...") then
-            local literals = slice({...}, 1, -1)
-            local first = ""
-            if #literals > 0 then
-               first = map(bind(compile, block, stream), literals):concat(" + ")..","
-            end
-            return ("("..hash("+").."("..first.."...))")
-          end
-          return "("..map(bind(compile, block, stream), false, ...):concat(" + ")..")"
-        end
-
-    When "..." is an argument, it will output code representing a call to the
-    `+` function.
-
-        (defun + (a ...)
-            (if (> (select "#" ...) 0) (let (op +) (+ a (op ...))) a))
-
-    This will unroll `...` into individual values and call the compiler with
-    the variable arguments expanded.
 
 * `defmacro` is currently implemented like so:
 
