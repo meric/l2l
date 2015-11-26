@@ -1,5 +1,4 @@
---local module_path = (...):gsub('compiler$', '')
-local module_path = "l2l."
+local module_path = (...):gsub('compiler$', '')
 local import = require(module_path .. "import")
 local reader = require(module_path .. "reader")
 local itertools = require(module_path .. "itertools")

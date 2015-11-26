@@ -1,5 +1,4 @@
---local module_path = (...):gsub('reader$', '')
-local module_path = "l2l."
+local module_path = (...):gsub('reader$', '')
 local import = require(module_path .. "import")
 local exception = require(module_path .. "exception")
 local raise = exception.raise
