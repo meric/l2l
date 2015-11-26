@@ -575,7 +575,8 @@ end
 
 local function build(stream)
   local src = {
-    "require(\'l2l.core\').import(\'l2l.core\')"
+    "require(\'l2l.core\').import(\'l2l.core\')",
+    "compiler.bootstrap(_G)"
   }
   local reference = declare(src)
   local ok, obj
@@ -599,7 +600,7 @@ local function build(stream)
   local code = table.concat(src, "\n")
   for k, _ in pairs(require(module_path.."core")) do
     if code:match("%f[%a]"..k.."%f[%A]") then
-      table.insert(src, 2, "local "..k.." = ".. k)
+      table.insert(src, 3, "local "..k.." = ".. k)
     end
   end
 
