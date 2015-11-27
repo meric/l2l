@@ -462,22 +462,35 @@ local function compile_cond(block, stream, ...)
 end
 
 local function compile_if(block, stream, condition, action, otherwise)
-  local reference ="_var" .. hash(#block)
-  table.insert(block, "local "..reference)
-  table.insert(block, "if " .. compile(block, stream, condition) .." then")
-  local inner1 = {}
-  action = compile(inner1, stream, action)
-  table.insert(block, table.concat(inner1, "\n"))
-  table.insert(block, reference .. " = ".. action)
-  if otherwise then
-    table.insert(block, "else")
-    local inner2 = {}
-    otherwise = compile(inner2, stream, otherwise)
-    table.insert(block, table.concat(inner2, "\n"))
-    table.insert(block, reference .. " = ".. otherwise)
+  local ref = declare(block)
+  local insert = bind(table.insert, block)
+  insert("if "..compile(block, stream, condition).." then")
+  local body = {}
+  local return_is_variadic = is_variadic(action) or is_variadic(otherwise)
+  action = compile(body, stream, action)
+  insert(table.concat(body, "\n"))
+  if return_is_variadic then
+    assign(block, ref, "{"..action.."}")
+  else
+    assign(block, ref, action)
   end
-  table.insert(block, "end")
-  return reference
+  if otherwise then
+    insert("else")
+    local body = {}
+    otherwise = compile(body, stream, otherwise)
+    insert(table.concat(body, "\n"))
+    if return_is_variadic then
+      assign(block, ref, "{"..otherwise.."}")
+    else
+      assign(block, ref, otherwise)
+    end
+  end
+  insert("end")
+  if return_is_variadic then
+    return "unpack("..ref..")"
+  else
+    return ref
+  end
 end
 
 local function defun(block, stream, name, arguments, ...) 
