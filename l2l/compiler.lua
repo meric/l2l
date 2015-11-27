@@ -130,7 +130,9 @@ compile = function(block, stream, data, position)
     local code
     if getmetatable(datum) == symbol then
       if type(_C[hash(datum)]) == "function" then
-        code = _C[hash(datum)](block, stream, list.unpack(rest))
+        code = table.concat({
+            _C[hash(datum)](block, stream, list.unpack(rest))
+          }, ", ")
       else
         code = hash(datum)..compile_parameters(block, stream, data, rest)
       end
