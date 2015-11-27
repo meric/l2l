@@ -175,6 +175,9 @@ end
 -- @argument Argument in list representation to check whether can be variadic.
 -- @return a boolean
 local function is_variadic(argument)
+  if argument == nil then
+    return false
+  end
   if type(argument) == "number" or type(argument) == "string" then
     return false
   end
