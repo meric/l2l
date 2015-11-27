@@ -575,7 +575,7 @@ local function compile_defun(block, stream, name, arguments, ...)
   return defun(block, stream, name, arguments, ...)
 end
 
-local eval
+local eval, compiler
 
 local function compile_defcompiler(block, stream, name, arguments, ...)
   local reference = "_C[hash(\""..show(name).."\")]"
@@ -589,6 +589,49 @@ local function compile_defcompiler(block, stream, name, arguments, ...)
     declare = declare
   })
   return reference
+end
+
+local function stdlib()
+  local core = {
+    import = require(module_path .. "import"),
+    compile = compile,
+    compiler = compiler,
+    hash = hash,
+    read = reader.read,
+    reader = reader,
+    exception = exception,
+    raise = exception.raise,
+    eval = eval
+  }
+
+  -- Copy all itertools into the `core` table.
+  for i, lib in ipairs({itertools}) do
+    for index, value in pairs(lib) do
+      core[index] = value
+    end
+  end
+  return core
+end
+
+local function compile_defmacro(block, stream, name, parameters, ...)
+  local src = {"local "}
+  local fref = defun(src, stream, name, parameters, ...)
+  local fsrc  = table.concat(src, " ")
+  local macro = load(fsrc .. " return " .. fref, nil, nil,
+    setmetatable(stdlib(), {__index=_G}))()
+  _C[hash(name)] = function(_block, _stream, ...)
+    local _compile = bind(compile, _block, _stream)
+    return list.unpack(map(_compile, {macro(...)}))
+  end
+  local cref = "_C["..hash(name).."]"
+  table.insert(block, fsrc)
+  assign(cref, [[
+    function(block, stream, ...)
+      local _compile = bind(compile, block, stream)
+      return list.unpack(map(_compile, {]]..fref..[[(...)}))
+    end
+  ]])
+  return cref
 end
 
 local function build(stream)
@@ -625,31 +668,12 @@ local function build(stream)
   return table.concat(src, "\n")
 end
 
-local compiler
-
 eval = function (obj, stream, env, G)
   G = G or _G
   -- Include the following into the `core` library. The `core` library is
   -- automatically imported into _G in all compiled programs.
   -- See `compiler.build`.
-  local core = {
-    import = require(module_path .. "import"),
-    compile = compile,
-    compiler = compiler,
-    hash = hash,
-    read = reader.read,
-    reader = reader,
-    exception = exception,
-    raise = exception.raise,
-    eval = eval
-  }
-
-  -- Copy all itertools into the `core` table.
-  for i, lib in ipairs({itertools}) do
-    for index, value in pairs(lib) do
-      core[index] = value
-    end
-  end
+  local core = stdlib()
 
   local block = {}
   if stream == nil then
@@ -665,7 +689,6 @@ eval = function (obj, stream, env, G)
   end
   
   local code = table.concat(block, "\n") .. "\nreturn ".. reference
-
   local f, err = load(code, code, nil, setmetatable(env or {},
       {__newindex=G, __index = setmetatable(core, {__index=G})}))
   if f then
@@ -713,6 +736,7 @@ _C = {
   cdr = compile_cdr,
   let = compile_let,
   defcompiler = compile_defcompiler,
+  defmacro = compile_defmacro,
   defun = compile_defun,
   lambda = compile_lambda,
   set = compile_set,
@@ -787,28 +811,6 @@ local src = [[
           (@ (compile block stream obj))
           return "=" @)) (pack ...)))
       "\nend"))
-
-  (defcompiler if (block stream condition action otherwise)
-    (chunk block (return)
-      (@condition (compile block stream condition))
-      "\nif" @condition "then"
-      (@action (cond action (compile block stream action) @condition))
-      return "=" @action
-      (@placeholder (cond otherwise
-        (chunk block ()
-          "else"
-              (@otherwise (compile block stream otherwise))
-            return "=" @otherwise)))
-      "\nend"))
-
-  (defcompiler defmacro (block stream name parameters ...)
-    (let 
-      (params (list.push (list.push parameters 'stream) 'block)
-       code `(defcompiler ,name ,params
-        (let (fn (eval `(lambda ,parameters ,...)))
-          (compile block stream (fn ,(list.unpack parameters))))))
-      (eval code)
-      (compile block stream code)))
 
   (defcompiler for (block stream fn iterable)
     (chunk block (return var1 var2 var3)

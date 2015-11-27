@@ -86,8 +86,12 @@ list = setmetatable({
       return self[1], list.unpack(self[2])
     end
   end,
-  push = function(self, obj)
-    return pair({obj, self})
+  push = function(self, obj, ...)
+    if not ... then
+      return pair({obj, self})
+    else
+      return list.push(pair({obj, self}), ...)
+    end
   end,
   contains = function(self, obj)
     if not self then
