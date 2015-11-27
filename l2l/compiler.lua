@@ -739,7 +739,9 @@ _C = {
   defmacro = compile_defmacro,
   defun = compile_defun,
   lambda = compile_lambda,
+  [hash("=>")] = compile_lambda,
   set = compile_set,
+  [hash("=")] = compiler_set,
   quasiquote = compile_quasiquote
 }
 
@@ -821,6 +823,8 @@ local src = [[
           "local" var1 "=" @fn "(" var1 ")"
           "table.insert(" return "," var1 ")"
       "\nend"))
+
+
 ]]
 
 compiler = {
