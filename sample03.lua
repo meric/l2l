@@ -1,49 +1,43 @@
 local sample02= (function() 
 require('l2l.core').import('l2l.core')
-local _var1
-_C[hash("if1")]=function (block, stream, condition, action, otherwise)
+compiler.bootstrap(_G)
+local tolist = tolist
+local compiler = compiler
+local import = import
+local _var2
+_M["if1"]=(function (condition, action, otherwise)
 local _var0
-local _var1
-do
-local fn=eval(list({symbol("lambda"),list({symbol("condition"),symbol("action"),symbol("otherwise")}),list({symbol("quasiquote"),list({symbol("cond"),condition,action,otherwise})})}))
-_var1=compile(block, stream, fn(condition, action, otherwise))
-end
-return _var1
-end
-_var1=_C[hash("if1")]
+return tolist({symbol("cond"),condition,action,otherwise})
+end)
+_var2=_M["if1"]
 function sum(l)
 local _var0
-local _var1 
-if
-l then
+local _var1
+if l then
+local _var0
+_var0=((l)[1])
+local _var2
 local _var3
-_var3=((l)[1])
-local _var5
-local _var6
-for _var5, _var6 in next, {sum(((l)[2]))} do
-_var3 = _var3 + _var6
+for _var2, _var3 in next, {sum(((l)[2]))} do
+_var0 = _var0 + _var3
 end
-_var1 =
-_var3 else
-_var1 =
-0 
+_var1={_var0}
+else
+
+_var1={0}
 end
-return _var1
+return unpack(_var1)
 end
-return _var1
+return _var2
 end)()
 local sample03= (function() 
-require('core').import('core')
-local _var1
-_var1=print(sum(list({1,3,5,7})))
-local _var3
-do
-if 1 then
-_var3=print(1)
-goto _var3
-end
-_var3=print(0)
-::_var3::
-end
-return _var1
+require('l2l.core').import('l2l.core')
+compiler.bootstrap(_G)
+local tolist = tolist
+local compiler = compiler
+local import = import
+local _var2
+_var2=print(sum(tolist({1,3,5,7})))
+_var2=if1(1, print(1), print(0))
+return _var2
 end)()
