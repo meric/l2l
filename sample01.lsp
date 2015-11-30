@@ -127,25 +127,11 @@
 ; --- Example 10 ---
 ;
 
-; Example 11: Define a do block
-#.(print "\n--- Example 11 ---\n")
+; Example 11: Use a do block
+#. (print "\n--- Example 11 ---\n")
 ; E.g. (do (print 1) (print 2)) will execute (print 1) and (print 2) in sequence
 
-; `chunk` is a built-in utility function to make it easier to write
-; lisp to lua compilers.
-
-(defcompiler _do (block stream ...)
-  (chunk block (var)
-    "\ndo"
-    (@action (map (lambda (obj)
-      (chunk block ()
-        (@ (compile block stream obj))
-        var "=" @)) (pack ...)))
-    "\nend"))
-
-; We can now make this program be interpreted by wrapping code in "#(do ...)"!
-
-#. (_do
+#. (do
   (print "-- I am running this line in the compilation step!")
   (print "-- This too!")
   (print (.. "-- 1 + 1 = " (+ 1 1) "!"))
@@ -161,7 +147,7 @@
 
 (print "\n--- Example 11 ---\n")
 (print "\n--- Did you see what was printed while compiling? ---\n")
-(_do
+(do
   (print 1)
   (print 2))
 
@@ -173,12 +159,6 @@
 ;
 ; 1
 ; 2
-
-; We've had enough, so let's delete our do Operator
-#.(. (hash "_do") _C nil)
-
-; Uncommenting the following will result in an error when compiling
-; #.(do (print 1))
 
 ; Example 12: Macro
 (print "\n--- Example 12 ---\n")

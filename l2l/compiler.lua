@@ -557,6 +557,64 @@ local function compile_lambda(block, stream, arguments, ...)
   return "(" .. table.concat(src, "\n") .. ")"
 end
 
+local function compile_break(block, stream)
+  table.insert(block, "break")
+end
+
+local function compile_do(block, stream, ...)
+  local reference = declare(block)
+  table.insert(block, "do")
+  for i, obj in ipairs({...}) do
+    assign(block, reference, compile(block, stream, obj))
+  end
+  table.insert(block, "end")  
+  return reference
+end
+
+local function compile_for(block, stream, locals, iterator, ...)
+  --[[
+  Usage: 
+  (for (i value) (ipairs (list 1 2 3))
+    (print value)
+    (break))
+  
+  ;; returns the last value in the last executed iteration.
+  ]]--
+  local reference = declare(block)
+  table.insert(block, table.concat({
+    "for",
+    list.concat(locals, ", "),
+    "in",
+    compile(block, stream, iterator),
+    "do"
+  }, " "))
+  for i, expr in ipairs({...}) do
+    assign(block, reference, compile(block, stream, expr))
+  end
+  table.insert(block, "end")
+  return reference
+end
+
+local function compile_while(block, stream, condition, ...)
+  --[[
+  Usage: (while true (print "broken infinite loop") (break))
+
+  ;; returns the last value in the last executed iteration.
+  ]]--
+  local reference = declare(block)
+  table.insert(block, "while true do")
+  table.insert(block, table.concat({
+    "if not (",
+    compile(block, stream, condition),
+    ") then break end"
+  }))
+  for i, obj in ipairs({...}) do
+    assign(block, reference, compile(block, stream, obj))
+  end
+  table.insert(block, "end")
+  return reference
+end
+
 local function compile_car(block, stream, form)
   return "(("..compile(block, stream, form) .. ")[1])"
 end
@@ -702,7 +760,8 @@ eval = function (obj, stream, env, G)
   local reference
 
   if G ~= _G then
-    reference = with_C(G._C or {}, compile, block, stream, obj, _R.position(obj))
+    reference = with_C(G._C or {}, compile, block, stream, obj,
+      _R.position(obj))
   else
     reference = compile(block, stream, obj, _R.position(obj))
   end
@@ -760,6 +819,10 @@ _C = {
   [hash("table-quote")] = compile_table_quote,
   [hash("quote")] = compile_quote,
   [hash("if")] = compile_if,
+  [hash("break")] = compile_break,
+  [hash("do")] = compile_do,
+  [hash("for")] = compile_for,
+  [hash("while")] = compile_while,
   cond = compile_cond,
   car = compile_car,
   cadr = compile_cadr,
@@ -788,74 +851,6 @@ local src = [[
   (defun # (a) (# a))
   (defun .. (...) (.. ...))
   (defun % (a b) (% a b))
-
-  (defcompiler chunk (block stream _block vars ...)
-    ; A small DSL for defining compilers.
-    (let (
-      @block (declare block)
-      @vars (map hash vars)
-      insert (bind (.insert table) block)
-      add (lambda (...)
-        (insert
-          (.. "table.insert(" @block ", "
-              ((.concat table) (pack ...) " ") ")")))
-      append (lambda (obj)
-        (insert
-          (.. @block
-            "[#" @block "]=" @block "[#" @block "]..\" \"..tostring(" obj ")"
-            ))))
-      (insert (.. @block "=" (compile block stream _block)))
-      (map
-        (lambda (@var) (insert (.. "local " @var " = declare(" @block ")")))
-        @vars)
-      (map
-        (lambda (obj)
-          (cond 
-            (== (type obj) "string") (append (show obj))
-            (== (getmetatable obj) list)
-              (insert (.. "local " (hash (car obj)) "="
-                (compile block stream (cadr obj))))
-            (if (== (getmetatable obj) symbol)
-              (add (hash obj)))))
-        (pack ...))
-        (or (and @vars (car @vars)) nil)))
-
-  (defcompiler while (block stream condition ...)
-    (chunk block (return)
-      "\nwhile true do\n"
-      (@condition (compile block stream condition))
-      "if not (" @condition ") then break end"
-      (@placeholder (map (lambda (obj)
-        (chunk block ()
-          (@action (compile block stream obj))
-          return "=" @action
-        )) (pack ...)))
-      "\nend"))
-
-  (defcompiler break (block stream)
-    (chunk block (return)
-      "\nbreak"))
-
-  (defcompiler do (block stream ...)
-    (chunk block (return)
-      "\ndo"
-      (@action (map (lambda (obj)
-        (chunk block ()
-          (@ (compile block stream obj))
-          return "=" @)) (pack ...)))
-      "\nend"))
-
-  (defcompiler for (block stream fn iterable)
-    (chunk block (return var1 var2 var3)
-      (@iterable (compile block stream iterable))
-      (@fn (compile block stream fn))
-      "\nlocal" return "= {}"
-      "\nfor" var1 "," var2 "," var3 "in" @iterable "do\n"
-          "local" var1 "=" @fn "(" var1 ")"
-          "table.insert(" return "," var1 ")"
-      "\nend"))
-
-
 ]]
 
 compiler = {
@@ -896,7 +891,11 @@ compiler = {
   compile_cdr = compile_cdr,
   compile_cadr = compile_cadr,
   compile_let = compile_let,
-  compile_modulo = compile_modulo
+  compile_modulo = compile_modulo,
+  compile_break = compile_break,
+  compile_do = compile_do,
+  compile_for = compile_for,
+  compile_while = compile_while
 }
 
 --- Returns the minimal environment required to bootstrap l2l
