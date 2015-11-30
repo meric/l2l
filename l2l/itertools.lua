@@ -138,6 +138,9 @@ list = setmetatable({
   __tostring = function(self)
     local str = "("
     repeat
+      if getmetatable(self) ~= list then
+        return str..")"
+      end
       str = str .. show(self[1])
       self = self[2]
       if getmetatable(self) == list then
