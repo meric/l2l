@@ -787,6 +787,7 @@ local src = [[
   (defun cdr (a) (cdr a))
   (defun # (a) (# a))
   (defun .. (...) (.. ...))
+  (defun % (a b) (% a b))
 
   (defcompiler chunk (block stream _block vars ...)
     ; A small DSL for defining compilers.
@@ -865,6 +866,7 @@ compiler = {
   hash = hash,
   declare = declare,
   assign = assign,
+  macroexpand = macroexpand,
   FunctionArgumentException = FunctionArgumentException,
   compile_lambda = compile_lambda,
   compile_equals = compile_equals,
