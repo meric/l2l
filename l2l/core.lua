@@ -10,17 +10,14 @@ end
 require(module_path .. "compat")
 
 local reader = require(module_path .. "reader")
-local import = require(module_path .. "import")
 local compiler = require(module_path .. "compiler")
 local exception = require(module_path .. "exception")
 local itertools = require(module_path .. "itertools")
 
 local hash = compiler.hash
 
-_PROMPT = "> "
-
 -- Prompt string.
-_P = ">> "
+local _P = ">> "
 
 -- Only act as a compiler if this file is invoked directly through the shell.
 -- Does not act on any arguments when this file is executed by
@@ -53,7 +50,7 @@ local function repl()
     end
     if ok then
       local position = stream:seek("cur")
-      local _ok, _form = pcall(reader.read, stream)
+      local _, _form = pcall(reader.read, stream)
       if getmetatable(_form) ~= reader.EOFException then
         stream:seek("set", position)
         print("Unexpected input: "..stream:read("*all*"))

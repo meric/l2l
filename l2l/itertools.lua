@@ -64,7 +64,7 @@ local function fold(f, initial, objs)
   if objs == nil then
     return
   end
-  for i, v in ipairs(objs or {}) do
+  for _, v in ipairs(objs or {}) do
     initial = f(initial, v)
   end 
   return initial
@@ -97,7 +97,7 @@ list = setmetatable({
     if not self then
       return false
     end
-    for i, v in ipairs(self) do
+    for _, v in ipairs(self) do
       if v == obj then
         return true
       end
@@ -148,7 +148,7 @@ list = setmetatable({
     until not self
     return str .. ")"
   end
-}, {__call = function(self, ...)
+}, {__call = function(_, t)
     local orig = setmetatable({}, list)
     local last = orig
     for i=1, select('#', ...) do
@@ -235,7 +235,7 @@ local function each(f, objs, ...)
 end
 
 local function contains(objs, target)
-  for i, v in pairs(objs or {}) do
+  for _, v in pairs(objs or {}) do
     if v == target then
       return target
     end
