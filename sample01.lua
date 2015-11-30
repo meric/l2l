@@ -11,15 +11,14 @@
 local sample01= (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
-local compile = compile
-local import = import
-local dict = dict
-local vector = vector
-local hash = hash
-local compiler = compiler
-local pack = pack
-local map = map
 local tolist = tolist
+local import = import
+local pack = pack
+local dict = dict
+local compiler = compiler
+local hash = hash
+local map = map
+local vector = vector
 local _var2
 _var2=print("\n--- Example 1 ---\n")
 function _bang(n)
@@ -117,58 +116,36 @@ end
 _var2=_C[hash("--")]
 
 --This is a comment
-_C[hash("_do")]=function (block, stream, ...)
-local _var0
-local _var1
-_var1=block
-local var = declare(_var1)
-_var1[#_var1]=_var1[#_var1].." "..tostring("\ndo")
-local _64action=map((function (obj)
-local _var0
-local _var1
-_var1=block
-local _64=compile(block, stream, obj)
-table.insert(_var1, var)
-_var1[#_var1]=_var1[#_var1].." "..tostring("=")
-table.insert(_var1, _64)
-return 
-end), pack(...))
-_var1[#_var1]=_var1[#_var1].." "..tostring("\nend")
-return var
-end
-_var2=_C[hash("_do")]
 _var2=print("\n--- Example 11 ---\n")
 _var2=print("\n--- Did you see what was printed while compiling? ---\n")
-local _var55 
+local _var53
 do
-_var55 =
-print(1)
-_var55 =
-print(2) 
+_var53=print(1)
+_var53=print(2)
 end
 _var2=print("\n--- Example 12 ---\n")
-local _var61
+local _var59
 do
 local a=2
-local _var64
+local _var62
 do
 if (a=="1") then
-_var64=print("a == 1")
-goto _var64
+_var62=print("a == 1")
+goto _var62
 end
-local _var70
+local _var68
 do
 if (a==2) then
-_var70=print("a == 2")
-goto _var70
+_var68=print("a == 2")
+goto _var68
 end
-_var70=print("a != 2")
-::_var70::
+_var68=print("a != 2")
+::_var68::
 end
-_var64=_var70
-::_var64::
+_var62=_var68
+::_var62::
 end
-_var61=_var64
+_var59=_var62
 end
 _var2=print(tostring(1 + 2) .. "4")
 return _var2
