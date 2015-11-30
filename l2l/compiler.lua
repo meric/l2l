@@ -627,6 +627,15 @@ end
 
 local function compile_let(block, stream, vars, ...)
   local reference = declare(block)
+  local return_is_variadic
+
+  for i, value in ipairs({...}) do
+    if is_variadic(value) then
+      return_is_variadic = true
+      break
+    end
+  end
+
   table.insert(block, "do")
   local name, value
 
@@ -651,10 +660,19 @@ local function compile_let(block, stream, vars, ...)
     end
   end
   for i=1, select("#", ...) do
-    assign(block, reference, compile(block, stream, select(i, ...)))
+    local expr = compile(block, stream, select(i, ...))
+    if return_is_variadic then
+      expr = "{" .. expr .. "}"
+    end
+    assign(block, reference, expr)
   end
   table.insert(block, "end")
-  return reference
+
+  if return_is_variadic then
+    return "unpack("..reference..")"
+  else
+    return reference
+  end
 end
 
 local function compile_defun(block, stream, name, arguments, ...)
