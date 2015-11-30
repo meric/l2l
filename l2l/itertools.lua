@@ -148,7 +148,7 @@ list = setmetatable({
     until not self
     return str .. ")"
   end
-}, {__call = function(_, t)
+}, {__call = function(_, ...)
     local orig = setmetatable({}, list)
     local last = orig
     for i=1, select('#', ...) do
