@@ -838,20 +838,6 @@ _C = {
   quasiquote = compile_quasiquote
 }
 
-local src = [[
-  (defun + (...) (+ ...))
-  (defun - (...) (- ...))
-  (defun * (...) (- ...))
-  (defun / (...) (- ...))
-  (defun and (...) (- ...))
-  (defun or (...) (- ...))
-  (defun not (a) (not a))
-  (defun car (a) (car a))
-  (defun cdr (a) (cdr a))
-  (defun # (a) (# a))
-  (defun .. (...) (.. ...))
-  (defun % (a b) (% a b))
-]]
 
 compiler = {
   eval = eval,
@@ -923,36 +909,35 @@ local function _minimal()
   }
 end
 
---- Modifies the given environment and bootstrap l2l on it.
--- The given `G` argument must have all elements returned by a table returned
--- by `_minimal()`. For example, bootstrap(_minimal()).
+local default = {}
+
+eval(reader.read(reader.tofile([[
+(do 
+  (defun + (...) (+ ...))
+  (defun - (...) (- ...))
+  (defun * (...) (- ...))
+  (defun / (...) (- ...))
+  (defun and (...) (- ...))
+  (defun or (...) (- ...))
+  (defun not (a) (not a))
+  (defun car (a) (car a))
+  (defun cdr (a) (cdr a))
+  (defun # (a) (# a))
+  (defun .. (...) (.. ...))
+  (defun % (a b) (% a b)))
+]])), nil, nil, default)
+
+--- Modifies the given environment and bootstrap default l2l functions on it.
 -- @G environment table
 -- @return environment table
 local function bootstrap(G)
-  -- l2l errors when an undefined global variable is accessed.
-  setmetatable(G, {__index=function(self, key)
-    error("undefined '"..key.."'")
-  end})
-  local stream = reader.tofile(src)
-  local ok, form
-  repeat
-    ok, form = pcall(reader.read, stream)
-    if ok then
-      eval(form, stream, {
-        assign = assign,
-        declare = declare,
-        _C = _C,
-        _M = _M,
-      }, G)
-    end
-  until not ok
-  if getmetatable(form) ~= reader.EOFException then
-    error(form)
+  for name, value in pairs(default) do
+    G[name] = value
   end
   return G
 end
 
---- Returns the minimal environment required to bootstrap l2l, and bootstrap.
+--- Returns the minimal recommended environment required for l2l.
 local function environment()
   return bootstrap(_minimal())
 end
