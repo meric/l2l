@@ -22,8 +22,12 @@ local bind = itertools.bind
 local pack = itertools.pack
 local show = itertools.show
 local raise = exception.raise
+local stdlib
 
 local function with_C(newC, f, ...)
+  if newC == _C then
+    return f(...)
+  end
   local C = _C
   _G._C = setmetatable(newC, {__index = C})
   local objs, count = pack(f(...))
@@ -101,61 +105,103 @@ local function compile_parameters(block, stream, parent, data)
   return "()"
 end
 
+local macroexpand
+
+local function macroexpand(obj, terminating)
+  if not terminating then
+    if getmetatable(obj) ~= list then
+      return obj
+    end
+    local orig, form = nil, obj
+    repeat
+      if getmetatable(form) ~= list then
+        return form
+      end
+      orig = map(macroexpand, form)
+      form = macroexpand(orig, true)
+    until form == orig
+    return form
+  else
+    if getmetatable(obj) ~= list then
+      return obj
+    end
+    if getmetatable(obj[1]) ~= symbol then
+      return obj
+    end
+    if type(_M[hash(obj[1])]) ~= "function" then
+      return obj
+    end
+
+    local env = stdlib()
+
+    for name, f in pairs(_M) do
+      env[name] = f
+    end
+
+    return unpack({setfenv(_M[hash(obj[1])], setmetatable(env, {__index=_G}))(
+      select(2, list.unpack(obj, ",")))})
+  end
+end
+
 -- Compile `data` into an Lua expression. Any required statements are inserted
 -- into `block`.
-compile = function(block, stream, data, position)
-  -- Returns a lua expression that is not guranteed to be a statement.
-  if stream == nil then
-    stream = show(data)
-  end
-  if type(data) == "table" and not getmetatable(data) then
-    data = tolist(data)
-  end
-  if data == nil then
-    -- Empty list
-    raise(IllegalFunctionCallException, stream, position)
-  elseif getmetatable(data) == list then
-    if #data == 0 then
+compile = function(block, stream, form, position)
+  local exprs = {}
+
+  for i, data in ipairs({macroexpand(form)}) do
+    -- Returns a lua expression that is not guranteed to be a statement.
+    if stream == nil then
+      stream = show(data)
+    end
+    if type(data) == "table" and not getmetatable(data) then
+      data = tolist(data)
+    end
+    if data == nil then
       -- Empty list
       raise(IllegalFunctionCallException, stream, position)
-    end
-    local datum, rest = data[1], data[2]
-    local inline = false
-    if block == nil then
-      -- No space for statements given, all code must be inlined.
-      inline = true
-      block = {}
-    end
-    local obj = compile(block, stream, datum)
-    local code
-    if getmetatable(datum) == symbol then
-      if type(_C[hash(datum)]) == "function" then
-        code = table.concat({
-            _C[hash(datum)](block, stream, list.unpack(rest))
-          }, ", ")
-      else
-        code = hash(datum)..compile_parameters(block, stream, data, rest)
+    elseif getmetatable(data) == list then
+      if #data == 0 then
+        -- Empty list
+        raise(IllegalFunctionCallException, stream, position)
       end
-    elseif data[2] and type(data[1]) == "number" then
-      raise(IllegalFunctionCallException, stream, _R.position(data, 1))
-    else
-      code = obj..compile_parameters(block, stream, data, rest)
+      local datum, rest = data[1], data[2]
+      local inline = false
+      if block == nil then
+        -- No space for statements given, all code must be inlined.
+        inline = true
+        block = {}
+      end
+      local obj = compile(block, stream, datum)
+      local code
+      if getmetatable(datum) == symbol then
+        if type(_C[hash(datum)]) == "function" then
+          code = table.concat({
+              _C[hash(datum)](block, stream, list.unpack(rest))
+            }, ", ")
+        else
+          code = hash(datum)..compile_parameters(block, stream, data, rest)
+        end
+      elseif data[2] and type(data[1]) == "number" then
+        raise(IllegalFunctionCallException, stream, _R.position(data, 1))
+      else
+        code = obj..compile_parameters(block, stream, data, rest)
+      end
+      if inline then
+        table.insert(block, "\n")
+        table.insert(exprs, "(function()\n" .. table.concat(block, "\n")
+          .."return "..code.." end)()")
+      else
+        table.insert(exprs, code)
+      end
+    elseif getmetatable(data) == symbol then
+      table.insert(exprs, hash(data))
+    elseif type(data) == "number" then
+      table.insert(exprs, data)
+    elseif type(data) == "string" then
+      table.insert(exprs, show(data))
     end
-    if inline then
-      table.insert(block, "\n")
-      return "(function()\n" .. table.concat(block, "\n")
-        .."return "..code.." end)()"
-    else
-      return code
-    end
-  elseif getmetatable(data) == symbol then
-    return hash(data)
-  elseif type(data) == "number" then
-    return data
-  elseif type(data) == "string" then
-    return show(data)
   end
-  return ""
+  return table.concat(exprs, ", ")
 end
 
 local function declare(block)
@@ -225,26 +271,6 @@ local function variadic(f, step, initial, prefix, suffix)
 end
 
 local macro = {}
-
-local function macroexpand(obj)
-  if getmetatable(obj) ~= list then
-    return obj
-  end
-  if getmetatable(obj[1]) ~= symbol then
-    return obj
-  end
-  if getmetatable(resolve(hash(obj[1]))) ~= macro then
-    return obj
-  end
-  local orig, form
-  repeat
-    orig = tolist({
-      macroexpand(obj[1]),
-      map(macroexpand, obj[2])})
-    form = macroexpand(orig)
-  until orig  == form
-  return orig
-end
 
 local function compile_comparison(operator, block, stream, ...)
   if (select('#', ...) == 0) then
@@ -334,6 +360,10 @@ local compile_subtract = variadic(
   function(reference, value)
     return reference .." and "..reference.." - " ..value .." or "..value
   end, "nil")
+
+local function compile_modulo(block, stream, value, modulo)
+  return compile(block, stream, value).." % "..compile(block, stream, modulo)
+end
 
 local function compile_table_attribute(block, stream, attribute, parent, value)
   local reference = compile(block, stream, parent) .. "[" .. 
@@ -591,7 +621,7 @@ local function compile_defcompiler(block, stream, name, arguments, ...)
   return reference
 end
 
-local function stdlib()
+stdlib = function()
   local core = {
     import = require(module_path .. "import"),
     compile = compile,
@@ -613,25 +643,14 @@ local function stdlib()
   return core
 end
 
+_M = {}
+
 local function compile_defmacro(block, stream, name, parameters, ...)
-  local src = {"local "}
-  local fref = defun(src, stream, name, parameters, ...)
-  local fsrc  = table.concat(src, " ")
-  local macro = load(fsrc .. " return " .. fref, nil, nil,
-    setmetatable(stdlib(), {__index=_G}))()
-  _C[hash(name)] = function(_block, _stream, ...)
-    local _compile = bind(compile, _block, _stream)
-    return list.unpack(map(_compile, {macro(...)}))
-  end
-  local cref = "_C["..hash(name).."]"
-  table.insert(block, fsrc)
-  assign(cref, [[
-    function(block, stream, ...)
-      local _compile = bind(compile, block, stream)
-      return list.unpack(map(_compile, {]]..fref..[[(...)}))
-    end
-  ]])
-  return cref
+  local mref = "_M["..show(hash(name)).."]"
+  local src = {}
+  defun(src, stream, nil, parameters, ...)
+  assign(block, mref, "(" .. table.concat(src, "\n") .. ")")
+  return mref
 end
 
 local function build(stream)
@@ -689,8 +708,14 @@ eval = function (obj, stream, env, G)
   end
   
   local code = table.concat(block, "\n") .. "\nreturn ".. reference
-  local f, err = load(code, code, nil, setmetatable(env or {},
-      {__newindex=G, __index = setmetatable(core, {__index=G})}))
+
+  setmetatable(core, {__index=G, __newindex=G})
+
+  if env then
+    setmetatable(env, {__newindex=G, __index=core})
+  end
+
+  local f, err = load(code, code, nil, env or core)
   if f then
     local objs, count = pack(pcall(f))
     local ok = table.remove(objs, 1)
@@ -705,6 +730,10 @@ eval = function (obj, stream, env, G)
     error(err)
   end
 end
+
+_M = {
+  
+}
 
 -- Compiler table. Operators that have special syntax in Lua is specified in 
 -- this table so it can be referred to by the compiler. Can be changed
@@ -724,6 +753,7 @@ _C = {
   [hash("+")] = compile_add,
   [hash("-")] = compile_subtract,
   [hash("/")] = compile_divide,
+  [hash("%")] = compile_modulo,
   [hash(".")] = compile_table_attribute,
   [hash(":")] = compile_table_call,
   [hash("#")] = compile_length,
@@ -741,7 +771,7 @@ _C = {
   lambda = compile_lambda,
   [hash("=>")] = compile_lambda,
   set = compile_set,
-  [hash("=")] = compiler_set,
+  [hash("=")] = compile_set,
   quasiquote = compile_quasiquote
 }
 
@@ -864,10 +894,21 @@ compiler = {
   compile_cdr = compile_cdr,
   compile_cadr = compile_cadr,
   compile_let = compile_let,
+  compile_modulo = compile_modulo
 }
 
 --- Returns the minimal environment required to bootstrap l2l
 local function _minimal()
+  local C, M = {}, {}
+
+  for key, value in pairs(_C) do
+    C[key] = value
+  end
+
+  for key, value in pairs(_M) do
+    M[key] = value
+  end
+
   return {
     table = table,
     print = print,
@@ -876,7 +917,8 @@ local function _minimal()
     getmetatable = getmetatable,
     next = next,
     symbol = symbol,
-    _C = setmetatable({}, {__index=_C})
+    _C = C,
+    _M = M
   }
 end
 
@@ -899,6 +941,7 @@ local function bootstrap(G)
         assign = assign,
         declare = declare,
         _C = _C,
+        _M = _M,
       }, G)
     end
   until not ok

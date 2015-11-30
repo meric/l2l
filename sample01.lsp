@@ -175,7 +175,7 @@
 ; 2
 
 ; We've had enough, so let's delete our do Operator
-#.(. (hash "do") _C nil)
+#.(. (hash "_do") _C nil)
 
 ; Uncommenting the following will result in an error when compiling
 ; #.(do (print 1))
@@ -183,10 +183,11 @@
 ; Example 12: Macro
 (print "\n--- Example 12 ---\n")
 
-(defmacro _if (condition action otherwise)
-  `(cond
-    ,condition ,action
-    ,otherwise))
+#.(do
+  (defmacro _if (condition action otherwise)
+    `(cond
+      ,condition ,action
+      ,otherwise)))
 
 (let (a 2)
   (_if (== a "1") (print "a == 1") 
@@ -194,9 +195,9 @@
 
 #.(print "\n--- Example 12 ---\n")
 
-(defmacro GAMMA () '(+ 1 2))
-(defmacro BETA () '(.. (tostring (GAMMA)) "4"))
-(defmacro ALPHA () '(BETA))
+#.(defmacro GAMMA () '(+ 1 2))
+#.(defmacro BETA () '(.. (tostring (GAMMA)) "4"))
+#.(defmacro ALPHA () '(BETA))
 
 ; Macros are compiler-time constructs. They are not visible during run-time.
 ; So if we want to view their expansion, we must do it during compile-time too.

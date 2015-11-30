@@ -1,42 +1,25 @@
 local sample05= (function() 
 require('l2l.core').import('l2l.core')
-local _var1
+compiler.bootstrap(_G)
+local tolist = tolist
+local compiler = compiler
+local import = import
+local _var2
 function tree(i, u, n)
 local _var0
 local _var1
 do
-local _var3
-_var3=(1 / (1))
-local _var5
-local _var6
-for _var5, _var6 in next, {u} do
-_var3 = _var3 / _var6
-end
-local d=_var3
-local _var11
+local d=1 / u
+local _var4
 do
 if (n>0) then
-local _var14
-_var14=i
-local _var16
-local _var17
-for _var16, _var17 in next, {u} do
-_var14 = _var14 * _var17
+_var4=tolist({i,tree(i * u, u, n - 1),tree(i * d, u, n - 1)})
+goto _var4
 end
-local _var21
-_var21=i
-local _var23
-local _var24
-for _var23, _var24 in next, {d} do
-_var21 = _var21 * _var24
+_var4=nil
+::_var4::
 end
-_var11=list({i,tree(_var14, u, n - 1),tree(_var21, u, n - 1)})
-goto _var11
-end
-_var11=nil
-::_var11::
-end
-_var1=_var11
+_var1=_var4
 end
 return _var1
 end
@@ -114,49 +97,28 @@ _var1=_var7
 end
 return _var1
 end
-local _var20
+local _var21
 do
 local period=0.5
 local count_period=2
 local volatility=0.32
-local _var25
-_var25=volatility
-local _var27
+local _var26
+_var26=volatility
 local _var28
-for _var27, _var28 in next, {math.sqrt(period)} do
-_var25 = _var25 * _var28
+local _var29
+for _var28, _var29 in next, {math.sqrt(period)} do
+_var26 = _var26 * _var29
 end
-local u=math.exp(_var25)
-local _var33
-_var33=(1 / (1))
-local _var35
-local _var36
-for _var35, _var36 in next, {u} do
-_var33 = _var33 / _var36
-end
-local d=_var33
+local u=math.exp(_var26)
+local d=1 / u
 local r=math.exp(0.5 * 0.1)
 local dividend=1
-local _var43
-_var43=(1 / (dividend))
-local _var45
-local _var46
-for _var45, _var46 in next, {r} do
-_var43 = _var43 / _var46
-end
-local PV_dividend_=_var43
+local PV_dividend_=dividend / r
 local price_0=70
-local _var52
-_var52=(-price_0)
-local _var54
-local _var55
-for _var54, _var55 in next, {PV_dividend_} do
-_var52 = _var52 - _var55
-end
-local price_0_PV_dividend_=_var52
+local price_0_PV_dividend_=price_0 - PV_dividend_
 local p0=price_0_PV_dividend_
-_var20=print(draw(tree(p0, u, 3)))
-_var20=print(list({1,2,3,4}))
+_var21=print(draw(tree(p0, u, 3)))
+_var21=print(tolist({1,2,3,4}))
 end
-return _var1
+return _var2
 end)()

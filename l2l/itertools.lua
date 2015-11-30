@@ -114,6 +114,16 @@ list = setmetatable({
     end
     return str
   end,
+  __eq = function(self, other)
+    if self == nil and other == nil then
+      return true
+    end
+    if self == nil and other ~= nil or
+       self ~= nil and other  == nil then
+      return false
+    end
+    return self[1] == other[1] and self[2] == other[2]
+  end,
   __ipairs = function(self)
     local i = 0
     return function() 
