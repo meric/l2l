@@ -36,11 +36,11 @@ end
 local function loadfile(filename)
   local f = io.open(filename, "r")
   assert(f, "File not found: " .. filename)
-  stream = reader.tofile(f:read("*all"))
+  local stream = reader.tofile(f:read("*all"))
   f:close()
-  local ok, form, forms = nil, nil, {}
+  local forms = {}
   repeat 
-    ok, form = pcall(reader.read, stream, true)
+    local ok, form = pcall(reader.read, stream, true)
     if ok then
       table.insert(forms, form)
     else
@@ -49,7 +49,7 @@ local function loadfile(filename)
   until not form
   return function()
     local ret = {}
-    for i, form in ipairs(forms) do
+    for _, form in ipairs(forms) do
       ret = {compiler.eval(form)}
     end
     return unpack(ret)

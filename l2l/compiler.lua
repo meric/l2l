@@ -625,7 +625,7 @@ local function compile_let(block, stream, vars, ...)
   local reference = declare(block)
   local return_is_variadic
 
-  for i, value in ipairs({...}) do
+  for _, value in ipairs({...}) do
     if is_variadic(value) then
       return_is_variadic = true
       break
