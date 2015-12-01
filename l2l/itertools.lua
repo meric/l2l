@@ -211,20 +211,20 @@ local function cons(a, b)
   return pair({a, b})
 end
 
-local function map(f, objs, ...)
+local function map(f, objs)
   if objs == nil then
     return nil
   end
   local orig = pair({nil})
   local last = orig
-  for i, v in ipairs(objs or {}) do
+  for _, v in ipairs(objs or {}) do
     last[2] = pair({f(v), nil})
     last=last[2]
   end 
   return orig[2]
 end
 
-local function each(f, objs, ...)
+local function each(f, objs)
   if objs == nil then
     return nil
   end

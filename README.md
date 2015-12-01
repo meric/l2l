@@ -216,7 +216,7 @@ TODO
 * Make sure `_R.META` is recording locations accurately enough during the compiler 
 stage.
 * ~~Implement a method to automate unwrapping of `...` arguments to operators.~~
-* `compiler.lua` self-bootstrapping generates ugly code and poses problem when sandboxing. 
+* ~~`compiler.lua` self-bootstrapping generates ugly code and poses problem when sandboxing.~~ 
 * Replace the io interface `reader.lua` uses with one that has nothing to do with files.
 
 License

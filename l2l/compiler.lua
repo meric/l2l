@@ -13,7 +13,7 @@ local FunctionArgumentException =
     return "Argument is not a ".. (tostring(...) or "symbol")
   end)
 
-local list, tolist, pair = itertools.list, itertools.tolist, itertools.pair
+local list, tolist = itertools.list, itertools.tolist
 local slice = itertools.slice
 local map, fold, zip = itertools.map, itertools.fold, itertools.zip
 local foreach, each = itertools.foreach, itertools.each
@@ -104,14 +104,12 @@ local function compile_parameters(block, stream, parent, data)
   return "()"
 end
 
-local macroexpand
-
 local function macroexpand(obj, terminating)
   if not terminating then
     if getmetatable(obj) ~= list then
       return obj
     end
-    local orig, form = nil, obj
+    local form, orig = obj
     repeat
       if getmetatable(form) ~= list then
         return form
@@ -147,7 +145,7 @@ end
 compile = function(block, stream, form, position)
   local exprs = {}
 
-  for i, data in ipairs({macroexpand(form)}) do
+  for _, data in ipairs({macroexpand(form)}) do
     -- Returns a lua expression that is not guranteed to be a statement.
     if stream == nil then
       stream = show(data)
@@ -269,8 +267,6 @@ local function variadic(f, step, initial, prefix, suffix)
   end
 end
 
-local macro = {}
-
 local function compile_comparison(operator, block, stream, ...)
   if (select('#', ...) == 0) then
     raise(TypeException, stream)
@@ -318,7 +314,7 @@ local compile_or = variadic(
     return reference .. " or " .. value
   end, "false",
   function(var) return "if not "..var.." then" end,
-  function(var) return "end" end)
+  function(_) return "end" end)
 
 local compile_multiply = variadic(
   function(block, stream, parameters)
@@ -505,7 +501,7 @@ local function compile_if(block, stream, condition, action, otherwise)
   end
   if otherwise then
     insert("else")
-    local body = {}
+    body = {}
     otherwise = compile(body, stream, otherwise)
     insert(table.concat(body, "\n"))
     if return_is_variadic then
@@ -555,14 +551,14 @@ local function compile_lambda(_, stream, arguments, ...)
   return "(" .. table.concat(src, "\n") .. ")"
 end
 
-local function compile_break(block, stream)
+local function compile_break(block, _)
   table.insert(block, "break")
 end
 
 local function compile_do(block, stream, ...)
   local reference = declare(block)
   table.insert(block, "do")
-  for i, obj in ipairs({...}) do
+  for _, obj in ipairs({...}) do
     assign(block, reference, compile(block, stream, obj))
   end
   table.insert(block, "end")  
@@ -586,7 +582,7 @@ local function compile_for(block, stream, locals, iterator, ...)
     compile(block, stream, iterator),
     "do"
   }, " "))
-  for i, expr in ipairs({...}) do
+  for _, expr in ipairs({...}) do
     assign(block, reference, compile(block, stream, expr))
   end
   table.insert(block, "end")
@@ -606,7 +602,7 @@ local function compile_while(block, stream, condition, ...)
     compile(block, stream, condition),
     ") then break end"
   }))
-  for i, obj in ipairs({...}) do
+  for _, obj in ipairs({...}) do
     assign(block, reference, compile(block, stream, obj))
   end
   table.insert(block, "end")
@@ -709,7 +705,7 @@ stdlib = function()
   }
 
   -- Copy all itertools into the `core` table.
-  for i, lib in ipairs({itertools}) do
+  for _, lib in ipairs({itertools}) do
     for index, value in pairs(lib) do
       core[index] = value
     end

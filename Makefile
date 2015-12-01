@@ -5,7 +5,7 @@ repl:
 
 check:
 	luacheck --no-color --exclude-files compat.lua sample* \
-	  --new-globals TypeException _R _C _D symbol resolve -- *.lua
+	  --new-globals TypeException _R _C _D symbol resolve -- l2l/*.lua
 
 samples:
 	./bin/l2l --enable read_execute sample01.lsp > sample01.lua
