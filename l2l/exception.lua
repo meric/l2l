@@ -8,7 +8,7 @@ local function lineat(src, index)
     error('index out of bounds: '.. index)
   end
   local cursor = index
-  local start = cursor
+  local start
   local char = src:sub(cursor, cursor)
   local line = ""
   while cursor > 0 and char ~= "\n" do
@@ -43,7 +43,7 @@ end
 -- @return string representing the arrow.
 -- @see formatsource
 local function pointat(src, index)
-  local line, start, finish = lineat(src, index)
+  local _, start, finish = lineat(src, index)
   local display = ""
   for i=start, finish, 1 do
     if i == index then
@@ -96,8 +96,8 @@ local function formatsource(src, message, index)
 
   table.insert(messages, tostring(message).." at line "..linenumber..
     ", column "..columnnumber..":")
-  local stack, content = {}
-  for i=1, 3 do
+  local stack, content, _ = {}
+  for _=1, 3 do
     if start >= 2 then
       content, start = lineat(src, start-2)
       table.insert(stack, content)
@@ -110,7 +110,7 @@ local function formatsource(src, message, index)
   table.insert(messages, "\t|".. pointat(src, index))
   for i=1, 3 do
     if finish + 1 <= #src then
-      content, start, finish = lineat(src, finish+1)
+      content, _, finish = lineat(src, finish+1)
       table.insert(messages, (linenumber + i).."\t|"..content)
     end
   end
@@ -146,8 +146,8 @@ Exception = {
       print(debug.traceback())
       error("stream argument expected")
     end
-    local message = ""
     local index = stream:seek("cur")
+    local message
     stream:seek("set", 0)
     local src = stream:read("*all")
     stream:seek("set", index)
@@ -189,4 +189,4 @@ return setmetatable({
     lineat = lineat,
     pointat = pointat,
     numberat = numberat
-}, {__call = function(self, ...) return exception(...) end})
+}, {__call = function(_, ...) return exception(...) end})

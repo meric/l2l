@@ -1,4 +1,4 @@
-local main= (function() 
+local sample04_47main= (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
 local compiler = compiler

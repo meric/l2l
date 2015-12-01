@@ -64,7 +64,7 @@ local function fold(f, initial, objs)
   if objs == nil then
     return
   end
-  for i, v in ipairs(objs or {}) do
+  for _, v in ipairs(objs or {}) do
     initial = f(initial, v)
   end 
   return initial
@@ -97,7 +97,7 @@ list = setmetatable({
     if not self then
       return false
     end
-    for i, v in ipairs(self) do
+    for _, v in ipairs(self) do
       if v == obj then
         return true
       end
@@ -138,6 +138,9 @@ list = setmetatable({
   __tostring = function(self)
     local str = "("
     repeat
+      if getmetatable(self) ~= list then
+        return str..")"
+      end
       str = str .. show(self[1])
       self = self[2]
       if getmetatable(self) == list then
@@ -148,7 +151,7 @@ list = setmetatable({
     until not self
     return str .. ")"
   end
-}, {__call = function(self, ...)
+}, {__call = function(_, ...)
     local orig = setmetatable({}, list)
     local last = orig
     for i=1, select('#', ...) do
@@ -208,20 +211,20 @@ local function cons(a, b)
   return pair({a, b})
 end
 
-local function map(f, objs, ...)
+local function map(f, objs)
   if objs == nil then
     return nil
   end
   local orig = pair({nil})
   local last = orig
-  for i, v in ipairs(objs or {}) do
+  for _, v in ipairs(objs or {}) do
     last[2] = pair({f(v), nil})
     last=last[2]
   end 
   return orig[2]
 end
 
-local function each(f, objs, ...)
+local function each(f, objs)
   if objs == nil then
     return nil
   end
@@ -235,7 +238,7 @@ local function each(f, objs, ...)
 end
 
 local function contains(objs, target)
-  for i, v in pairs(objs or {}) do
+  for _, v in pairs(objs or {}) do
     if v == target then
       return target
     end
