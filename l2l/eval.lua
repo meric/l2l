@@ -33,6 +33,37 @@ local evaluate = function(str, env)
   end
 end
 
+local function loadfile(filename)
+  local f = io.open(filename, "r")
+  assert(f, "File not found: " .. filename)
+  stream = reader.tofile(f:read("*all"))
+  f:close()
+  local ok, form, forms = nil, nil, {}
+  repeat 
+    ok, form = pcall(reader.read, stream, true)
+    if ok then
+      table.insert(forms, form)
+    else
+      return nil, form
+    end
+  until not form
+  return function()
+    local ret = {}
+    for i, form in ipairs(forms) do
+      ret = {compiler.eval(form)}
+    end
+    return unpack(ret)
+  end
+end
+
+local function dofile(filename)
+  local f, err = loadfile(filename)
+  if not f then
+    error(err)
+  end
+  return f()
+end
+
 return {
   environment = function(env)
     env = env or {}
@@ -45,5 +76,7 @@ return {
   eval = compiler.eval,
   read = reader.read,
   loadstring = evaluate,
-  load = evaluate
+  load = evaluate,
+  loadfile = loadfile,
+  dofile = dofile
 }
