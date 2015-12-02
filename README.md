@@ -13,8 +13,7 @@ Features
 * Reader Macros
 * Macros
 * Lua functions
-* Compiler modification on-the-fly during compile-time..
-* Compiler partially implemented by itself. See https://github.com/meric/l2l/blob/master/compiler.lua#L596
+* Compiler modification on-the-fly during compile-time.
 
 
 Contribute
@@ -25,7 +24,7 @@ Play around. Make issues. Submit pull requests. :)
 How To
 ------
 
-* `./bin/l2l` to launch REPL.
+* `./bin/l2l --enable read_execute` to launch REPL.
 
 ```lisp
 ;; Welcome to Lua-To-Lisp REPL!
