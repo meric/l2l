@@ -45,6 +45,16 @@ Hello world!
 * `make test` to run unit tests.
 * `make repl` to launch the repl.
 
+```lisp
+bin/l2l
+;; Welcome to Lua-To-Lisp REPL!
+;; Type '(print "hello world!") to start.
+>> (set sample02 (import sample02)) ;; sample02.lisp defines the if1 macro. `(set sample02 (import sample02))` acts like python's `import`.
+=	true
+>> (if1 false 1 2)
+=	2
+```
+
 Use in Lua
 ----------
 
