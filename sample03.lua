@@ -1,13 +1,13 @@
 local sample02= (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
-local tolist = tolist
 local import = import
 local compiler = compiler
+local tolist = tolist
 local _var2
 _M["if1"]=(function (condition, action, otherwise)
 local _var0
-return tolist({symbol("cond"),condition,action,otherwise})
+return tolist({symbol("cond"),condition,action,otherwise}, nil)
 end)
 _var2=_M["if1"]
 function sum(l)
@@ -33,9 +33,9 @@ end)()
 local sample03= (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
-local tolist = tolist
 local import = import
 local compiler = compiler
+local tolist = tolist
 local _var2
 _var2=print(sum(tolist({1,3,5,7}, nil)))
 _var2=if1(1, print(1), print(0))
