@@ -5,10 +5,10 @@ local eval = require("l2l.eval")
 local show, cons = itertools.show, itertools.cons
 
 local add = eval.dofile("tests/add.lisp")
-assert(add == 65, "Addition failed! ".. add)
+assert(add == 65, "Addition failed! ".. tostring(add))
 
 local mathy = eval.dofile("tests/math.lisp")
-assert(mathy == -40, "Math failed! " .. mathy)
+assert(mathy == -40, "Math failed! " .. tostring(mathy))
 
 local listy = eval.dofile("tests/list.lisp")
 assert(listy[1] == 5, "List car failed! " .. tostring(listy[1]))

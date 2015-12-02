@@ -106,6 +106,10 @@ if debug.getinfo(3) == nil then
       interpret()
     end
   end
+  local modules = {}
+  if not script then
+    print("return (function() ")
+  end
   for i=1, #arg do
     local file
     if arg[i] == "-" and not script then
@@ -124,12 +128,16 @@ if debug.getinfo(3) == nil then
       if #name == 0 then
         error("Invalid module name " + arg[i])
       end
-      print("local " .. hash(name) .. "= (function() ")
+      table.insert(modules, hash(name))
+      
       print(src)
-      print("end)()")
+      
     elseif script then
       f()
     end
+  end
+  if not script then
+    print("end)()")
   end
 end
 

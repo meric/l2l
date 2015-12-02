@@ -64,9 +64,9 @@ local function dofile(filename)
   local ret = {}
   repeat 
     local ok, form = pcall(reader.read, stream, true)
-    if ok then
+    if ok and form then
       ret = {compiler.eval(form)}
-    else
+    elseif not ok then
       error(form)
     end
   until not form

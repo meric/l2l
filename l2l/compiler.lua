@@ -236,18 +236,24 @@ end
 --- Returns whether an argument in list representation can be variadic.
 -- It returns true if the argument is a function call, since it cannot be known
 -- until the call is evaluated before how many returns it has is known.
--- @argument Argument in list representation to check whether can be variadic.
+-- @param Argument in list representation to check whether can be variadic.
 -- @return a boolean
-local function is_variadic(argument)
-  if argument == nil then
+local function is_variadic(param)
+  if param == nil then
     return false
   end
-  if type(argument) == "number" or type(argument) == "string" then
+  if type(param) == "number" or type(param) == "string" then
     return false
   end
-  if getmetatable(argument) == symbol and argument ~= symbol("...") then
+  if getmetatable(param) == symbol and param ~= symbol("...") then
     return false
   end
+  -- if getmetatable(param) == list and getmetatable(param[1]) == symbol then
+  --   local is_compiler = hash(param[1])
+  --   if is_compiler then
+  --     return false
+  --   end
+  -- end
   -- symbol("...") and function calls are variadic arguments.
   return true
 end
@@ -443,8 +449,8 @@ local function compile_import(block, stream, name)
   local eval = require(module_path.."eval")
   eval.dofile(filename..".lisp")
   local reference = declare(block)
-  assign(block, reference, "require("..show(filename)..")")
-  return reference
+  assign(block, reference, "{require("..show(filename)..")}")
+  return "unpack("..reference..")"
 end
 
 local function compile_quote(block, stream, form)
@@ -674,11 +680,9 @@ local function compile_let(block, stream, vars, ...)
   local reference = declare(block)
   local return_is_variadic
 
-  for _, value in ipairs({...}) do
-    if is_variadic(value) then
-      return_is_variadic = true
-      break
-    end
+  local count = select("#", ...)
+  if is_variadic(select(count, ...)) then
+    return_is_variadic = true
   end
 
   table.insert(block, "do")
@@ -704,9 +708,11 @@ local function compile_let(block, stream, vars, ...)
       end
     end
   end
-  for i=1, select("#", ...) do
+  for i=1, count do
     local expr = compile(block, stream, select(i, ...))
-    if return_is_variadic then
+    if return_is_variadic and i == count then
+      -- if it's not the last, the assignment is only going to matter as
+      -- as casting expressions to statements.
       expr = "{" .. expr .. "}"
     end
     assign(block, reference, expr)
@@ -778,25 +784,26 @@ local function build(stream)
     "compiler.bootstrap(_G)"
   }
   local reference = declare(src)
-  local ok, obj
+  local ok, obj, code
   repeat
     ok, obj = pcall(reader.read, stream)
     if ok then
-      local code = compile(src, stream, obj)
-      if hash(code) ~= code then
+      if code then
         assign(src, reference, code)
       end
+      code = compile(src, stream, obj)
     elseif getmetatable(obj) ~= reader.EOFException then
       error(obj)
     end
   until not ok
-  if #src > 0 then
-    src[#src+1] = "return " .. reference
+
+  if #src > 0 and code then
+    src[#src+1] = "return ".. code
   end
 
   -- For each core method used in the code, declare it as a local variable
   -- as an optimizaiton.
-  local code = table.concat(src, "\n")
+  code = table.concat(src, "\n")
   for k, _ in pairs(require(module_path.."core")) do
     if code:match("%f[%a]"..k.."%f[%A]") then
       table.insert(src, 3, "local "..k.." = ".. k)
