@@ -41,6 +41,9 @@ Hello world!
     requires the other.
 * `make -C sample04` to run the makefile in the sample04 directory. It
    demonstrates how to use l2l from another directory.
+* `make samples` to build all samples.
+* `make test` to run unit tests. Requires bash.
+* `make repl` to launch the repl.
 
 Use in Lua
 ----------
