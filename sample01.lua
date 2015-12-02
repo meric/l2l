@@ -11,14 +11,14 @@
 local sample01= (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
+local pack = pack
+local vector = vector
+local dict = dict
+local map = map
+local import = import
 local compiler = compiler
 local tolist = tolist
-local map = map
 local hash = hash
-local vector = vector
-local pack = pack
-local dict = dict
-local import = import
 local _var2
 _var2=print("\n--- Example 1 ---\n")
 function _bang(n)

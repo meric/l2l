@@ -57,11 +57,20 @@ local function loadfile(filename)
 end
 
 local function dofile(filename)
-  local f, err = loadfile(filename)
-  if not f then
-    error(err)
-  end
-  return f()
+  local f = io.open(filename, "r")
+  assert(f, "File not found: " .. filename)
+  local stream = reader.tofile(f:read("*all"))
+  f:close()
+  local ret = {}
+  repeat 
+    local ok, form = pcall(reader.read, stream, true)
+    if ok then
+      ret = {compiler.eval(form)}
+    else
+      error(form)
+    end
+  until not form
+  return unpack(ret)
 end
 
 return {

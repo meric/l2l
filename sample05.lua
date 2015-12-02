@@ -1,8 +1,8 @@
 local sample05= (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
-local import = import
 local compiler = compiler
+local import = import
 local tolist = tolist
 local _var2
 function tree(i, u, n)
