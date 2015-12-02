@@ -11,14 +11,14 @@
 local sample01= (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
-local import = import
-local compiler = compiler
 local pack = pack
+local compiler = compiler
 local tolist = tolist
 local map = map
+local hash = hash
 local dict = dict
 local vector = vector
-local hash = hash
+local import = import
 local _var2
 _var2=print("\n--- Example 1 ---\n")
 function _bang(n)
@@ -59,15 +59,16 @@ _var2=print("\n--- Example 4 ---\n")
 _var2=map(print, tolist({1,2,3,map((function (x)
 local _var0
 return x * 5
-end), tolist({1,2,3}))}))
+end), tolist({1,2,3}, nil))}))
 _var2=print("\n--- Example 5 ---\n")
 local _var19
 do
 local a=1 + 2
 local b=3 + 4
-_var19=print(a)
-_var19=print(b)
+_var19={print(a)}
+_var19={print(b)}
 end
+_var2=unpack(_var19)
 _var2=print("\n--- Example 6 ---\n")
 _var2=dict("write", (function (self, x)
 local _var0
@@ -87,20 +88,22 @@ local _var0
 return x + y
 end)(10, 20))
 _var2=print("\n--- Example 8 ---\n")
-local _var33
+local _var34
 do
 local a=7 * 8
-_var33=map(print, vector(1, 2, a, 4))
+_var34={map(print, vector(1, 2, a, 4))}
 end
+_var2=unpack(_var34)
 _var2=print("\n--- Example 9 ---\n")
-local _var39
+local _var41
 do
 local d=dict("a", "b", 1, 2, "3", 4)
-_var39=print(d["a"], "b")
-_var39=print(d.a, "b")
-_var39=print(d[1], 2)
-_var39=print(d["3"], 4)
+_var41={print(d["a"], "b")}
+_var41={print(d.a, "b")}
+_var41={print(d[1], 2)}
+_var41={print(d["3"], 4)}
 end
+_var2=unpack(_var41)
 _var2=print("\n--- Example 10 ---\n")
 _C[hash("--")]=function (block, stream, str)
 local _var0
@@ -118,35 +121,36 @@ _var2=_C[hash("--")]
 --This is a comment
 _var2=print("\n--- Example 11 ---\n")
 _var2=print("\n--- Did you see what was printed while compiling? ---\n")
-local _var53
+local _var56
 do
-_var53=print(1)
-_var53=print(2)
+_var56=print(1)
+_var56=print(2)
 end
 _var2=print("\n--- Example 12 ---\n")
-local _var59
-do
-local a=2
 local _var62
 do
+local a=2
+local _var65
+do
 if (a=="1") then
-_var62=print("a == 1")
-goto _var62
+_var65=print("a == 1")
+goto _var65
 end
-local _var68
+local _var71
 do
 if (a==2) then
-_var68=print("a == 2")
-goto _var68
+_var71=print("a == 2")
+goto _var71
 end
-_var68=print("a != 2")
-::_var68::
+_var71=print("a != 2")
+::_var71::
 end
-_var62=_var68
-::_var62::
+_var65=_var71
+::_var65::
 end
-_var59=_var62
+_var62={_var65}
 end
+_var2=unpack(_var62)
 _var2=print(tostring(1 + 2) .. "4")
 return _var2
 end)()
