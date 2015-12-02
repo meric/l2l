@@ -8,11 +8,7 @@ check:
 	  --new-globals TypeException _R _C _D _M symbol resolve -- l2l/*.lua
 
 samples:
-	./bin/l2l --enable read_execute sample01.lisp > sample01.lua
-	./bin/l2l sample02.lisp > sample02.lua
-	./bin/l2l sample02.lisp sample03.lisp > sample03.lua
-	./bin/l2l sample04/main.lisp > sample04/main.lua
-	./bin/l2l sample05.lisp > sample05.lua
+	bash ./bin/build sample04/main.lisp sample0*.lisp
 
 test: tests/*.lisp tests/init.lua *.lua
 	lua tests/init.lua

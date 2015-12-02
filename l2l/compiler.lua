@@ -436,6 +436,17 @@ local function compile_table_quote(block, stream, form)
   error("table quote error ".. tostring(form))
 end
 
+local function compile_import(block, stream, name)
+  local filename = compile(block, stream, name)
+  assert(type(filename) == "string",
+    "import can only be called with symbols")
+  local eval = require(module_path.."eval")
+  eval.dofile(filename..".lisp")
+  local reference = declare(block)
+  assign(block, reference, "require("..show(filename)..")")
+  return reference
+end
+
 local function compile_quote(block, stream, form)
   if getmetatable(form) == list then
     local parameters = {}
@@ -874,6 +885,7 @@ _C = {
   [hash("for")] = compile_for,
   [hash("while")] = compile_while,
   cond = compile_cond,
+  import = compile_import,
   car = compile_car,
   cadr = compile_cadr,
   cdr = compile_cdr,
@@ -930,7 +942,8 @@ compiler = {
   compile_break = compile_break,
   compile_do = compile_do,
   compile_for = compile_for,
-  compile_while = compile_while
+  compile_while = compile_while,
+  compile_import = compile_import
 }
 
 --- Returns the minimal environment required to bootstrap l2l
