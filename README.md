@@ -15,6 +15,16 @@ Features
 * Lua functions
 * Compiler modification on-the-fly during compile-time.
 
+Potential uses
+--------------
+* Lisp in web server. [[Nginx](https://github.com/openresty)] [[Apache](https://httpd.apache.org/docs/trunk/mod/mod_lua.html)]
+* Lisp in Redis. [[Redis](http://redis.io/commands/EVAL)]
+* Lisp with Lua web framework. [[Lapis](https://github.com/leafo/lapis)]
+* Lisp with Lua game engine. [[LÖVE](https://love2d.org)]
+* Lisp in Lua scripted game. [[Wesnoth](http://wiki.wesnoth.org/Luawml#Lua_files)]
+* Cross-platform mobile app development with Lisp. [[Corona](https://coronalabs.com)] [[MOAI](http://getmoai.com)]
+* Lisp whenever there's only ANSI C to build Lua with.
+* Where there's Lua, there can be Lisp also.
 
 Contribute
 ----------
@@ -49,7 +59,7 @@ Hello world!
 bin/l2l
 ;; Welcome to Lisp-To-Lua REPL!
 ;; Type '(print "hello world!") to start.
->> (set sample02 (import sample02)) ;; sample02.lisp defines the if1 macro. `(set sample02 (import sample02))` acts like python's `import`.
+>> (import sample02) ;; sample02.lisp defines the if1 macro.
 =	true
 >> (if1 false 1 2)
 =	2
