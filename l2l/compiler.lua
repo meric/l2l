@@ -440,11 +440,10 @@ local function compile_quote(block, stream, form)
   if getmetatable(form) == list then
     local parameters = {}
     while form do
-      local obj = _C['quote'](block, stream, form[1])
       if getmetatable(form) == list then
-        table.insert(parameters, obj)
+        table.insert(parameters,  _C['quote'](block, stream, form[1]))
       else
-        form = obj
+        form = _C['quote'](block, stream, form)
         break
       end
       form = form[2]
