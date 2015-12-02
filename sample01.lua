@@ -11,13 +11,13 @@
 local sample01= (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
-local pack = pack
 local compiler = compiler
 local tolist = tolist
 local map = map
 local hash = hash
-local dict = dict
 local vector = vector
+local pack = pack
+local dict = dict
 local import = import
 local _var2
 _var2=print("\n--- Example 1 ---\n")
@@ -59,7 +59,7 @@ _var2=print("\n--- Example 4 ---\n")
 _var2=map(print, tolist({1,2,3,map((function (x)
 local _var0
 return x * 5
-end), tolist({1,2,3}, nil))}))
+end), tolist({1,2,3}, nil))}, nil))
 _var2=print("\n--- Example 5 ---\n")
 local _var19
 do

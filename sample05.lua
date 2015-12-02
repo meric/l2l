@@ -2,8 +2,8 @@ local sample05= (function()
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
 local import = import
-local tolist = tolist
 local compiler = compiler
+local tolist = tolist
 local _var2
 function tree(i, u, n)
 local _var0
@@ -13,7 +13,7 @@ local d=1 / u
 local _var4
 do
 if (n>0) then
-_var4=tolist({i,tree(i * u, u, n - 1),tree(i * d, u, n - 1)})
+_var4=tolist({i,tree(i * u, u, n - 1),tree(i * d, u, n - 1)}, nil)
 goto _var4
 end
 _var4=nil
