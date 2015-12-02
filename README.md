@@ -27,7 +27,7 @@ How To
 * `./bin/l2l --enable read_execute` to launch REPL.
 
 ```lisp
-;; Welcome to Lua-To-Lisp REPL!
+;; Welcome to Lisp-To-Lua REPL!
 ;; Type '(print "hello world!") to start.
 >> (print "Hello world!")
 Hello world!
@@ -47,7 +47,7 @@ Hello world!
 
 ```lisp
 bin/l2l
-;; Welcome to Lua-To-Lisp REPL!
+;; Welcome to Lisp-To-Lua REPL!
 ;; Type '(print "hello world!") to start.
 >> (set sample02 (import sample02)) ;; sample02.lisp defines the if1 macro. `(set sample02 (import sample02))` acts like python's `import`.
 =	true

@@ -23,7 +23,7 @@ local _P = ">> "
 -- Does not act on any arguments when this file is executed by
 -- `require("core")`.
 local function repl()
-  print(";; Welcome to Lua-To-Lisp REPL!")
+  print(";; Welcome to Lisp-To-Lua REPL!")
   print(";; Type '(print \"hello world!\") to start.")
   while true do
     local str = ""
