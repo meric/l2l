@@ -1,9 +1,9 @@
-local sample05= (function() 
+return (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
-local compiler = compiler
 local import = import
 local tolist = tolist
+local compiler = compiler
 local _var2
 function tree(i, u, n)
 local _var0
@@ -23,10 +23,12 @@ _var1={_var4}
 end
 return unpack(_var1)
 end
+_var2=tree
 function at(tree)
 local _var0
 return ((tree)[1])
 end
+_var2=at
 function up(tree)
 local _var0
 local _var1
@@ -40,6 +42,7 @@ _var1=nil
 end
 return _var1
 end
+_var2=up
 function down(tree)
 local _var0
 local _var1
@@ -57,6 +60,7 @@ _var1=nil
 end
 return _var1
 end
+_var2=down
 function draw_row(tree)
 local _var0
 local _var1
@@ -77,6 +81,7 @@ _var1=_var7
 end
 return _var1
 end
+_var2=draw_row
 function draw(tree, indent)
 local _var0
 local _var1
@@ -97,19 +102,20 @@ _var1=_var7
 end
 return _var1
 end
-local _var21
+_var2=draw
+local _var27
 do
 local period=0.5
 local count_period=2
 local volatility=0.32
-local _var26
-_var26=volatility
-local _var28
-local _var29
-for _var28, _var29 in next, {math.sqrt(period)} do
-_var26 = _var26 * _var29
+local _var32
+_var32=volatility
+local _var34
+local _var35
+for _var34, _var35 in next, {math.sqrt(period)} do
+_var32 = _var32 * _var35
 end
-local u=math.exp(_var26)
+local u=math.exp(_var32)
 local d=1 / u
 local r=math.exp(0.5 * 0.1)
 local dividend=1
@@ -117,9 +123,8 @@ local PV_dividend_=dividend / r
 local price_0=70
 local price_0_PV_dividend_=price_0 - PV_dividend_
 local p0=price_0_PV_dividend_
-_var21={print(draw(tree(p0, u, 3)))}
-_var21={print(tolist({1,2,3,4}, nil))}
+_var27=print(draw(tree(p0, u, 3)))
+_var27={print(tolist({1,2,3,4}, nil))}
 end
-_var2=unpack(_var21)
-return _var2
+return unpack(_var27)
 end)()

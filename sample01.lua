@@ -1,3 +1,4 @@
+return (function() 
 
 --- Example 11 ---
 
@@ -8,17 +9,16 @@
 
 --- Example 12 ---
 
-local sample01= (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
 local pack = pack
-local vector = vector
-local dict = dict
-local map = map
-local import = import
-local compiler = compiler
 local tolist = tolist
+local vector = vector
+local compiler = compiler
+local map = map
 local hash = hash
+local import = import
+local dict = dict
 local _var2
 _var2=print("\n--- Example 1 ---\n")
 function _bang(n)
@@ -45,15 +45,18 @@ _var1=_var11
 end
 return _var1
 end
+_var2=_bang
 _var2=print(_bang(100))
 _var2=print("\n--- Example 2 ---\n")
 function _206_163()
 local _var0
 return print("ΣΣΣ")
 end
+_var2=_206_163
 _var2=_206_163()
 _var2=print("\n--- Example 3 ---\n")
 hello_world="hello gibberish world"
+_var2=hello_world
 _var2=print(table.concat(pack(string.gsub(hello_world, "gibberish ", "")), " "))
 _var2=print("\n--- Example 4 ---\n")
 _var2=map(print, tolist({1,2,3,map((function (x)
@@ -61,14 +64,14 @@ local _var0
 return x * 5
 end), tolist({1,2,3}, nil))}, nil))
 _var2=print("\n--- Example 5 ---\n")
-local _var19
+local _var22
 do
 local a=1 + 2
 local b=3 + 4
-_var19={print(a)}
-_var19={print(b)}
+_var22=print(a)
+_var22={print(b)}
 end
-_var2=unpack(_var19)
+_var2=unpack(_var22)
 _var2=print("\n--- Example 6 ---\n")
 _var2=dict("write", (function (self, x)
 local _var0
@@ -88,22 +91,22 @@ local _var0
 return x + y
 end)(10, 20))
 _var2=print("\n--- Example 8 ---\n")
-local _var34
+local _var37
 do
 local a=7 * 8
-_var34={map(print, vector(1, 2, a, 4))}
+_var37={map(print, vector(1, 2, a, 4))}
 end
-_var2=unpack(_var34)
+_var2=unpack(_var37)
 _var2=print("\n--- Example 9 ---\n")
-local _var41
+local _var44
 do
 local d=dict("a", "b", 1, 2, "3", 4)
-_var41={print(d["a"], "b")}
-_var41={print(d.a, "b")}
-_var41={print(d[1], 2)}
-_var41={print(d["3"], 4)}
+_var44=print(d["a"], "b")
+_var44=print(d.a, "b")
+_var44=print(d[1], 2)
+_var44={print(d["3"], 4)}
 end
-_var2=unpack(_var41)
+_var2=unpack(_var44)
 _var2=print("\n--- Example 10 ---\n")
 _C[hash("--")]=function (block, stream, str)
 local _var0
@@ -121,36 +124,36 @@ _var2=_C[hash("--")]
 --This is a comment
 _var2=print("\n--- Example 11 ---\n")
 _var2=print("\n--- Did you see what was printed while compiling? ---\n")
-local _var56
+local _var59
 do
-_var56=print(1)
-_var56=print(2)
+_var59=print(1)
+_var59=print(2)
 end
+_var2=_var59
 _var2=print("\n--- Example 12 ---\n")
-local _var62
+local _var66
 do
 local a=2
-local _var65
+local _var69
 do
 if (a=="1") then
-_var65=print("a == 1")
-goto _var65
+_var69=print("a == 1")
+goto _var69
 end
-local _var71
+local _var75
 do
 if (a==2) then
-_var71=print("a == 2")
-goto _var71
+_var75=print("a == 2")
+goto _var75
 end
-_var71=print("a != 2")
-::_var71::
+_var75=print("a != 2")
+::_var75::
 end
-_var65=_var71
-::_var65::
+_var69=_var75
+::_var69::
 end
-_var62={_var65}
+_var66={_var69}
 end
-_var2=unpack(_var62)
-_var2=print(tostring(1 + 2) .. "4")
-return _var2
+_var2=unpack(_var66)
+return print(tostring(1 + 2) .. "4")
 end)()

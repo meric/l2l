@@ -1,9 +1,9 @@
-local sample02= (function() 
+return (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
-local import = import
-local compiler = compiler
 local tolist = tolist
+local compiler = compiler
+local import = import
 local _var2
 _M["if1"]=(function (condition, action, otherwise)
 local _var0
@@ -28,5 +28,5 @@ _var1={0}
 end
 return unpack(_var1)
 end
-return _var2
+return sum
 end)()

@@ -1,21 +1,22 @@
-local sample03= (function() 
+return (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
-local compiler = compiler
-local tolist = tolist
 local import = import
+local tolist = tolist
+local compiler = compiler
 local _var2
 local _var3
-_var3=require("sample02")
+_var3={require("sample02")}
+_var2=unpack(_var3)
 _var2=print(sum(tolist({1,3,5,7}, nil)))
-local _var6
+local _var7
 do
 if 1 then
-_var6=print(1)
-goto _var6
+_var7=print(1)
+goto _var7
 end
-_var6=print(0)
-::_var6::
+_var7=print(0)
+::_var7::
 end
-return _var2
+return _var7
 end)()
