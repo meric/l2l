@@ -1,4 +1,4 @@
-; Run using `bin/l2l --enable read_execute sample01.lsp | lua`
+; Run using `bin/l2l --enable read_execute sample01.lisp | lua`
 
 ; Example 1: Function declaration
 (print "\n--- Example 1 ---\n")
@@ -137,7 +137,7 @@
   (print (.. "-- 1 + 1 = " (+ 1 1) "!"))
   (print "-- Okay that's enough."))
 
-; Compiler Output (`lua l2l sample01.lsp`):
+; Compiler Output (`lua l2l sample01.lisp`):
 ; --- Example 11 ---
 
 ; -- I am running this line in the compilation step!

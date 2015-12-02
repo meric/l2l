@@ -35,9 +35,9 @@ Hello world!
 >> 
 ```
 
-* `./bin/l2l --enable read_execute sample01.lsp` to compile `sample01.lsp` and output Lua to stdout.
-* `./bin/l2l --enable read_execute sample01.lsp | lua` to compile and run `sample01.lsp` immediately.
-* `./bin/l2l sample02.lsp sample03.lsp` to compile two lisp files where one 
+* `./bin/l2l --enable read_execute sample01.lisp` to compile `sample01.lisp` and output Lua to stdout.
+* `./bin/l2l --enable read_execute sample01.lisp | lua` to compile and run `sample01.lisp` immediately.
+* `./bin/l2l sample02.lisp sample03.lisp` to compile two lisp files where one 
     requires the other.
 * `make -C sample04` to run the makefile in the sample04 directory. It
    demonstrates how to use l2l from another directory.
