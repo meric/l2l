@@ -17,7 +17,7 @@ local list, tolist = itertools.list, itertools.tolist
 local slice = itertools.slice
 local map, fold, zip = itertools.map, itertools.fold, itertools.zip
 local foreach, each = itertools.foreach, itertools.each
-local bind = itertools.bind
+local bind, pair = itertools.bind, itertools.pair
 local pack = itertools.pack
 local show = itertools.show
 local raise = exception.raise
@@ -109,12 +109,31 @@ local function macroexpand(obj, terminating)
     if getmetatable(obj) ~= list then
       return obj
     end
-    local form, orig = obj
+    local form, orig, last = obj
     repeat
       if getmetatable(form) ~= list then
         return form
       end
-      orig = map(macroexpand, form)
+      orig = nil
+      last = nil
+
+      while form do
+        if getmetatable(form) == list then
+          local node = pair({macroexpand(form[1]), nil})
+          if not orig then
+            orig = node
+            last = orig
+          else
+            last[2] = node
+            last = last[2]
+          end
+        else
+          last[2] = macroexpand(form)
+          break
+        end
+        form = form[2]
+      end
+
       form = macroexpand(orig, true)
     until form == orig
     return form
@@ -420,10 +439,17 @@ end
 local function compile_quote(block, stream, form)
   if getmetatable(form) == list then
     local parameters = {}
-    for _, v in ipairs(form) do
-      table.insert(parameters, _C['quote'](block, stream, v))
+    while form do
+      local obj = _C['quote'](block, stream, form[1])
+      if getmetatable(form) == list then
+        table.insert(parameters, obj)
+      else
+        form = obj
+        break
+      end
+      form = form[2]
     end
-    return "tolist({" .. table.concat(parameters, ",") .."})"
+    return "tolist({" .. table.concat(parameters, ",") .."}, "..show(form)..")"
   elseif form == nil then
     return "nil"
   else
