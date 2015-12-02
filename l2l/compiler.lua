@@ -449,7 +449,8 @@ local function compile_quote(block, stream, form)
       end
       form = form[2]
     end
-    return "tolist({" .. table.concat(parameters, ",") .."}, "..show(form)..")"
+    return "tolist({" .. table.concat(parameters, ",") .."}, "
+      ..tostring(form)..")"
   elseif form == nil then
     return "nil"
   else
@@ -466,7 +467,19 @@ local function compile_quasiquote(block, stream, form)
       hash(form[1]) == hash("quasiquote-eval") then
     return compile(block, stream, form[2][1])
   end
-  return "tolist({"..list.concat(map(quasiquote, form), ",") .. "})"
+  local parameters = {}
+  while form do
+    local obj = quasiquote(form[1])
+    if getmetatable(form) == list then
+      table.insert(parameters, obj)
+    else
+      form = obj
+      break
+    end
+    form = form[2]
+  end
+  return "tolist({"..table.concat(parameters, ",") .. "}, "
+    ..tostring(form)..")"
 end
 
 
