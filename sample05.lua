@@ -2,8 +2,8 @@ local sample05= (function()
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
 local import = import
-local compiler = compiler
 local tolist = tolist
+local compiler = compiler
 local _var2
 function tree(i, u, n)
 local _var0
@@ -19,9 +19,9 @@ end
 _var4=nil
 ::_var4::
 end
-_var1=_var4
+_var1={_var4}
 end
-return _var1
+return unpack(_var1)
 end
 function at(tree)
 local _var0
@@ -117,8 +117,9 @@ local PV_dividend_=dividend / r
 local price_0=70
 local price_0_PV_dividend_=price_0 - PV_dividend_
 local p0=price_0_PV_dividend_
-_var21=print(draw(tree(p0, u, 3)))
-_var21=print(tolist({1,2,3,4}))
+_var21={print(draw(tree(p0, u, 3)))}
+_var21={print(tolist({1,2,3,4}, nil))}
 end
+_var2=unpack(_var21)
 return _var2
 end)()

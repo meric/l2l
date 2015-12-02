@@ -276,7 +276,12 @@ local function read_table(stream)
 end
 
 local function read_list(stream)
-  local objs = nil
+  local objs = nil -- last 
+
+  -- Keep track of second to last and third to last, to implement 
+  -- the '. in '(1 2 . 3).
+  local pre1 = nil -- second to last
+  local pre2 = nil -- third to last
   local orig = nil
   local position = stream:seek("cur")
 
@@ -302,6 +307,8 @@ local function read_list(stream)
         local obj = append[i]
         if objs == nil then
           orig = pair({obj, nil})
+          pre2 = pre1
+          pre1 = objs
           objs = orig
           _R.META[orig] = {
             [0] = _position,
@@ -309,12 +316,17 @@ local function read_list(stream)
           }
         else
           objs[2] = pair({obj, nil})
+          pre2 = pre1
+          pre1 = objs
           objs = objs[2]
           _R.META[orig][index] = _position
         end
         index = index + 1
       end
       if rightparen then
+        if pre1 and pre1[1] == symbol(".") then
+          pre2[2] = pre1[2][1]
+        end
         return orig
       end
     end

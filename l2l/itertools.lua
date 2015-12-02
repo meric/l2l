@@ -125,11 +125,15 @@ list = setmetatable({
     return self[1] == other[1] and self[2] == other[2]
   end,
   __ipairs = function(self)
+    local orig = self
     local i = 0
     return function() 
-      if self then 
-        local obj = self[1] 
-        self = self[2] 
+      if self then
+        if self[2] ~= nil and getmetatable(self[2]) ~= list then
+          error("cannot iterate improper list "..show(orig))
+        end
+        local obj = self[1]
+        self = self[2]
         i = i + 1
         return i, obj 
       end 
@@ -167,7 +171,8 @@ local function id(...)
   return ...
 end
 
-local function tolist(t)
+local function tolist(t, obj)
+  -- tolist({1, 2}, 3) == '(1 2 . 3)
   local orig = setmetatable({}, list)
   local last = orig
   local maxn = table.maxn or function(tb) return #tb end
@@ -175,6 +180,7 @@ local function tolist(t)
     last[2] = setmetatable({t[i], nil}, list)
     last = last[2]
   end
+  last[2] = obj
   return orig[2]
 end
 
