@@ -1,3 +1,5 @@
+.PHONY: samples
+
 all: check samples test
 
 repl:
@@ -8,7 +10,7 @@ check:
 	  --new-globals TypeException _R _C _D _M symbol resolve -- l2l/*.lua
 
 samples:
-	bash ./bin/build sample04/main.lisp sample0*.lisp
+	bash ./bin/build samples/sample04/main.lisp samples/sample0*.lisp
 
 test: tests/*.lisp tests/init.lua *.lua
 	lua tests/init.lua

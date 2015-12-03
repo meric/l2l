@@ -447,11 +447,17 @@ local function compile_table_quote(block, stream, form)
     table.insert(src, "}")
     return table.concat(src, " ")
   end
-  error("table quote error ".. tostring(show(form)))
+  -- error("table quote error ".. tostring(show(form)))
 end
 
 local function compile_import(block, stream, name)
-  local filename = compile(block, stream, name)
+
+  local filename
+  if type(name) == "string" then
+    filename = name
+  else
+    filename = compile(block, stream, name)
+  end
   assert(type(filename) == "string",
     "import can only be called with symbols")
   local eval = require(module_path.."eval")
