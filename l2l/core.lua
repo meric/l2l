@@ -117,6 +117,9 @@ if debug.getinfo(3) == nil then
     else
       file = io.open(arg[i])
     end
+    if not file then
+      error(arg[i].." file not found!")
+    end
     local src = compiler.build(file)
 
     local f, err = load(src)
