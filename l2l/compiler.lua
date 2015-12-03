@@ -438,8 +438,16 @@ local function compile_table_quote(block, stream, form)
     return "({" .. table.concat(parameters, ",") .."})"
   elseif form == nil then
     return "nil"
+  else
+    local src = {"{"}
+    for k, obj in pairs(form) do
+      table.insert(src, "[".._C[hash("quote")](block, stream, k).."]="..
+        _C[hash("quote")](block, stream, obj)..",")
+    end
+    table.insert(src, "}")
+    return table.concat(src, " ")
   end
-  error("table quote error ".. tostring(form))
+  error("table quote error ".. tostring(show(form)))
 end
 
 local function compile_import(block, stream, name)
