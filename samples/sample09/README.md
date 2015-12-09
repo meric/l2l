@@ -2,10 +2,6 @@
 
 This is a prototype of a time travelling debugger for Lua, inspired by [Elm's](http://debug.elm-lang.org/edit/Mario.elm).
 
-Does not currently handle bugs in code well.
-
-Will likely slow as the program runs and/or more logic is added.
-
 ## Quickstart. ##
 
 Download Love2d from http://love2d.org. Version 0.9.x.
@@ -48,7 +44,10 @@ retroactively, as is the case with the Elm's mario example.
 ## Pitfalls ##
 
 * It's likely performance will not scale since every function call is
-recorded, and every function call is now dozens of function calls instead.
+recorded, and every function call is now dozens of function calls instead. 
+Will likely slow as the program runs and/or more logic is added.
+
+* Does not currently handle bugs in code well.
 
 ## About ##
 
