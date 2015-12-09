@@ -19,33 +19,36 @@ Run with `path_to_love2d/love .`
 
 # How it looks #
 
-1. Move with Left, Right, jump with Up.
-2. Press "P" to toggle Pause and Resume.
-3. Once paused, press the slider to move the program backwards and forwards.
+  1. Move with Left, Right, jump with Up.
+  2. Press "P" to toggle Pause and Resume.
+  3. Once paused, press the slider to move the program backwards and forwards.
 
-1. As we move, a line tracks mario's historical positions.
+
+* As we move, a line tracks mario's historical positions.
 ![1-track-mario-movement-with-line](screenshots/1-track-mario-movement-with-line.png?raw=true "track mario movement with line")
 
-2. We can pause the program and scrub back and forth.
+* We can pause the program and scrub back and forth.
 ![2-pause-and-rewind](screenshots/2-pause-and-rewind.png?raw=true "pause and rewind")
 
-3. a. Change the velocity when jumping from 6.
+* Change the velocity when jumping from 6.
+
 ![3-a-jump-velocity-change-from-6](screenshots/3-a-jump-velocity-change-from-6.png?raw=true "jump velocity change from 6")
 
-3. b. Change the velocity when jumping to 12, and save the file.
+* Change the velocity when jumping to 12, and save the file.
+
 ![3-b-jump-velocity-change-to-12](screenshots/3-b-jump-velocity-change-to-12.png?raw=true "jump velocity change to 12")
 
-4. The code is hotswapped into the program, and all changes applied
+* The code is hotswapped into the program, and all changes applied
 retroactively, as is the case with the Elm's mario example.
 ![4-hotswap-and-apply-change-retroactively](screenshots/4-hotswap-and-apply-change-retroactively.png?raw=true "hotswap and apply change retroactively")
 
-5. The program now runs with new jump velocity code.
+* The program now runs with new jump velocity code.
 ![5-continue-running-with-new-code](screenshots/5-continue-running-with-new-code.png?raw=true "continue running with new code")
 
 # Pitfalls #
 
 * It's likely performance will not scale since every function call is
-recorded, and every function call is now dozens of function call instead.
+recorded, and every function call is now dozens of function calls instead.
 
 # About #
 
