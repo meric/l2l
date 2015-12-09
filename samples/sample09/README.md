@@ -13,7 +13,7 @@ Run with `path_to_love2d/love .`
 
 ## Contents ##
 
-* [debugger.lua](debugger.lua) implements the time travelling debugger.
+* [debugger.lua](../../l2l/ext/debugger.lua) implements the time travelling debugger.
 * [mario.lua](main.lua) contains the actual game code.
 * [main.lua](main.lua) contains the debugger gray panel UI code.
 
