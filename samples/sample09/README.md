@@ -1,23 +1,23 @@
 # Sample09 #
 
-This is a prototype of a time travelling debugger for Lua.
+This is a prototype of a time travelling debugger for Lua, inspired by [Elm's](http://debug.elm-lang.org/edit/Mario.elm).
 
-Does not handle bugs in your code well.
+Does not currently handle bugs in code well.
 
-Likely to be slow as the program runs and/or more logic is added.
+Will likely slow as the program runs and/or more logic is added.
 
-# Quickstart. #
+## Quickstart. ##
 
 Download Love2d from http://love2d.org. Version 0.9.x.
 Run with `path_to_love2d/love .`
 
-# Contents #
+## Contents ##
 
-`mario.lua` contains the actual game code.
-`main.lua` contains the debugger gray panel UI code.
-`debugger.lua` implements the time travelling debugger.
+* [debugger.lua](debugger.lua) implements the time travelling debugger.
+* [mario.lua](main.lua) contains the actual game code.
+* [main.lua](main.lua) contains the debugger gray panel UI code.
 
-# How it looks #
+## How it looks ##
 
   1. Move with Left, Right, jump with Up.
   2. Press "P" to toggle Pause and Resume.
@@ -45,12 +45,12 @@ retroactively, as is the case with the Elm's mario example.
 * The program now runs with new jump velocity code.
 ![5-continue-running-with-new-code](screenshots/5-continue-running-with-new-code.png?raw=true "continue running with new code")
 
-# Pitfalls #
+## Pitfalls ##
 
 * It's likely performance will not scale since every function call is
 recorded, and every function call is now dozens of function calls instead.
 
-# About #
+## About ##
 
 Saw it from http://debug.elm-lang.org/edit/Mario.elm
 
