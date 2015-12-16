@@ -3,12 +3,14 @@
 # ./bin/build x.lisp y.lisp 
 # will replace x.lisp y.lisp with compiled versions of x.lisp and y.lisp
 
+DIR=$(dirname $0)
+
 for src in "$@"
 do
-    if ./bin/l2l --enable read_execute $src > ${src%.lisp}.lua ; then
-        echo "./bin/l2l --enable read_execute $src > ${src%.lisp}.lua...OK"
+    if $DIR/l2l --enable read_execute $src > ${src%.lisp}.lua ; then
+        echo "$DIR/l2l --enable read_execute $src > ${src%.lisp}.lua...OK"
     else
-        echo "./bin/l2l --enable read_execute $src > ${src%.lisp}.lua...FAILED"
+        echo "$DIR/l2l --enable read_execute $src > ${src%.lisp}.lua...FAILED"
         break
     fi
 done
