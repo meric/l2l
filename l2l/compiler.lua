@@ -386,7 +386,11 @@ local function compile_modulo(block, stream, value, modulo)
 end
 
 local function compile_table_attribute(block, stream, attribute, parent, value)
-  local reference = compile(block, stream, parent) .. "[" .. 
+  local obj =  compile(block, stream, parent)
+  if type(parent) == "string" or type(parent) == "number" then
+    obj = "("..obj..")"
+  end
+  local reference = obj .. "[" ..
     compile(block, stream, attribute) .. "]"
   if value ~= nil then
     table.insert(block, reference .."=" .. compile(block, stream, value))
@@ -399,8 +403,8 @@ local function compile_table_call(block, stream, attribute, parent, ...)
   local parameters = list.concat(map(function(argument)
       return compile(block, stream, argument)
     end, arguments), ",")
-  return compile(block, stream, parent) .. ":" ..
-    attribute .. "(" .. parameters .. ")"
+  return "("..compile(block, stream, parent)..")".. ":" ..
+    tostring(attribute) .. "(" .. parameters .. ")"
 end
 
 local function compile_length(block, stream, obj)
@@ -451,7 +455,6 @@ local function compile_table_quote(block, stream, form)
 end
 
 local function compile_import(block, stream, name)
-
   local filename
   if type(name) == "string" then
     filename = name
