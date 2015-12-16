@@ -792,6 +792,12 @@ local function compile_defmacro(block, stream, name, parameters, ...)
   local src = {}
   defun(src, stream, nil, parameters, ...)
   assign(block, mref, "(" .. table.concat(src, "\n") .. ")")
+  local f, err = load("return "..table.concat(src, "\n"))
+  if f then
+    _M[hash(name)] = f()
+  else
+    error(err)
+  end
   return mref
 end
 
