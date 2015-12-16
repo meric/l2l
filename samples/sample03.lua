@@ -1,9 +1,9 @@
 return (function() 
 require('l2l.core').import('l2l.core')
 compiler.bootstrap(_G)
+local tolist = tolist
 local compiler = compiler
 local import = import
-local tolist = tolist
 local _var2
 local _var3
 _var3={require("samples/sample02")}
