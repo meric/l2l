@@ -311,6 +311,7 @@ local function compile_comparison(operator, block, stream, ...)
 end
 
 local compile_equals = bind(compile_comparison, "==")
+local compile_not_equals = bind(compile_comparison, "~=")
 local compile_less_than = bind(compile_comparison, "<")
 local compile_less_than_equals = bind(compile_comparison, "<=")
 local compile_greater_than = bind(compile_comparison, ">")
@@ -584,7 +585,7 @@ local function compile_if(block, stream, condition, action, otherwise)
   end
   insert("end")
   if return_is_variadic then
-    return "unpack("..ref..")"
+    return "unpack("..ref.." or {})"
   else
     return ref
   end
@@ -891,6 +892,7 @@ _M = {
 -- compiling. 
 _C = {
   [hash("==")] = compile_equals,
+  [hash("~=")] = compile_not_equals,
   [hash("<")] = compile_less_than,
   [hash("<=")] = compile_less_than_equals,
   [hash(">")] = compile_greater_than,

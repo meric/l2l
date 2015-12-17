@@ -19,3 +19,5 @@ assert(show(listy[2]) == show(itertools.cons(9, 51)))
 local fac, fib = unpack(eval.dofile("tests/y.lisp"))
 assert(fac(8) == 40320, "Factorial failed!")
 assert(fib(16) == 987, "Fibonacci failed!")
+
+eval.dofile("tests/lua.lisp")

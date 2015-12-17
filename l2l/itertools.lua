@@ -29,6 +29,7 @@ local function vector(...)
 end
 
 local function bind(f, ...)
+  assert(f, "missing f argument")
   local count = select("#", ...)
   local parameters = {...}
   return function(...)
@@ -105,6 +106,7 @@ list = setmetatable({
     return false
   end,
   concat = function(self, separator)
+    separator = separator or ""
     if self == nil then
       return ""
     end
@@ -175,12 +177,20 @@ local function tolist(t, obj)
   -- tolist({1, 2}, 3) == '(1 2 . 3)
   local orig = setmetatable({}, list)
   local last = orig
-  local maxn = table.maxn or function(tb) return #tb end
-  for i=1, maxn(t) do
-    last[2] = setmetatable({t[i], nil}, list)
-    last = last[2]
+  if type(t) == "table" then
+    local maxn = table.maxn or function(tb) return #tb end
+    for i=1, maxn(t) do
+      last[2] = setmetatable({t[i], nil}, list)
+      last = last[2]
+    end
+    last[2] = obj
+  elseif type(t) == "string" then
+    for i=1, #t do
+      last[2] = setmetatable({string.char(t:byte(i)), nil}, list)
+      last = last[2]
+    end
+    last[2] = obj
   end
-  last[2] = obj
   return orig[2]
 end
 
@@ -217,17 +227,33 @@ local function cons(a, b)
   return pair({a, b})
 end
 
-local function map(f, objs)
-  if objs == nil then
-    return nil
+local function map(f, ...)
+  local count = select("#", ...)
+  local iterators = {}
+  for i=1, count do
+    iterators[i] = ipairs(select(i, ...) or {})
   end
-  local orig = pair({nil})
-  local last = orig
-  for _, v in ipairs(objs or {}) do
-    last[2] = pair({f(v), nil})
+
+  local origin = pair({nil})
+  local last = origin
+  local index = 0
+  while true do
+    local parameters = {}
+    local do_break = false
+    for i=1, count do
+      local _index, value = iterators[i](select(i, ...) or {}, index)
+      if not _index then
+        do_break = true
+      end
+      parameters[i] = value
+    end
+    index = index + 1
+    if do_break then
+      return origin[2]
+    end
+    last[2] = cons(f(unpack(parameters)))
     last=last[2]
-  end 
-  return orig[2]
+  end
 end
 
 local function each(f, objs)
@@ -252,6 +278,49 @@ local function contains(objs, target)
   return false
 end
 
+local function span(predicate, objs)
+  local left, right = list(nil), list(nil)
+  local left_last, right_last = left, right
+  for i, value in ipairs(objs or {}) do
+    if predicate and predicate(value) then
+      left_last[2] = cons(value)
+      left_last = left_last[2]
+    else
+      predicate = nil
+      right_last[2] = cons(value)
+      right_last = right_last[2]
+    end
+  end
+  return left[2], right[2]
+end
+
+local function scan(f, initial, objs)
+  local origin = cons(nil)
+  local last = origin
+  for i, value in ipairs(objs or {}) do
+    initial = f(initial, value)
+    last[2] = cons(initial)
+    last = last[2]
+  end
+  return origin[2]
+end
+
+local function last(objs)
+  local obj
+  for i, value in ipairs(objs or {}) do
+    obj = value
+  end
+  return obj
+end
+
+local function flip(f)
+  return function(b, a, ...)
+    return f(a, b, ...)
+  end
+end
+
+
+
 --- Returns array inclusive of start and finish indices.
 -- 1 is first position. 0 is last position. -1 is second last position.
 -- @objs iterable to slice.
@@ -271,6 +340,35 @@ local function slice(objs, start, finish)
   return orig
 end
 
+local function car(t)
+  return t[1]
+end
+
+local function cdr(t)
+  return t[2]
+end
+
+local function take(n, objs)
+  local orig = cons(nil)
+  local last = orig
+  for i, v in ipairs(objs or {}) do
+    last[2] = cons(v)
+    last = last[2]
+    if i == n then
+      break
+    end
+  end
+  return orig[2]
+end
+
+local function drop(n, objs)
+  if n <= 0 then
+    return objs
+  end
+  return drop(n-1, cdr(objs))
+end
+
+
 return {
   vector=vector,
   dict=dict,
@@ -289,5 +387,13 @@ return {
   slice=slice,
   each=each,
   tolist=tolist,
-  id=id
+  id=id,
+  scan=scan,
+  span=span,
+  last=last,
+  flip=flip,
+  car=car,
+  cdr=cdr,
+  take=take,
+  drop=drop
 }
