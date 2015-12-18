@@ -128,8 +128,8 @@ end
 local function execute(reader, environment, bytes)
   environment = environment or environ(bytes)
   local values, rest = reader(environment, bytes)
-  if bytes then
-    environment._META[bytes] = values
+  if bytes and values and rest ~= bytes then
+    environment._META[bytes] = {read=reader, values=values}
   end
   return values, rest
 end
@@ -320,7 +320,7 @@ if debug.getinfo(3) == nil then
   ]]--
   local values, rest = read(nil, tolist([[
     (print
-      ($ return a)
+      ($ return (b))
     )]]))
   -- ($ while(nil)do return(nil),nil end)
   print(values, rest)

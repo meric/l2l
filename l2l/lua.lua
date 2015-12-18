@@ -10,6 +10,7 @@ local take = itertools.take
 local drop = itertools.drop
 local tolist = itertools.tolist
 local map = itertools.map
+local filter = itertools.filter
 
 local raise = exception.raise
 
@@ -159,16 +160,18 @@ SET.__index = SET
 local ANY = setmetatable({
   __call = function(self, environment, bytes)
     for i, reader in ipairs(self) do
-      assert(not is(reader, OPT))
-      assert(not is(reader, SKIP))
-      assert(not is(reader, REPEAT))
-      assert(reader)
-      local ok, values, rest = pcall(execute, reader, environment, bytes)
-      if ok and values and rest ~= bytes then
-        return values, rest
-      end
-      if not ok and getmetatable(values) ~= ExpectedNonTerminal then
-        raise(values)
+      if reader ~= nil then
+        assert(not is(reader, OPT))
+        assert(not is(reader, SKIP))
+        assert(not is(reader, REPEAT))
+        assert(reader)
+        local ok, values, rest = pcall(execute, reader, environment, bytes)
+        if ok and values and rest ~= bytes then
+          return values, rest
+        end
+        if not ok and getmetatable(values) ~= ExpectedNonTerminal then
+          raise(values)
+        end
       end
     end
     return nil, bytes
@@ -186,7 +189,7 @@ local ANY = setmetatable({
   end
 }, {
   __call = function(ANY, ...)
-    return setmetatable({...}, ANY)
+    return setmetatable({list.unpack(filter(id, list(...)))}, ANY)
   end
 })
 
@@ -195,40 +198,47 @@ local ALL = setmetatable({
   __call = function(self, environment, bytes)
     local values, rest, all, ok = nil, bytes, {}
     for i, reader in ipairs(self) do
-       while true do
-        assert(reader)
-        local prev = rest
-        if is(reader, OPT) or is(reader, REPEAT) then
-          ok, values, rest = pcall(execute, reader, environment, rest)
-          if not ok then
-            rest = prev -- restore to previous point.
-            if getmetatable(values) == ExpectedNonTerminal then
+      if reader ~= nil then
+        while true do
+          assert(reader)
+          local prev = rest
+          local prev_meta = environment._META[rest]
+          if is(reader, OPT) or is(reader, REPEAT) then
+            ok, values, rest = pcall(execute, reader, environment, rest)
+            if not ok then
+              rest = prev -- restore to previous point.
+              if getmetatable(values) == ExpectedNonTerminal then
+                break
+              else
+                raise(values)
+              end
+            end
+          else
+            values, rest = execute(reader, environment, rest)
+          end
+          if not values then
+            if is(reader, REPEAT) then
               break
-            else
-              raise(values)
+            elseif not is(reader, OPT) then
+              return nil, bytes
             end
           end
-        else
-          values, rest = execute(reader, environment, rest)
-        end
-        if not values then
-          if is(reader, REPEAT) then
-            break
-          elseif not is(reader, OPT) then
-            return nil, bytes
+          if is(reader, PEEK) then
+            -- Restore any metadata at this point
+            -- We don't want a PEEK operation to affect state.
+            -- We didn't consume any input, it should not be recorded as we
+            -- have.
+            environment._META[prev] = prev_meta
+            rest = prev
+          elseif not is(reader, SKIP) then
+            for j, value in ipairs(values or {}) do
+              table.insert(all, value)
+            end
           end
-        end
-        if is(reader, PEEK) then
-          -- print(reader, prev, rest)
-          rest = prev
-        elseif not is(reader, SKIP) then
-          for j, value in ipairs(values or {}) do
-            table.insert(all, value)
-          end
-        end
 
-        if not is(reader, REPEAT) then
-          break
+          if not is(reader, REPEAT) then
+            break
+          end
         end
       end
     end
@@ -247,7 +257,7 @@ local ALL = setmetatable({
   end
 }, {
   __call = function(ALL, ...)
-    return setmetatable({...}, ALL)
+    return setmetatable({list.unpack(filter(id, list(...)))}, ALL)
   end
 })
 
@@ -264,11 +274,18 @@ end
 
 local function read_nonterminal(nonterminal, factory)
   assert(factory, "missing `origin` argument")
-  local origin
+  local is_called, origin = {}
+  -- print("initalize", nonterminal)
   local reader = SET(nonterminal, function(environment, bytes)
-    origin = origin or factory(environment, bytes)
-    -- print(nonterminal, origin, bytes)
-    local values, rest = execute(origin, environment, bytes)
+    -- `is_looping` is whether reader has been called at this point.
+    local is_looping = is_called[bytes]
+    origin = factory(environment, bytes, is_looping)
+    is_called[bytes] = true
+    local ok, values, rest = pcall(execute, origin, environment, bytes)
+    is_called = {}
+    if not ok then
+      raise(values, 2)
+    end
     if #({list.unpack(values)}) == 0 then
       raise(ExpectedNonTerminal(environment, bytes, origin))
     end
@@ -459,20 +476,19 @@ local read_goto = read_nonterminal(_goto,
 
 local read_exp
 local read_var
-local read_prefixexp = read_nonterminal(prefixexp,
-  -- prefixexp ::= var | functioncall | ‘(’ exp ‘)’
-  function() return ANY(
-    ALL(
-      TERM("("),
-      READ(read_whitespace, SKIP, OPT),
-      read_exp,
-      READ(read_whitespace, SKIP, OPT),
-      TERM(")"),
-      READ(read_whitespace, SKIP, OPT)
-    ),
-    ALL(
-      READ(ANY(read_Name, TERM("(")), PEEK),
-      read_var)
+local read_prefixexp
+local read_block
+
+local read_while = read_nonterminal(_while,
+  -- while exp do block end
+  function() return ALL(
+    TERM("while"),
+    READ(read_whitespace, SKIP),
+    READ(read_exp),
+    TERM("do"),
+    READ(read_whitespace), -- omit SKIP to prevent "doreturn"
+    READ(read_block, OPT),
+    TERM("end")
   ) end)
 
 read_exp = read_nonterminal(exp,
@@ -492,39 +508,58 @@ read_exp = read_nonterminal(exp,
     )
   ) end)
 
-local read_block
-local read_while = read_nonterminal(_while,
-  -- while exp do block end
-  function() return ALL(
-    TERM("while"),
-    READ(read_whitespace, SKIP),
-    READ(read_exp),
-    TERM("do"),
-    READ(read_whitespace), -- omit SKIP to prevent "doreturn"
-    READ(read_block, OPT),
-    TERM("end")
-  ) end)
+read_prefixexp = read_nonterminal(prefixexp,
+  -- prefixexp ::= var | functioncall | ‘(’ exp ‘)’
+  function(environment, bytes, is_looping)
+    return ANY(
+      not is_looping and ALL(
+        READ(ANY(read_Name, TERM("(")), PEEK),
+        read_var),
+      ALL(
+        TERM("("),
+        READ(read_whitespace, SKIP, OPT),
+        read_exp,
+        READ(read_whitespace, SKIP, OPT),
+        TERM(")"),
+        READ(read_whitespace, SKIP, OPT)
+      )
+    ) end)
 
 read_var = read_nonterminal(var,
   -- var ::=  Name | prefixexp ‘[’ exp ‘]’ | prefixexp ‘.’ Name 
-  function() return ANY(
-    read_Name,
-    ALL(
-      read_prefixexp,
-      READ(read_whitespace, SKIP, OPT),
-      TERM('['),
-      READ(read_whitespace, SKIP, OPT),
-      read_exp,
-      READ(read_whitespace, SKIP, OPT),
-      TERM("]"),
-      READ(read_whitespace, SKIP, OPT)),
-    ALL(
-      read_prefixexp,
-      -- READ(read_whitespace, SKIP, OPT),
-      TERM("."),
-      -- READ(read_whitespace, SKIP, OPT),
-      read_Name)
-  ) end)
+  function(environment, bytes)
+    local has_prefixexp
+    -- Check if read_prefixexp is already read
+    if environment._META[bytes] then
+      if environment._META[bytes].read == read_prefixexp then
+        has_prefixexp = true
+      end
+    end
+    return ANY(
+      ALL(
+        -- ANY cuts out at read_Name for a.b, if we don't have this clause. 
+        read_Name,
+        READ(read_whitespace, SKIP, OPT),
+        TERM("."),
+        READ(read_whitespace, SKIP, OPT),
+        read_Name),
+      read_Name,
+      ALL(
+        not has_prefixexp and read_prefixexp,
+        READ(read_whitespace, SKIP, OPT),
+        TERM('['),
+        READ(read_whitespace, SKIP, OPT),
+        read_exp,
+        READ(read_whitespace, SKIP, OPT),
+        TERM("]"),
+        READ(read_whitespace, SKIP, OPT)),
+      ALL(
+        not has_prefixexp and read_prefixexp,
+        READ(read_whitespace, SKIP, OPT),
+        TERM("."),
+        READ(read_whitespace, SKIP, OPT),
+        read_Name)
+    ) end)
 
 local read_varlist = read_nonterminal(varlist,
   -- varlist ::= var {‘,’ var}

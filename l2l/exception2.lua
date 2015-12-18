@@ -149,8 +149,8 @@ Exception = setmetatable({
 end})
 
 
-local function raise(exception)
-  error(exception)
+local function raise(exception, n)
+  error(exception, 2 + ((n or 1) - 1))
 end
 
 return {

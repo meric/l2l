@@ -319,7 +319,18 @@ local function flip(f)
   end
 end
 
-
+local function filter(f, objs)
+  f = f or id
+  local origin = cons(nil)
+  local last = origin
+  for i, obj in ipairs(objs) do
+    if f(obj) then
+      last[2] = cons(obj)
+      last = last[2]
+    end
+  end
+  return origin[2]
+end
 
 --- Returns array inclusive of start and finish indices.
 -- 1 is first position. 0 is last position. -1 is second last position.
@@ -341,10 +352,12 @@ local function slice(objs, start, finish)
 end
 
 local function car(t)
+  assert(t)
   return t[1]
 end
 
 local function cdr(t)
+  assert(t)
   return t[2]
 end
 
@@ -395,5 +408,6 @@ return {
   car=car,
   cdr=cdr,
   take=take,
-  drop=drop
+  drop=drop,
+  filter=filter
 }
