@@ -6,6 +6,6 @@ return {
         return a == b
     end,
     ["[]"] = function(a, b)
-        return a[b]
+        return b[a]
     end
 }

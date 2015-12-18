@@ -11,13 +11,17 @@ local exception = require("l2l.exception2")
 local raise = exception.raise
 
 local UnmatchedRightParenException =
-  exception.Exception("Unmatched right parenthesis.")
+  exception.Exception("UnmatchedRightParenException",
+    "Unmatched right parenthesis.")
 local EOFException =
-  exception.Exception("End of file")
+  exception.Exception("EOFException",
+    "End of file")
 local UnmatchedReadMacroException =
-  exception.Exception("Cannot find matching read macro for byte '%s'.")
+  exception.Exception("UnmatchedReadMacroException",
+    "Cannot find matching read macro for byte '%s'.")
 local UnmatchedLeftParenException =
-  exception.Exception("Unmatched left parenthesis.")
+  exception.Exception("UnmatchedLeftParenException",
+    "Unmatched left parenthesis.")
 
 -- Create a new type `symbol`.
 local symbol = setmetatable({
@@ -95,15 +99,18 @@ end
 --    end)
 -- ```
 -- @param environment The environment
--- @param R new _R read macro table that will inherit the existing one.
+-- @param R new _R read macro table.
+-- @param inherit whether new _R will inherit the existing one.
 -- @param f function that will be evaluated with `environment` as the first
 --          argument.
 -- @param ... Arguments that will be given to `f`.
-local function with_R(environment, R, f, ...)
+local function with_R(environment, inherit, R, f, ...)
   local _R = environment._R
   local newR = {}
-  for k, v in pairs(_R) do
-    newR[k] = v
+  if inherit then
+    for k, v in pairs(_R) do
+      newR[k] = v
+    end
   end
   for k, v in pairs(R or {}) do
     newR[k] = v
@@ -118,6 +125,7 @@ local default_R
 
 local function environ(bytes)
   return {
+    _R=default_R(),
     _META={
       origin=bytes,
       source=list.concat(bytes, "")
@@ -125,9 +133,9 @@ local function environ(bytes)
   }
 end
 
-local function execute(reader, environment, bytes)
+local function execute(reader, environment, bytes, ...)
   environment = environment or environ(bytes)
-  local values, rest = reader(environment, bytes)
+  local values, rest = reader(environment, bytes, ...)
   if bytes and values and rest ~= bytes then
     environment._META[bytes] = {read=reader, values=values}
   end
@@ -140,7 +148,7 @@ end
 -- @param bytes a list of strings, each one character long.
 -- @return list of values from next lisp expression, list of remaining bytes
 local function read(environment, bytes)
-  environment = environment or {_META={}, _R=default_R()}
+  environment = environment or environ(bytes)
 
   -- Store the entry point to the program.
   if not environment._META.origin then
@@ -195,7 +203,7 @@ local function read_predicate(environment, transform, predicate, bytes)
   return list(transform(token)), bytes
 end
 
---[[
+--[[--
 -- Slow
 local function read_predicate(environment, transform, predicate, bytes)
   local tokens, rest = span(car,
@@ -207,7 +215,7 @@ local function read_predicate(environment, transform, predicate, bytes)
   local value = (transform or id)(last(tokens))
   return tolist({value}), rest
 end
-]]--
+--]]--
 
 local function read_symbol(environment, bytes)
   -- Any byte that is not defined as a read macro can be part of a symbol.
@@ -267,7 +275,7 @@ local function read_lua(environment, bytes)
     return nil, bytes
   end
 
-  local values, rest = with_R(environment, lua.block_R(),
+  local values, rest = with_R(environment, false, lua.block_R(),
     function()
       return read(environment, rest)
     end)
@@ -284,7 +292,7 @@ local function read_list(environment, bytes)
   local origin = list(nil)
   local last = origin
   local rest = bytes[2]
-  return with_R(environment, {
+  return with_R(environment, true, {
     -- ["."] = cons(read_attribute, environment._R["."]),
     -- [":"] = cons(read_method, environment._R[":"])
   }, function()
@@ -339,24 +347,29 @@ function default_R()
 end
 
 if debug.getinfo(3) == nil then
-  -- (print ($ ))
-  --[[
-  (print ($ 
-    local $x = 1;
-    local $y =1;
-    local $z={f=1}
-    return x y z.f)
-  ]]--
-  local values, rest = read(nil, tolist([[
-    (print
-      ($ return (b))
-    )]]))
-  -- ($ while(nil)do return(nil),nil end)
-  print(values, rest)
-  for i, value in ipairs(cdr(car(values))) do
-    -- print(value:is_valid())
-    print(show(value:representation()))
-  end
+  local lua = require("l2l.lua")
+  local bytes = tolist("return (a).c")
+  local values, rest = lua.read_retstat(environ(bytes), bytes)
+  print(show(values), rest)
+  print(show(car(values):representation()))
+  -- -- (print ($ ))
+  -- --[[
+  -- (print ($ 
+  --   local $x = 1;
+  --   local $y =1;
+  --   local $z={f=1}
+  --   return x y z.f)
+  -- ]]--
+  -- local values, rest = read(nil, tolist([[
+  --   (print
+  --     ($ return a(b)(c))
+  --   )]]))
+  -- -- ($ while(nil)do return(nil),nil end)
+  -- for i, value in ipairs(cdr(car(values))) do
+  --   -- print(value:is_valid())
+  --   print(show(value))
+  --   print(show(value:representation()))
+  -- end
 end
 
 -- (. mario x y)
@@ -372,6 +385,7 @@ return {
   execute = execute,
   read_predicate = read_predicate,
   read_number = read_number,
-  match=match
+  match=match,
+  environ=environ
 }
 

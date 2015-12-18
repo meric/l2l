@@ -84,6 +84,9 @@ local list, pair
 list = setmetatable({
   unpack = function(self)
     if self then
+      if getmetatable(self) ~= list then
+        return self
+      end
       return self[1], list.unpack(self[2])
     end
   end,
@@ -94,13 +97,25 @@ list = setmetatable({
       return list.push(pair({obj, self}), ...)
     end
   end,
+  count = function(self, obj)
+    local value = 0
+    if not self then
+      return 0
+    end
+    for _, v in ipairs(self) do
+      if v == obj then
+        value = value + 1
+      end
+    end
+    return value
+  end,
   contains = function(self, obj)
     if not self then
       return false
     end
-    for _, v in ipairs(self) do
+    for i, v in ipairs(self) do
       if v == obj then
-        return true
+        return i
       end
     end
     return false
@@ -115,6 +130,16 @@ list = setmetatable({
       str = str .. separator .. self[2]:concat(separator)
     end
     return str
+  end,
+  __len = function(self)
+    if not self then
+      return 0
+    end
+    local count = 0
+    for i, value in ipairs(self) do
+      count = count + 1
+    end
+    return count
   end,
   __eq = function(self, other)
     while self and other do
@@ -139,7 +164,7 @@ list = setmetatable({
     return function() 
       if self then
         if self[2] ~= nil and getmetatable(self[2]) ~= list then
-          error("cannot iterate improper list "..show(orig))
+          self[2] = pair({self[2]})
         end
         local obj = self[1]
         self = self[2]
@@ -289,10 +314,20 @@ local function each(f, objs)
   return orig[2]
 end
 
+local function keys(objs)
+  local orig = pair({nil})
+  local last = orig
+  for k, _ in pairs(objs) do
+    last[2] = cons(k, nil)
+    last = last[2]
+  end
+  return orig[2]
+end
+
 local function contains(objs, target)
-  for _, v in pairs(objs or {}) do
+  for i, v in pairs(objs or {}) do
     if v == target then
-      return target
+      return i
     end
   end
   return false
@@ -358,13 +393,13 @@ end
 -- @start first index.
 -- @finish second index
 local function slice(objs, start, finish)
-  if finish <= 0 then
+  if finish and finish <= 0 then
     finish = #objs + finish
   end
 
   local orig = {}
   for i, v in ipairs(objs) do
-    if i >= start and i <= finish then
+    if i >= start and (not finish or i <= finish) then
       table.insert(orig, v)
     end
   end
@@ -395,7 +430,7 @@ local function take(n, objs)
 end
 
 local function drop(n, objs)
-  if n <= 0 then
+  if n <= 0 or not objs then
     return objs
   end
   return drop(n-1, cdr(objs))
@@ -429,5 +464,6 @@ return {
   cdr=cdr,
   take=take,
   drop=drop,
-  filter=filter
+  filter=filter,
+  keys=keys
 }

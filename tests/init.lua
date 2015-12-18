@@ -16,7 +16,7 @@ assert(listy[2][1] == 9, "List cadr failed.")
 assert(listy[2][2] == 51, "List cddr failed.")
 assert(show(listy[2]) == show(itertools.cons(9, 51)))
 
-local fac, fib = unpack(eval.dofile("tests/y.lisp"))
+local fac, fib = itertools.list.unpack(eval.dofile("tests/y.lisp"))
 assert(fac(8) == 40320, "Factorial failed!")
 assert(fib(16) == 987, "Fibonacci failed!")
 

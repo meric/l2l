@@ -1,4 +1,5 @@
 local list = require("l2l.itertools").list
+local map = require("l2l.itertools").map
 
 --- Return a the line, and its start and end indices in a string at a position.
 -- @param src The string.
@@ -126,26 +127,41 @@ local Exception;
 
 Exception = setmetatable({
   __tostring = function(self)
-    return self.message or ""
+    return ("%s(%s)"):format(self.name, self.message)
   end,
   __call = function(self, environment, bytes, ...)
-    local lines = formatsource(
-      environment._META.source,
-      message or self.message:format(...),
-      #environment._META.source  - #list.concat(bytes))
+    local parameters = map(function(value)
+      local Class = getmetatable(value)
+      if Class and getmetatable(Class) == Exception then
+        return Class.formatted(value)
+      end
+      return value
+    end, {...})
     return setmetatable({
-      environment=environment, 
-      bytes=bytes,
-      arguments={...},
-      message=table.concat(lines, "\n")},
+        environment=environment, 
+        bytes=bytes,
+        arguments={...},
+        name=self.name,
+        message=self.message:format(list.unpack(parameters))},
       self)
   end
-}, {__call = function(Exception, message)
+}, {__call = function(Exception, name, message)
   return setmetatable({
-      message = message,
+      name = name,
+      message = message or "",
       __tostring = function(self)
-      return tostring(self.message) or ""
-    end}, Exception)
+        local lines = formatsource(
+          self.environment._META.source, self.message,
+          #self.environment._META.source  - #list.concat(self.bytes))
+        return ("%s: %s"):format(
+          self.name,
+          table.concat(lines, "\n"))
+      end,
+      formatted = function(self)
+        return ("%s: %s"):format(
+          self.name,
+          self.message)
+      end}, Exception)
 end})
 
 
