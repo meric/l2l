@@ -117,14 +117,21 @@ list = setmetatable({
     return str
   end,
   __eq = function(self, other)
-    if self == nil and other == nil then
-      return true
+    while self and other do
+      if self == nil and other == nil then
+        return true
+      end
+      if self == nil and other ~= nil or
+         self ~= nil and other  == nil then
+        return false
+      end
+      if self[1] ~= other[1] then
+        return false
+      end
+      self = self[2]
+      other = other[2]
     end
-    if self == nil and other ~= nil or
-       self ~= nil and other  == nil then
-      return false
-    end
-    return self[1] == other[1] and self[2] == other[2]
+    return self == other
   end,
   __ipairs = function(self)
     local orig = self
@@ -227,8 +234,21 @@ local function cons(a, b)
   return pair({a, b})
 end
 
+local function map1(f, objs)
+  local origin = cons(nil)
+  local last = origin
+  for i, value in ipairs(objs or {}) do
+    last[2] = cons(f(value))
+    last = last[2]
+  end
+  return origin[2]
+end
+
 local function map(f, ...)
   local count = select("#", ...)
+  if count == 1 then
+    return map1(f, ...)
+  end
   local iterators = {}
   for i=1, count do
     iterators[i] = ipairs(select(i, ...) or {})

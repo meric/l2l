@@ -6,7 +6,7 @@ local scan, map, span = itertools.scan, itertools.map, itertools.span
 local last, id, flip = itertools.last, itertools.id, itertools.flip
 local cons, pack, zip = itertools.cons, itertools.pack, itertools.zip
 local car, cdr, tolist = itertools.car, itertools.cdr, itertools.tolist
-
+local foreach = itertools.foreach
 local exception = require("l2l.exception2")
 local raise = exception.raise
 
@@ -41,7 +41,7 @@ symbol.__index = symbol
 local function match(...)
   local patterns = {...}
   return function(text)
-    assert(type(text) == "string")
+    assert(type(text) == "string", type(text))
     for i, pattern in ipairs(patterns) do
       local matches = text:match(pattern)
       if matches then
@@ -169,6 +169,34 @@ local function read(environment, bytes)
   raise(UnmatchedReadMacroException(environment, bytes, byte))
 end
 
+--[[
+optimise scan, span, map
+]]
+
+local function read_predicate(environment, transform, predicate, bytes)
+  local token = ""
+  local previous = nil
+  while true do
+    if not bytes then
+      break
+    end
+    local byte = bytes[1]
+    previous = token
+    token = token..byte
+    if not predicate(token, byte) then
+      token = previous
+      break
+    end
+    bytes = bytes[2]
+  end
+  if #token == 0 then
+    return nil, bytes
+  end
+  return list(transform(token)), bytes
+end
+
+--[[
+-- Slow
 local function read_predicate(environment, transform, predicate, bytes)
   local tokens, rest = span(car,
     map(function(token, byte) return
@@ -179,6 +207,7 @@ local function read_predicate(environment, transform, predicate, bytes)
   local value = (transform or id)(last(tokens))
   return tolist({value}), rest
 end
+]]--
 
 local function read_symbol(environment, bytes)
   -- Any byte that is not defined as a read macro can be part of a symbol.
