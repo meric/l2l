@@ -190,8 +190,17 @@ local SET = setmetatable({
 })
 SET.__index = SET
 
+local function index_of_sublist(origin, sub)
+  local count = 0 
+  if origin == sub then
+    return 0
+  end
+  return 1 + index_of_sublist(origin[2], sub)
+end
+
 ANY = setmetatable({
   __call = function(self, environment, bytes, targets)
+    -- find the one that consumes most tokens
     for i, reader in ipairs(self) do
       if reader ~= nil then
         assert(not is(reader, OPT))
@@ -341,7 +350,7 @@ local read_nonterminal
 -- Return how many times child should be recursively called.
 local function find_maximum_count(environment, bytes, head, parent, child)
   local tail = child.factory(environment, bytes, list(),
-    function(head, nonterminal, reader)
+    function(head, reader)
       return reader
     end)
   local values, rest = head(environment, bytes)
@@ -412,7 +421,9 @@ read_nonterminal = function(nonterminal, factory, const)
   local reader = SET(nonterminal, function(environment, bytes, targets)
     if not origin or not const then
       ok, origin = pcall(factory, environment, bytes,
-        function(head, child, reader)
+        function(head, reader)
+          -- mutual recursion can't just rely on counts.
+          local child = reader.target
           local count = list.count(targets, child)
           maximum_counts[bytes] = maximum_counts[bytes] or {}
           local maximum_count = maximum_counts[bytes][child]
@@ -751,21 +762,10 @@ read_prefixexp = read_nonterminal(prefixexp,
       READ(TERM(")"), OPT))
 
     return ANY(
-      -- I don't know how many times i need to loop
-      -- need to guess...
-      -- can't be too many or too little
-      -- left_recurse(environment, bytes, targets, functioncall, prefixexp)
-      -- functioncall_count < functioncall_maximum_count and 
-      left(read_head, functioncall, ALL(
-        -- Give the parser a hint to avoid infinite loop on Left-recursion.
-        -- `functioncall` can only begin with a Name or "(".
-        READ(ANY(read_Name, TERM("(")), PEEK),
-        read_functioncall)),
-      left(read_head, var, ALL(
-        -- Give the parser a hint to avoid infinite loop on Left-recursion.
-        -- `var` can only begin with a Name or "(".
-        READ(ANY(read_Name, TERM("(")), PEEK),
-        read_var)),
+      -- Give the parser a hint to avoid infinite loop on Left-recursion.
+      -- `var` can only begin with a Name or "(".
+      left(read_head, read_functioncall),
+      left(read_head, read_var),
       ALL(
         TERM("("),
         READ(read_whitespace, SKIP, OPT),

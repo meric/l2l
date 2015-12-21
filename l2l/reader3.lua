@@ -348,7 +348,7 @@ end
 
 if debug.getinfo(3) == nil then
   local lua = require("l2l.lua")
-  local bytes = tolist("return (a).c")
+  local bytes = tolist("return f[a](a)(c)(d)")
   local values, rest = lua.read_retstat(environ(bytes), bytes)
   print(show(values), rest)
   print(show(car(values):representation()))
