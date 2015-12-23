@@ -8,17 +8,16 @@ local car = itertools.car
 local match = reader.match
 local read_predicate = reader.read_predicate
 
-local SET = grammar.SET
-local ALL = grammar.ALL
-local ANY = grammar.ANY
-local TERM = grammar.TERM
-local LABEL = grammar.LABEL
-local SKIP = grammar.SKIP
-local OPTION = grammar.OPTION
-local REPEAT = grammar.REPEAT
+local associate = grammar.associate
+local span = grammar.span
+local any = grammar.any
+local mark = grammar.mark
+local skip = grammar.skip
+local option = grammar.option
+local repeating = grammar.repeating
 local Terminal = grammar.Terminal
 local NonTerminal = grammar.NonTerminal
-local factor_nonterminal = grammar.factor_nonterminal
+local factor = grammar.factor
 
 local ParseException = grammar.ParseException
 
@@ -133,23 +132,24 @@ LuaLabel
 LuaNumber
 LuaVariable
 --?>
-local unop = factor_nonterminal(unop,
+local unop = factor(unop,
   -- unop ::= ‘-’ | not | ‘#’ | ‘~’
-  function() return ANY(
+  function() return any(
     TERM("-"),
-    ALL(TERM("not"), whitespace),
+    span(TERM("not"), space),
     TERM("#"),
     TERM("~")
   ) end)
 
 
-($ unop ::= "-" | "not" whitespace | "#" | "~";
-   whitespace = function() )
+($ unop ::= "-" | "not" space | "#" | "~";
+   space = function() )
 ]]--
 
-local Name = NonTerminal("whitespace")
 
-local number = factor_nonterminal("number",
+local Name = NonTerminal("space")
+
+local number = factor("number",
   function() return
     function(environment, bytes)
       local values, rest = reader.read_number(environment, bytes)
@@ -160,14 +160,14 @@ local number = factor_nonterminal("number",
     end
   end)
 
-local whitespace = factor_nonterminal("whitespace",
+local space = factor("space",
   function() return
     function(environment, bytes)
-    -- * Mandatory whitespace after keywords should not be "SKIP"ed.
+    -- * Mandatory space after keywords should not be "skip"ed.
     --   Otherwise when output the code could produce like "gotolabel",
     --   which is not valid.
-    -- * In "ALL", whitespace prepend content elements that can have
-    --   whitespaces prepending it.
+    -- * In "all", space prepend content elements that can have
+    --   spaces prepending it.
       local patterns = {}
       local bounds = {
         ["("]=true,
@@ -197,7 +197,9 @@ local whitespace = factor_nonterminal("whitespace",
     end
   end)
 
-local Name  = SET(Name, function(environment, bytes)
+local __ = mark(space, skip, option)
+
+local Name  = associate(Name, function(environment, bytes)
   -- Names (also called identifiers) in Lua can be any string of letters,
   -- digits, and underscores, not beginning with a digit and not being a
   -- reserved word. Identifiers are used to name variables, table fields, and
@@ -212,32 +214,14 @@ local Name  = SET(Name, function(environment, bytes)
   return values, rest
 end)
 
-local unop = factor_nonterminal("unop",
+local unop = factor("unop", function() return
   -- unop ::= ‘-’ | not | ‘#’ | ‘~’
-  function() return ANY(
-    "-",
-    ALL("not", whitespace),
-    "#",
-    "~"
-  ) end)
+    any("-", span("not", space), "#", "~")
+  end)
 
-local label = factor_nonterminal("label",
+local label = factor("label", function() return
   -- label ::= ‘::’ Name ‘::’
-  function() return ALL(
-    "::",
-    LABEL(whitespace, SKIP, OPTION),
-    LABEL(Name),
-    LABEL(whitespace, SKIP, OPTION),
-    "::"
-  ) end)
-
-local _goto = factor_nonterminal("goto",
-  -- goto Name
-  function() return ALL(
-    "goto",
-    LABEL(whitespace),
-    Name
-  ) end)
+  span("::", __, Name, __, "::") end)
 
 local exp
 local var
@@ -245,113 +229,51 @@ local prefixexp
 local block
 local explist
 
-local args = factor_nonterminal("args",
+local args = factor("args", function() return
   -- args ::=  ‘(’ [explist] ‘)’ | tableconstructor | LiteralString 
-  function() return ANY(
-    ALL(
-      "(",
-      LABEL(whitespace, SKIP, OPTION),
-      LABEL(explist, OPTION),
-      LABEL(whitespace, SKIP, OPTION),
-      ")")
-  ) end)
+    any(span("(", __, mark(explist, option), __, ")"))
+  end)
 
-local functioncall = factor_nonterminal("functioncall",
+local functioncall = factor("functioncall", function() return
   -- functioncall ::=  prefixexp args | prefixexp ‘:’ Name args 
-  function()
-    return ANY(
-      ALL(
-        prefixexp,
-        LABEL(whitespace, SKIP, OPTION),
-        args)
-  ) end)
+    any(span(prefixexp, __, args), span(prefixexp, __, ":", __, Name, __, args))
+  end)
 
-local _while = factor_nonterminal("while",
-  -- while exp do block end
-  function() return ALL(
-    "while",
-    whitespace, -- omit SKIP to prevent "whilenil"
-    LABEL(exp),
-    "do",
-    whitespace, -- omit SKIP to prevent "doreturn"
-    LABEL(block, OPTION),
-    "end",
-    whitespace
-  ) end)
-
-exp = factor_nonterminal("exp",
+exp = factor("exp", function() return
   -- exp ::=  nil | false | true | Numeral | LiteralString | ‘...’ |  
   --      functiondef | prefixexp | tableconstructor | exp binop exp | unop exp 
-  function() return ALL(
-    ANY(
-      ALL(ANY(
-        "nil",
-        "false",
-        "true",
-        LABEL(number),
-        "..."),
-        LABEL(whitespace)),
+    any(
+      span(any("nil", "false", "true", number, "..."), space),
       prefixexp,
-      ALL(unop, exp)
-    )
-  ) end)
+      span(unop, exp))
+  end)
 
-prefixexp = factor_nonterminal("prefixexp",
+prefixexp = factor("prefixexp", function(left) return
   -- prefixexp ::= var | functioncall | ‘(’ exp ‘)’
-  function(LEFT)
-    return ANY(
-      -- Give the parser a hint to avoid infinite loop on Left-recursion.
-      -- We must call LEFT in `prefixexp` because the LEFT operator
-      -- can only be used when either:
-      --  1. the ALL clause argument, e.g. LEFT(ALL(prefixexp, ...))
-      --  2. the * argument standing alone
-      -- left recursions back to this nonterminal.
-      LEFT(functioncall),
-      LEFT(var),
-      ALL(
-        "(",
-        LABEL(whitespace, SKIP, OPTION),
-        exp,
-        LABEL(whitespace, SKIP, OPTION),
-        ")",
-        LABEL(whitespace, SKIP, OPTION)
-      )
-    ) end)
+  --
+  -- Give the parser a hint to avoid infinite loop on Left-recursion.
+  -- We must call left in `prefixexp` because the left operator
+  -- can only be used when either:
+  --  1. the all clause argument, e.g. left(span(prefixexp, ...))
+  --  2. the * argument standing alone
+  -- left recursions back to this nonterminal.
+   any(left(functioncall), left(var), span("(", __, exp, __, ")", __))
+  end)
 
-var = factor_nonterminal("var",
+var = factor("var", function() return 
   -- var ::=  Name | prefixexp ‘[’ exp ‘]’ | prefixexp ‘.’ Name 
-  function()
-    return ANY(
-      ALL(
-        prefixexp,
-        LABEL(whitespace, SKIP, OPTION),
-        "[",
-        LABEL(whitespace, SKIP, OPTION),
-        exp,
-        LABEL(whitespace, SKIP, OPTION),
-        "]",
-        LABEL(whitespace, SKIP, OPTION)),
-      ALL(
-        prefixexp,
-        LABEL(whitespace, SKIP, OPTION),
-        ".",
-        LABEL(whitespace, SKIP, OPTION),
-        Name),
-      Name
-    ) end)
+    any(
+      span(prefixexp, __, "[", __, exp, __, "]", __),
+      span(prefixexp, __, ".", __, Name),
+      Name)
+  end)
 
-local varlist = factor_nonterminal("varlist",
+local varlist = factor("varlist", function() return
   -- varlist ::= var {‘,’ var}
-  function() return ALL(
-    var,
-    LABEL(ALL(
-      LABEL(whitespace, SKIP, OPTION),
-      ",",
-      LABEL(whitespace, SKIP, OPTION),
-      var), REPEAT)
-  ) end)
+    span(var, mark(span(__, ",", __, var), repeating))
+  end)
 
-local stat = factor_nonterminal("stat",
+local stat = factor("stat", function() return
   -- stat ::=  ‘;’ | 
   --      varlist ‘=’ explist | 
   --      functioncall | 
@@ -367,73 +289,37 @@ local stat = factor_nonterminal("stat",
   --      function funcname funcbody | 
   --      local function Name funcbody | 
   --      local namelist [‘=’ explist] 
-  function() return ANY(
-    ALL(";", LABEL(whitespace, SKIP, OPTION)),
-    ALL(
-      varlist,
-      LABEL(whitespace, SKIP, OPTION),
-      "=",
-      LABEL(whitespace, SKIP, OPTION),
-      explist),
+  any(
+    span(";", __),
+    span(varlist, __, "=", __, explist),
     functioncall,
     label,
     "break",
-    _goto,
-    ALL("do", block, "end"),
-    _while,
-    ALL("repeat", block, "until", exp)
-
-
-    -- do
-    --repeat
+    span("goto", space, Name),
+    span("do", block, "end"),
+    span("while", space, exp, "do", space, mark(block, option), "end", space),
+    span("repeat", block, "until", exp))
     -- if
     -- for
     -- funnction
     -- local function
     -- local name list
-    
-  ) end)
+  end)
 
+explist = factor("explist", function() return
+    -- explist ::= exp {‘,’ exp}
+    span(exp, __, mark(span(",", __, exp), repeating))
+  end)
 
--- stat = factor_nonterminal(
---   ANY(
---     semicolon,
---     ALL(varlist, equals, explist),
---     functioncall,
---     label,
---     break,
---     ALL(goto, Name),
---     ALL(do, block, end)
--- )
+local retstat = factor("retstat", function() return
+    -- retstat ::= return [explist] [‘;’]
+    span("return", space, mark(explist, option), mark(";", option))
+  end)
 
-explist = factor_nonterminal("explist",
-  -- explist ::= exp {‘,’ exp}
-  function() return ALL(
-    exp,
-    LABEL(whitespace, SKIP, OPTION),
-    LABEL(ALL(      
-      ",",
-      LABEL(whitespace, SKIP, OPTION),
-      exp), REPEAT)
-  ) end)
-
-local retstat = factor_nonterminal("retstat",
-  -- retstat ::= return [explist] [‘;’]
-  function() return ALL(
-    "return",
-    whitespace,
-    LABEL(explist, OPTION), --should be explist
-    LABEL(TERM(";"), OPTION)
-  ) end)
-
-block = factor_nonterminal("block",
-  -- block ::= {stat} [retstat]
-  function() return ALL(
-    LABEL(whitespace, SKIP, OPTION),
-    LABEL(stat, REPEAT),
-    LABEL(whitespace, SKIP, OPTION),
-    LABEL(retstat, OPTION)
-  ) end)
+block = factor("block", function() return
+    -- block ::= {stat} [retstat]
+    span(__, mark(stat, repeating), __, mark(retstat, option))
+  end)
 
 --- Return the default _R table.
 local function block_R()

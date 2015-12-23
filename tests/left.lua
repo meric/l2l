@@ -2,52 +2,51 @@ local grammar = require("l2l.grammar")
 local reader = require("l2l.reader3")
 local itertools = require("l2l.itertools")
 
-local SET = grammar.SET
-local ALL = grammar.ALL
-local ANY = grammar.ANY
-local TERM = grammar.TERM
-local LABEL = grammar.LABEL
-local SKIP = grammar.SKIP
-local OPTION = grammar.OPTION
-local REPEAT = grammar.REPEAT
+local associate = grammar.associate
+local span = grammar.span
+local any = grammar.any
+local mark = grammar.mark
+local skip = grammar.skip
+local option = grammar.option
+local repeating = grammar.repeating
 local Terminal = grammar.Terminal
 local NonTerminal = grammar.NonTerminal
-local factor_nonterminal = grammar.factor_nonterminal
+local factor = grammar.factor
 
 one = NonTerminal("one")
 two = NonTerminal("two")
 two_ = NonTerminal("two_")
 number = NonTerminal("number")
 
-read_one = factor_nonterminal(one,
+read_one = factor(one,
     function() return
-        ANY(
-            ALL(read_number, TERM("1")),
-            TERM("1"))
+        any(
+            span(read_number, "1"),
+            "1")
     end)
 
-read_two = factor_nonterminal(two,
+read_two = factor(two,
     function() return
-        ANY(
-            ALL(read_number, TERM("2")),
-            TERM("2"))
+        any(
+            span(read_number, "2"),
+            "2")
     end)
 
-read_two_ = factor_nonterminal(two_,
+read_two_ = factor(two_,
     function()
-        return ALL(read_two)
+        return span(read_two)
     end)
 
-read_number = factor_nonterminal(number,
+read_number = factor(number,
     function(LEFT) return
-        ANY(
+        any(
             LEFT(read_one),
             LEFT(read_two_),
-            ALL(
-                TERM("("),
+            span(
+                "(",
                 read_number,
-                TERM(")"),
-                LABEL(read_number, REPEAT)))
+                ")",
+                mark(read_number, repeating)))
     end)
 
 local bytes = itertools.tolist("((1)2)112(2)112211")

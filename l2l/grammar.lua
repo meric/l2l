@@ -92,93 +92,30 @@ local Terminal = setmetatable({
 
 Terminal.__index = Terminal
 
-local SKIP = "SKIP"
-local PEEK = "PEEK"
-local OPTION = "OPTION"
-local REPEAT = "REPEAT"
+local skip = "skip"
+local peek = "peek"
+local option = "option"
+local repeating = "repeating"
 
-local LABEL, ALL, ANY, SET
+local mark, span, any, associate
 
 local function is(reader, flag)
   local rule = getmetatable(reader)
   if flag == nil then -- verify `reader` is a rule
-    return rule == ALL or rule == ANY or rule == LABEL or rule == SET
+    return rule == span or rule == any or rule == mark or rule == associate
   end
-  if flag == ALL or flag == ANY or flag == LABEL or flag == SET then
+  if flag == span or flag == any or flag == mark or flag == associate then
     return rule == flag
   end
-  if rule ~= LABEL then
+  if rule ~= mark then
     return false
   end
   return reader[flag]
 end
 
-LABEL = setmetatable({
-  representation = function(self)
-    return tostring(self)
-  end,
-  __call = function(self, environment, bytes, stack)
-    return self[1](environment, bytes, stack)
-  end,
-  __tostring = function(self)
-    local text = tostring(car(self))
-    if is(self, OPTION) then
-      text = "["..text.."]"
-    end
-    if is(self, REPEAT) then
-      text = "{"..text.."}"
-    end
-    if is(self, SKIP) then
-      text = "~"
-    end
-    return text
-  end
-}, {
-  __call = function(LABEL, reader, ...)
-    if type(reader) == "string" then
-      reader = TERM(reader)
-    end
-    local self = setmetatable({reader}, LABEL)
-    assert(reader, "missing `reader` argument.")
-    for i, value in ipairs({...}) do
-      self[value] = true
-    end
-    return self
-  end,
-  __tostring = function()
-    return "LABEL"
-  end
-})
-
-LABEL.__index = LABEL
-
-SET = setmetatable({
-  __call = function(self, environment, bytes, stack)
-    return self[1](environment, bytes, list.push(stack, self.nonterminal))
-  end,
-  __tostring = function(self)
-    return tostring(self.nonterminal)
-  end
-}, {
-  __call = function(SET, nonterminal, reader, factory)
-    if getmetatable(nonterminal) ~= NonTerminal then
-      nonterminal = NonTerminal(
-        tostring(nonterminal ~= nil and nonterminal or factory))
-    end
-    local self = setmetatable({reader,
-      nonterminal=nonterminal,
-      factory=factory}, SET)
-    return self
-  end,
-  __tostring = function()
-    return "SET"
-  end
-})
-SET.__index = SET
-
 local function factor_terminal(terminal)
   local value = tostring(terminal)
-  local reader = SET(terminal, function(environment, bytes)
+  local reader = associate(terminal, function(environment, bytes)
     if list.concat(take(#value, bytes)) == value then
       return list(terminal), drop(#value, bytes)
     end
@@ -187,18 +124,77 @@ local function factor_terminal(terminal)
   return reader
 end
 
-local function TERM(text)
-  return factor_terminal(Terminal(text))
-end
+mark = setmetatable({
+  representation = function(self)
+    return tostring(self)
+  end,
+  __call = function(self, environment, bytes, stack)
+    return self[1](environment, bytes, stack)
+  end,
+  __tostring = function(self)
+    local text = tostring(car(self))
+    if is(self, option) then
+      text = "["..text.."]"
+    end
+    if is(self, repeating) then
+      text = "{"..text.."}"
+    end
+    if is(self, skip) then
+      text = "~"
+    end
+    return text
+  end
+}, {
+  __call = function(mark, reader, ...)
+    if type(reader) == "string" then
+      reader = factor_terminal(Terminal(reader))
+    end
+    local self = setmetatable({reader}, mark)
+    assert(reader, "missing `reader` argument.")
+    for i, value in ipairs({...}) do
+      self[value] = true
+    end
+    return self
+  end,
+  __tostring = function()
+    return "mark"
+  end
+})
 
-ANY = setmetatable({
+mark.__index = mark
+
+associate = setmetatable({
+  __call = function(self, environment, bytes, stack)
+    return self[1](environment, bytes, list.push(stack, self.nonterminal))
+  end,
+  __tostring = function(self)
+    return tostring(self.nonterminal)
+  end
+}, {
+  __call = function(associate, nonterminal, reader, factory)
+    if getmetatable(nonterminal) ~= NonTerminal then
+      nonterminal = NonTerminal(
+        tostring(nonterminal ~= nil and nonterminal or factory))
+    end
+    local self = setmetatable({reader,
+      nonterminal=nonterminal,
+      factory=factory}, associate)
+    return self
+  end,
+  __tostring = function()
+    return "associate"
+  end
+})
+associate.__index = associate
+
+any = setmetatable({
   __call = function(self, environment, bytes, stack)
     -- find the one that consumes most tokens
     for i, reader in ipairs(self) do
       if reader ~= nil then
-        assert(not is(reader, OPTION))
-        assert(not is(reader, SKIP))
-        assert(not is(reader, REPEAT))
+        assert(not is(reader, option))
+        assert(not is(reader, skip))
+        assert(not is(reader, repeating))
         assert(reader)
         local ok, values, rest = pcall(execute, reader, environment, bytes,
           stack)
@@ -213,7 +209,7 @@ ANY = setmetatable({
     return nil, bytes
   end,
   __tostring = function(self)
-    local repr = {"ANY("}
+    local repr = {"any("}
     for i, value in ipairs(self) do
         table.insert(repr, itertools.show(value))
         if i ~= #self then
@@ -224,22 +220,22 @@ ANY = setmetatable({
     return table.concat(repr, "")
   end
 }, {
-  __call = function(ANY, ...)
+  __call = function(any, ...)
     return setmetatable({list.unpack(itertools.map(
       function(value)
         if type(value) == "string" then
-          return TERM(value)
+          return factor_terminal(Terminal(value))
         end
         return value
       end,
-      itertools.filter(id, list(...))))}, ANY)
+      itertools.filter(id, list(...))))}, any)
   end,
   __tostring = function()
-    return "ANY"
+    return "any"
   end
 })
 
-ALL = setmetatable({
+span = setmetatable({
   __call = function(self, environment, bytes, stack)
     local values, rest, all, ok = nil, bytes, {}
     for i, reader in ipairs(self) do
@@ -248,7 +244,7 @@ ALL = setmetatable({
           assert(reader)
           local prev = rest
           local prev_meta = environment._META[rest]
-          if is(reader, OPTION) or is(reader, REPEAT) then
+          if is(reader, option) or is(reader, repeating) then
             ok, values, rest = pcall(execute, reader, environment, rest,
               stack)
             if not ok then
@@ -263,27 +259,27 @@ ALL = setmetatable({
             values, rest = execute(reader, environment, rest, stack)
           end
           if not values then
-            if is(reader, REPEAT) then
+            if is(reader, repeating) then
               break
-            elseif not is(reader, OPTION) then
+            elseif not is(reader, option) then
               return nil, bytes
             end
           end
-          if is(reader, PEEK) then
+          if is(reader, peek) then
             -- Restore any metadata at this point
-            -- We don't want a PEEK operation to affect state.
+            -- We don't want a peek operation to affect state.
             -- We didn't consume any input, it should not be recorded as we
             -- have.
             environment._META[prev] = prev_meta
             rest = prev
-          elseif not is(reader, SKIP) then
+          elseif not is(reader, skip) then
             stack = list()
             for j, value in ipairs(values or {}) do
               table.insert(all, value)
             end
           end
 
-          if not is(reader, REPEAT) then
+          if not is(reader, repeating) then
             break
           end
         end
@@ -292,7 +288,7 @@ ALL = setmetatable({
     return tolist(all), rest
   end,
   __tostring = function(self)
-    local repr = {"ALL("}
+    local repr = {"span("}
     for i, value in ipairs(self) do
         table.insert(repr, itertools.show(value))
         if i ~= #self then
@@ -303,18 +299,18 @@ ALL = setmetatable({
     return table.concat(repr, "")
   end
 }, {
-  __call = function(ALL, ...)
+  __call = function(span, ...)
     return setmetatable({list.unpack(itertools.map(
       function(value)
         if type(value) == "string" then
-          return TERM(value)
+          return factor_terminal(Terminal(value))
         end
         return value
       end,
-      itertools.filter(id, list(...))))}, ALL)
+      itertools.filter(id, list(...))))}, span)
   end,
   __tostring = function()
-    return "ALL"
+    return "span"
   end
 })
 
@@ -333,7 +329,7 @@ local function filter(f, parent, ...)
         last[2] = cons(child)
         last = last[2]
       end
-      if is(child) and not is(child, SKIP) then
+      if is(child) and not is(child, skip) then
         last[2] = filter(f, child, parent, ...)
         if last[2] then
           last = last[2]
@@ -344,23 +340,23 @@ local function filter(f, parent, ...)
   return origin[2]
 end
 
-local factor_nonterminal
+local factor
 
---- Return a list of all spans inside a rule wrapped in an ANY.
--- A span is any part of the rule that is an ALL or have no ALL ancestor.
+--- Return a list of all spans inside a rule wrapped in an any.
+-- A span is any part of the rule that is an all or have no all ancestor.
 -- that can satisfy a rule.
--- @param rule The rule to search for ALL's.
+-- @param rule The rule to search for span's.
 local function factor_spans(rule, ...)
-  while not ... and is(rule, ANY) and #rule == 1 do
+  while not ... and is(rule, any) and #rule == 1 do
     rule = rule[1]
   end
-  if not ... and (is(rule, ALL) or not is(rule, ANY)) then
-    return ANY(rule)
+  if not ... and (is(rule, span) or not is(rule, any)) then
+    return any(rule)
   end
   local parents = {...}
-  return ANY(list.unpack(filter(function(value, parent, ...)
+  return any(list.unpack(filter(function(value, parent, ...)
     return not itertools.search(function(parent)
-      return is(parent, ALL)
+      return is(parent, span)
     end, {parent, ...})
   end, rule)))
 end
@@ -374,22 +370,22 @@ local function factor_expand_left_nonterminal(rule, nonterminal)
   rule = factor_spans(rule)
   while continue do
     continue = false
-    rule = factor_spans(ANY(list.unpack(itertools.map(
+    rule = factor_spans(any(list.unpack(itertools.map(
       function(child)
-        if not is(child, ALL) then
+        if not is(child, span) then
           return child
         end
         if #child > 0 and child[1].nonterminal ~= nonterminal
             and child[1].factory then
             continue = true
-          return ALL(child[1].factory(function() end), unpack(slice(child, 2)))
+          return span(child[1].factory(function() end), unpack(slice(child, 2)))
         end
         return child
       end, rule))))
   end
 
-  -- Refactor away ALL(ANY(ALL(ANY(....)))) wrapping.
-  while (is(rule, ANY) or is(rule, ALL)) and #rule == 1 do
+  -- Refactor away span(any(span(any(....)))) wrapping.
+  while (is(rule, any) or is(rule, span)) and #rule == 1 do
     rule = rule[1]
   end
 
@@ -409,10 +405,10 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
         child.factory and child.factory(function() end) or child,
         nonterminal))
   end))
-  local patterns = ANY()
+  local patterns = any()
   for i, rule in ipairs(rules) do
-    local pattern = ALL(list.unpack(itertools.filter(function(span)
-        if is(span, ALL) and span[1].nonterminal == nonterminal then
+    local pattern = span(list.unpack(itertools.filter(function(child)
+        if is(child, span) and child[1].nonterminal == nonterminal then
           return false
         end
         return true
@@ -425,19 +421,19 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
 end
 
 --- Factor `rule` by removing spans involving left recursion of `nonterminal`.
--- A span is any part of the rule that is an ALL or have no ALL ancestor,
--- that is not an ANY.
+-- A span is any part of the rule that is an span or have no span ancestor,
+-- that is not an any.
 -- @param rule The rule to remove  `nonterminal` from.
 -- @param nonterminal The nonterminal to remove.
 local function factor_without_left_nonterminal(rule, nonterminal)
-  return ANY(list.unpack(itertools.filter(function(child)
-    if is(child, SKIP) then
+  return any(list.unpack(itertools.filter(function(child)
+    if is(child, skip) then
       return false
     end
     if child.nonterminal == nonterminal then
       return false
     end
-    if not is(child, ALL) then
+    if not is(child, span) then
       return true
     end
     if child[1].nonterminal == nonterminal or child.nonterminal == nonterminal then
@@ -449,18 +445,18 @@ end
 
 --- Factor `rule` into suffixes of spans involving left recursion of
 -- `nonterminal`.
--- A span is any part of the rule that is an ALL or have no ALL ancestor,
--- that is not an ANY.
+-- A span is any part of the rule that is an span or have no span ancestor,
+-- that is not an any.
 -- @param nonterminal The nonterminal to remove.
 local function factor_left_suffix(rule, nonterminal)
-  return ANY(list.unpack(itertools.map(
+  return any(list.unpack(itertools.map(
     function(child)
-      return ALL(unpack(slice(child, 2)))
+      return span(unpack(slice(child, 2)))
     end, itertools.filter(function(child)
-        if is(child, SKIP) then
+        if is(child, skip) then
           return false
         end
-        if not is(child, ALL) then
+        if not is(child, span) then
           return false
         end
         if child[1].nonterminal == nonterminal
@@ -471,7 +467,7 @@ local function factor_left_suffix(rule, nonterminal)
       end, factor_spans(rule)))))
 end
 
-factor_nonterminal = function(nonterminal, factory)
+factor = function(nonterminal, factory)
   assert(factory, "missing `factory` argument")
 
   local ok, origin = pcall(factory, id)
@@ -482,7 +478,7 @@ factor_nonterminal = function(nonterminal, factory)
   end
 
   if ok and not is(origin) then
-    return SET(nonterminal, origin)
+    return associate(nonterminal, origin)
   else
     origin = nil
   end
@@ -492,7 +488,7 @@ factor_nonterminal = function(nonterminal, factory)
   local cache = setmetatable({}, {__mode='k'})
   local spans
 
-  return SET(nonterminal, function(environment, bytes, stack)
+  return associate(nonterminal, function(environment, bytes, stack)
     if not bytes then
       return nil, nil
     end
@@ -576,7 +572,7 @@ factor_nonterminal = function(nonterminal, factory)
         if from then
           -- Called from `from`. E.g.
           -- With the following Grammar:
-          --   read_functioncall = ALL(read_prefixexp args)
+          --   read_functioncall = span(read_prefixexp args)
           --   read_prefixexp = LEFT(read_functioncall) | name
           --
           -- The following call is made:
@@ -609,8 +605,8 @@ factor_nonterminal = function(nonterminal, factory)
         end
 
         -- Left recursing paths that can have no suffix, can be "independent".
-        -- E.g. read_a = ANY(TERM("a"), ALL(TERM("("), read_exp, TERM(")"))
-        --      read_t = ANY(read_exp, read_a)
+        -- E.g. read_a = any("a", all("(", read_exp, ")")
+        --      read_t = any(read_exp, read_a)
         --    Assume `read_exp` left recurses back to `read_t`.
         -- The `read_a` non-left-recursion choice makes `read_t` "independent".
         local independent = itertools.search(
@@ -701,18 +697,17 @@ factor_nonterminal = function(nonterminal, factory)
 end
 
 return {
-  TERM=TERM,
-  SKIP=SKIP,
-  OPTION=OPTION,
-  REPEAT=REPEAT,
-  ALL=ALL,
-  ANY=ANY,
-  SET=SET,
-  LABEL=LABEL,
+  skip=skip,
+  option=option,
+  repeating=repeating,
+  span=span,
+  any=any,
+  associate=associate,
+  mark=mark,
   Terminal=Terminal,
   NonTerminal=NonTerminal,
   is=is,
-  factor_nonterminal=factor_nonterminal,
+  factor=factor,
   factor_terminal=factor_terminal,
   search=search,
   filter=filter,
