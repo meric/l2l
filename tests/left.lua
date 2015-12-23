@@ -15,6 +15,8 @@ local NonTerminal = grammar.NonTerminal
 local factor_nonterminal = grammar.factor_nonterminal
 
 one = NonTerminal("one")
+two = NonTerminal("two")
+two_ = NonTerminal("two_")
 number = NonTerminal("number")
 
 read_one = factor_nonterminal(one,
@@ -24,19 +26,23 @@ read_one = factor_nonterminal(one,
             TERM("1"))
     end)
 
-read_two = factor_nonterminal(one,
+read_two = factor_nonterminal(two,
     function() return
         ANY(
             ALL(read_number, TERM("2")),
             TERM("2"))
     end)
 
+read_two_ = factor_nonterminal(two_,
+    function()
+        return ALL(read_two)
+    end)
 
 read_number = factor_nonterminal(number,
     function(LEFT) return
         ANY(
             LEFT(read_one),
-            LEFT(read_two),
+            LEFT(read_two_),
             ALL(
                 TERM("("),
                 read_number,

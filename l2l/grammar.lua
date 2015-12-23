@@ -328,7 +328,10 @@ local factor_nonterminal
 -- that can satisfy a rule.
 -- @param rule The rule to search for ALL's.
 local function factor_spans(rule, ...)
-  if not ... and is(rule, ALL) then
+  while not ... and is(rule, ANY) and #rule == 1 do
+    rule = rule[1]
+  end
+  if not ... and (is(rule, ALL) or not is(rule, ANY)) then
     return ANY(rule)
   end
   local parents = {...}
@@ -337,6 +340,37 @@ local function factor_spans(rule, ...)
       return is(parent, ALL)
     end, {parent, ...})
   end, rule)))
+end
+
+--- Given a rule, keep expanding each span's first nonterminal until it is
+-- that span's first nonterminal is `nonterminal`.
+-- @param rule The rule to expand.
+-- @param nonterminal The nonterminal to stop expanding at.
+local function factor_expand_left_nonterminal(rule, nonterminal)
+  local continue = true
+  rule = factor_spans(rule)
+  while continue do
+    continue = false
+    rule = factor_spans(ANY(list.unpack(itertools.map(
+      function(child)
+        if not is(child, ALL) then
+          return child
+        end
+        if #child > 0 and child[1].nonterminal ~= nonterminal
+            and child[1].factory then
+            continue = true
+          return ALL(child[1].factory(function() end), unpack(slice(child, 2)))
+        end
+        return child
+      end, rule))))
+  end
+
+  -- Refactor away ALL(ANY(ALL(ANY(....)))) wrapping.
+  while (is(rule, ANY) or is(rule, ALL)) and #rule == 1 do
+    rule = rule[1]
+  end
+
+  return rule
 end
 
 --- Given a rule, return a set of rules that return the possible
@@ -348,7 +382,9 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
   local rules = {}
   table.insert(rules, factory(function(child)
     table.insert(rules,
-      child.factory and child.factory(function() end) or child)
+      factor_expand_left_nonterminal(
+        child.factory and child.factory(function() end) or child,
+        nonterminal))
   end))
   local patterns = ANY()
   for i, rule in ipairs(rules) do
@@ -366,7 +402,8 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
 end
 
 --- Factor `rule` by removing spans involving left recursion of `nonterminal`.
--- A span is any part of the rule that is an ALL or have no ALL ancestor.
+-- A span is any part of the rule that is an ALL or have no ALL ancestor,
+-- that is not an ANY.
 -- @param rule The rule to remove  `nonterminal` from.
 -- @param nonterminal The nonterminal to remove.
 local function factor_without_left_nonterminal(rule, nonterminal)
@@ -389,7 +426,8 @@ end
 
 --- Factor `rule` into suffixes of spans involving left recursion of
 -- `nonterminal`.
--- A span is any part of the rule that is an ALL or have no ALL ancestor.
+-- A span is any part of the rule that is an ALL or have no ALL ancestor,
+-- that is not an ANY.
 -- @param nonterminal The nonterminal to remove.
 local function factor_left_suffix(rule, nonterminal)
   return ANY(list.unpack(itertools.map(
@@ -408,7 +446,7 @@ local function factor_left_suffix(rule, nonterminal)
         end
         return false
       end, factor_spans(rule)))))
-  end
+end
 
 factor_nonterminal = function(nonterminal, factory)
   assert(factory, "missing `factory` argument")
@@ -446,29 +484,44 @@ factor_nonterminal = function(nonterminal, factory)
       end
     end
     if not origin then
-      spans = factor_without_left_nonterminal(
-        factory(function() end), nonterminal)
+      -- Generate the rule, also grab any annotated left recursions 
+      -- if available.
       origin = factory(
         function(read)
-          local rule = read.factory and read.factory(id) or read
+          local rule = factor_expand_left_nonterminal(
+            read.factory and read.factory(id) or read,
+            nonterminal)
           table.insert(left, {
             index = #left + 1,
             rule = rule,
             nonterminal = read.factory and read.nonterminal or nil,
+
+            -- See `factor_left_suffix`.
             suffixes = factor_left_suffix(rule, nonterminal),
+
+            -- Paths for this child rule that doesn't left-recurse back to 
+            -- `nonterminal`.
             spans = factor_without_left_nonterminal(rule, nonterminal)
           })
           return read
         end)
+      -- If we could grab a rule, it means it has been annotated.
       is_annotated = #left > 0
       if is_annotated then
         -- `read_take_terminals` is a function for left recursion.
         read_take_terminals = factor_prefix_left_nonterminal(
           factory, nonterminal)
+
+        -- Non-left recursion paths for this nonterminal.
+        spans = factor_without_left_nonterminal(
+          factor_expand_left_nonterminal(factory(function() end),
+            nonterminal))
         -- We have all the Left recursions in `left`, and prefixes in `prefix`.
         -- We need to refactor the Left's into a flat shape and project it onto 
         -- `bytes`. Then figure out which step which left is called on each 
         -- iteration. This is done next, and saved in paths[bytes].
+      else
+        spans = factor_without_left_nonterminal(factory(function() end))
       end
     end
 
