@@ -19,20 +19,20 @@ expression = NonTerminal("expression")
 term = NonTerminal("term")
 integer = NonTerminal("integer")
 
-read_expression = factor(expression, function(LEFT)
+read_expression = factor(expression, function(left)
     -- Give the parser a hint to avoid infinite loop on Left-recursion.
-    -- The LEFT operator can only be used when either:
+    -- The left operator can only be used when either:
     --  1. the all clause argument
-    --  2. the read_* argument standing alone, e.g. LEFT(read_y)
+    --  2. the read_* argument standing alone, e.g. left(read_y)
     -- left recursions back to this nonterminal.
     return any(
-        LEFT(span(read_expression, "-", read_term)),
-        LEFT(span(read_expression, "+", read_term)),
+        left(span(read_expression, "-", read_term)),
+        left(span(read_expression, "+", read_term)),
         read_term)
 end)
 
-read_term = factor(term, function(LEFT)
-    return any(LEFT(span(read_term, "*", read_factor)), read_factor)
+read_term = factor(term, function(left)
+    return any(left(span(read_term, "*", read_factor)), read_factor)
 end)
 
 read_factor = factor("factor", function()

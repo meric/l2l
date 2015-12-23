@@ -57,7 +57,8 @@
     `(,true "($ return f(a)(b)(c)(d)   )")
     `(,true "($ return f()[d]   )")
     `(,true "($ return f()[d](e)[f].g   )")
-    `(,true "($ return ((((((f(a))))))) )") ; slow
+    `(,true "($ return ((((((f(a))))))) )")
+    `(,true "($ return f:x():t()[d]   )")
   ]
   reader (require "l2l.reader3"))
 

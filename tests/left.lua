@@ -38,10 +38,10 @@ read_two_ = factor(two_,
     end)
 
 read_number = factor(number,
-    function(LEFT) return
+    function(left) return
         any(
-            LEFT(read_one),
-            LEFT(read_two_),
+            left(read_one),
+            left(read_two_),
             span(
                 "(",
                 read_number,

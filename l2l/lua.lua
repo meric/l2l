@@ -215,13 +215,14 @@ local Name  = associate(Name, function(environment, bytes)
 end)
 
 local unop = factor("unop", function() return
-  -- unop ::= ‘-’ | not | ‘#’ | ‘~’
+    -- unop ::= ‘-’ | not | ‘#’ | ‘~’
     any("-", span("not", space), "#", "~")
   end)
 
 local label = factor("label", function() return
-  -- label ::= ‘::’ Name ‘::’
-  span("::", __, Name, __, "::") end)
+    -- label ::= ‘::’ Name ‘::’
+    span("::", __, Name, __, "::")
+  end)
 
 local exp
 local var
