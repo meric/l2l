@@ -29,20 +29,29 @@ local GrammarException =
   exception.Exception("GrammarException",
     "An exception occurred while generating `%s`:\n  %s")
 
+local NonTerminal
 
-local function NonTerminal(name)
-  -- Consists of one or more of the same type
-  local non_terminal = setmetatable({
-    representation = function(self)
-      local origin = list(name)
-      local last = origin
-      for i, value in ipairs(self) do
-        local repr = type(value) == "string" and value or value:representation()
-        last[2] = cons(repr)
-        last = last[2]
-      end
-      return origin
-    end,
+NonTerminal = setmetatable({
+  __call = function(self, ...)
+    return setmetatable({name=self.name, ...}, self)
+  end,
+  __tostring = function(self)
+    return self.name
+  end,
+  representation = function(self)
+    local origin = list(name)
+    local last = origin
+    for i, value in ipairs(self) do
+      local repr = type(value) == "string" and value or value:representation()
+      last[2] = cons(repr)
+      last = last[2]
+    end
+    return origin
+  end
+}, {
+__call = function(NonTerminal, name)
+  local self = setmetatable({
+    name = name,
     __tostring = function(self)
       local repr = {}
       for i, value in ipairs(self) do
@@ -55,19 +64,13 @@ local function NonTerminal(name)
       return getmetatable(self) == getmetatable(other) and
         tostring(self) == tostring(other)
     end
-  }, {__call = function(non_terminal, ...)
-      return setmetatable({
-        name=name,
-        is_terminal=false,
-        ...}, non_terminal)
-    end,
-    __tostring = function(self)
-      return name
-    end})
-
-  non_terminal.__index = non_terminal
-  return non_terminal
-end
+  }, NonTerminal)
+  self.__index = self
+  return self
+end,
+__tostring = function(self)
+  return "NonTerminal"
+end})
 
 -- Consists of one or more of the same type
 local Terminal = setmetatable({
@@ -132,6 +135,9 @@ LABEL = setmetatable({
   end
 }, {
   __call = function(LABEL, reader, ...)
+    if type(reader) == "string" then
+      reader = TERM(reader)
+    end
     local self = setmetatable({reader}, LABEL)
     assert(reader, "missing `reader` argument.")
     for i, value in ipairs({...}) do
@@ -155,7 +161,10 @@ SET = setmetatable({
   end
 }, {
   __call = function(SET, nonterminal, reader, factory)
-    assert(nonterminal)
+    if getmetatable(nonterminal) ~= NonTerminal then
+      nonterminal = NonTerminal(
+        tostring(nonterminal ~= nil and nonterminal or factory))
+    end
     local self = setmetatable({reader,
       nonterminal=nonterminal,
       factory=factory}, SET)
@@ -166,6 +175,21 @@ SET = setmetatable({
   end
 })
 SET.__index = SET
+
+local function factor_terminal(terminal)
+  local value = tostring(terminal)
+  local reader = SET(terminal, function(environment, bytes)
+    if list.concat(take(#value, bytes)) == value then
+      return list(terminal), drop(#value, bytes)
+    end
+    return nil, bytes
+  end)
+  return reader
+end
+
+local function TERM(text)
+  return factor_terminal(Terminal(text))
+end
 
 ANY = setmetatable({
   __call = function(self, environment, bytes, stack)
@@ -201,7 +225,14 @@ ANY = setmetatable({
   end
 }, {
   __call = function(ANY, ...)
-    return setmetatable({list.unpack(itertools.filter(id, list(...)))}, ANY)
+    return setmetatable({list.unpack(itertools.map(
+      function(value)
+        if type(value) == "string" then
+          return TERM(value)
+        end
+        return value
+      end,
+      itertools.filter(id, list(...))))}, ANY)
   end,
   __tostring = function()
     return "ANY"
@@ -273,27 +304,19 @@ ALL = setmetatable({
   end
 }, {
   __call = function(ALL, ...)
-    return setmetatable({list.unpack(itertools.filter(id, list(...)))}, ALL)
+    return setmetatable({list.unpack(itertools.map(
+      function(value)
+        if type(value) == "string" then
+          return TERM(value)
+        end
+        return value
+      end,
+      itertools.filter(id, list(...))))}, ALL)
   end,
   __tostring = function()
     return "ALL"
   end
 })
-
-local function factor_terminal(terminal)
-  local value = tostring(terminal)
-  local reader = SET(terminal, function(environment, bytes)
-    if list.concat(take(#value, bytes)) == value then
-      return list(terminal), drop(#value, bytes)
-    end
-    return nil, bytes
-  end)
-  return reader
-end
-
-local function TERM(text)
-  return factor_terminal(Terminal(text))
-end
 
 --- Returns a list of values from `parent` that when called on `f` returns
 -- true.
@@ -450,7 +473,13 @@ end
 
 factor_nonterminal = function(nonterminal, factory)
   assert(factory, "missing `factory` argument")
+
   local ok, origin = pcall(factory, id)
+
+  if getmetatable(nonterminal) ~= NonTerminal then
+    nonterminal = NonTerminal(
+      tostring(nonterminal ~= nil and nonterminal or factory))
+  end
 
   if ok and not is(origin) then
     return SET(nonterminal, origin)

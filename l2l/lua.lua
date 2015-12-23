@@ -88,10 +88,6 @@ local keywords ={
   ["while"] = true
 }
 
-
-_elseif = Terminal("elseif")
-_if = Terminal("if")
-
 --[[[
 ${x} means hash
 $ => hash next lisp symbol into Name.
@@ -137,47 +133,40 @@ LuaLabel
 LuaNumber
 LuaVariable
 --?>
+local unop = factor_nonterminal(unop,
+  -- unop ::= ‘-’ | not | ‘#’ | ‘~’
+  function() return ANY(
+    TERM("-"),
+    ALL(TERM("not"), whitespace),
+    TERM("#"),
+    TERM("~")
+  ) end)
 
+
+($ unop ::= "-" | "not" whitespace | "#" | "~";
+   whitespace = function() )
 ]]--
 
-local Name = NonTerminal("Name")
-local label = NonTerminal("label")
-local funcname = NonTerminal("funcname")
-local varlist = NonTerminal("varlist")
-local exp = NonTerminal("exp")
-local stat = NonTerminal("stat")
-local block = NonTerminal("block")
-local retstat = NonTerminal("retstat")
-local whitespace = NonTerminal("whitespace")
-local _goto = NonTerminal("goto")
-local _while = NonTerminal("while")
-local prefixexp = NonTerminal("prefixexp")
-local explist = NonTerminal("explist")
-local unop = NonTerminal("unop")
-local label = NonTerminal("label")
-local number = NonTerminal("number")
-local var = NonTerminal("var")
-local functioncall = NonTerminal("functioncall")
-local _args = NonTerminal("args")
+local Name = NonTerminal("whitespace")
 
-local read_number = factor_nonterminal(number,
+local number = factor_nonterminal("number",
   function() return
     function(environment, bytes)
       local values, rest = reader.read_number(environment, bytes)
       if values then
-        return list(Terminal(car(values))), rest
+        return list(tonumber(car(values))), rest
       end
       return nil, bytes
     end
   end)
 
-local read_whitespace = factor_nonterminal(whitespace,
+local whitespace = factor_nonterminal("whitespace",
   function() return
     function(environment, bytes)
-    -- * Mandatory read_whitespace after keywords should not be "SKIP"ed.
+    -- * Mandatory whitespace after keywords should not be "SKIP"ed.
     --   Otherwise when output the code could produce like "gotolabel",
     --   which is not valid.
-    -- * In "ALL", read_whitespace prepend content elements that can have
+    -- * In "ALL", whitespace prepend content elements that can have
     --   whitespaces prepending it.
       local patterns = {}
       local bounds = {
@@ -190,25 +179,25 @@ local read_whitespace = factor_nonterminal(whitespace,
       }
 
       if not bytes then
-        return list(whitespace("")), bytes
+        return list(""), bytes
       end
 
       for byte, _ in pairs(bounds) do
         table.insert(patterns, "^%"..byte.."$")
       end
 
-      local values, rest = read_predicate(environment, bytes, whitespace,
+      local values, rest = read_predicate(environment, bytes, tostring,
         match("^%s+$", unpack(patterns)))
 
       -- Convert boundary characters into zero string tokens.
       if values and bounds[tostring(car(values))] then
-        return list(whitespace("")), bytes
+        return list(""), bytes
       end
       return values, rest
     end
   end)
 
-local read_Name  = SET(Name, function(environment, bytes)
+local Name  = SET(Name, function(environment, bytes)
   -- Names (also called identifiers) in Lua can be any string of letters,
   -- digits, and underscores, not beginning with a digit and not being a
   -- reserved word. Identifiers are used to name variables, table fields, and
@@ -223,146 +212,146 @@ local read_Name  = SET(Name, function(environment, bytes)
   return values, rest
 end)
 
-local read_unop = factor_nonterminal(unop,
+local unop = factor_nonterminal("unop",
   -- unop ::= ‘-’ | not | ‘#’ | ‘~’
   function() return ANY(
-    TERM("-"),
-    ALL(TERM("not"), read_whitespace),
-    TERM("#"),
-    TERM("~")
+    "-",
+    ALL("not", whitespace),
+    "#",
+    "~"
   ) end)
 
-local read_label = factor_nonterminal(label,
+local label = factor_nonterminal("label",
   -- label ::= ‘::’ Name ‘::’
   function() return ALL(
-    TERM("::"),
-    LABEL(read_whitespace, SKIP, OPTION),
-    LABEL(read_Name),
-    LABEL(read_whitespace, SKIP, OPTION),
-    TERM("::")
+    "::",
+    LABEL(whitespace, SKIP, OPTION),
+    LABEL(Name),
+    LABEL(whitespace, SKIP, OPTION),
+    "::"
   ) end)
 
-local read_goto = factor_nonterminal(_goto,
+local _goto = factor_nonterminal("goto",
   -- goto Name
   function() return ALL(
-    TERM("goto"),
-    LABEL(read_whitespace),
-    read_Name
+    "goto",
+    LABEL(whitespace),
+    Name
   ) end)
 
-local read_exp
-local read_var
-local read_prefixexp
-local read_block
-local read_explist
+local exp
+local var
+local prefixexp
+local block
+local explist
 
-local read_args = factor_nonterminal(_args,
+local args = factor_nonterminal("args",
   -- args ::=  ‘(’ [explist] ‘)’ | tableconstructor | LiteralString 
   function() return ANY(
     ALL(
-      TERM("("),
-      LABEL(read_whitespace, SKIP, OPTION),
-      LABEL(read_explist, OPTION),
-      LABEL(read_whitespace, SKIP, OPTION),
-      TERM(")"))
+      "(",
+      LABEL(whitespace, SKIP, OPTION),
+      LABEL(explist, OPTION),
+      LABEL(whitespace, SKIP, OPTION),
+      ")")
   ) end)
 
-local read_functioncall = factor_nonterminal(functioncall,
+local functioncall = factor_nonterminal("functioncall",
   -- functioncall ::=  prefixexp args | prefixexp ‘:’ Name args 
   function()
     return ANY(
       ALL(
-        read_prefixexp,
-        LABEL(read_whitespace, SKIP, OPTION),
-        read_args)
+        prefixexp,
+        LABEL(whitespace, SKIP, OPTION),
+        args)
   ) end)
 
-local read_while = factor_nonterminal(_while,
+local _while = factor_nonterminal("while",
   -- while exp do block end
   function() return ALL(
-    TERM("while"),
-    read_whitespace, -- omit SKIP to prevent "whilenil"
-    LABEL(read_exp),
-    TERM("do"),
-    read_whitespace, -- omit SKIP to prevent "doreturn"
-    LABEL(read_block, OPTION),
-    TERM("end"),
-    read_whitespace
+    "while",
+    whitespace, -- omit SKIP to prevent "whilenil"
+    LABEL(exp),
+    "do",
+    whitespace, -- omit SKIP to prevent "doreturn"
+    LABEL(block, OPTION),
+    "end",
+    whitespace
   ) end)
 
-read_exp = factor_nonterminal(exp,
+exp = factor_nonterminal("exp",
   -- exp ::=  nil | false | true | Numeral | LiteralString | ‘...’ |  
   --      functiondef | prefixexp | tableconstructor | exp binop exp | unop exp 
   function() return ALL(
     ANY(
       ALL(ANY(
-        TERM("nil"),
-        TERM("false"),
-        TERM("true"),
-        LABEL(read_number),
-        TERM("...")),
-        LABEL(read_whitespace)),
-      read_prefixexp,
-      ALL(read_unop, read_exp)
+        "nil",
+        "false",
+        "true",
+        LABEL(number),
+        "..."),
+        LABEL(whitespace)),
+      prefixexp,
+      ALL(unop, exp)
     )
   ) end)
 
-read_prefixexp = factor_nonterminal(prefixexp,
+prefixexp = factor_nonterminal("prefixexp",
   -- prefixexp ::= var | functioncall | ‘(’ exp ‘)’
   function(LEFT)
     return ANY(
       -- Give the parser a hint to avoid infinite loop on Left-recursion.
-      -- We must call LEFT in `read_prefixexp` because the LEFT operator
+      -- We must call LEFT in `prefixexp` because the LEFT operator
       -- can only be used when either:
-      --  1. the ALL clause argument, e.g. LEFT(ALL(read_prefixexp, ...))
-      --  2. the read_* argument standing alone
+      --  1. the ALL clause argument, e.g. LEFT(ALL(prefixexp, ...))
+      --  2. the * argument standing alone
       -- left recursions back to this nonterminal.
-      LEFT(read_functioncall),
-      LEFT(read_var),
+      LEFT(functioncall),
+      LEFT(var),
       ALL(
-        TERM("("),
-        LABEL(read_whitespace, SKIP, OPTION),
-        read_exp,
-        LABEL(read_whitespace, SKIP, OPTION),
-        TERM(")"),
-        LABEL(read_whitespace, SKIP, OPTION)
+        "(",
+        LABEL(whitespace, SKIP, OPTION),
+        exp,
+        LABEL(whitespace, SKIP, OPTION),
+        ")",
+        LABEL(whitespace, SKIP, OPTION)
       )
     ) end)
 
-read_var = factor_nonterminal(var,
+var = factor_nonterminal("var",
   -- var ::=  Name | prefixexp ‘[’ exp ‘]’ | prefixexp ‘.’ Name 
   function()
     return ANY(
       ALL(
-        read_prefixexp,
-        LABEL(read_whitespace, SKIP, OPTION),
-        TERM('['),
-        LABEL(read_whitespace, SKIP, OPTION),
-        read_exp,
-        LABEL(read_whitespace, SKIP, OPTION),
-        TERM("]"),
-        LABEL(read_whitespace, SKIP, OPTION)),
+        prefixexp,
+        LABEL(whitespace, SKIP, OPTION),
+        "[",
+        LABEL(whitespace, SKIP, OPTION),
+        exp,
+        LABEL(whitespace, SKIP, OPTION),
+        "]",
+        LABEL(whitespace, SKIP, OPTION)),
       ALL(
-        read_prefixexp,
-        LABEL(read_whitespace, SKIP, OPTION),
-        TERM("."),
-        LABEL(read_whitespace, SKIP, OPTION),
-        read_Name),
-      read_Name
+        prefixexp,
+        LABEL(whitespace, SKIP, OPTION),
+        ".",
+        LABEL(whitespace, SKIP, OPTION),
+        Name),
+      Name
     ) end)
 
-local read_varlist = factor_nonterminal(varlist,
+local varlist = factor_nonterminal("varlist",
   -- varlist ::= var {‘,’ var}
   function() return ALL(
-    read_var,
+    var,
     LABEL(ALL(
-      LABEL(read_whitespace, SKIP, OPTION),
-      TERM(","),
-      LABEL(read_whitespace, SKIP, OPTION),
-      read_var), REPEAT)
+      LABEL(whitespace, SKIP, OPTION),
+      ",",
+      LABEL(whitespace, SKIP, OPTION),
+      var), REPEAT)
   ) end)
 
-local read_stat = factor_nonterminal(stat,
+local stat = factor_nonterminal("stat",
   -- stat ::=  ‘;’ | 
   --      varlist ‘=’ explist | 
   --      functioncall | 
@@ -379,14 +368,22 @@ local read_stat = factor_nonterminal(stat,
   --      local function Name funcbody | 
   --      local namelist [‘=’ explist] 
   function() return ANY(
-    ALL(TERM(";"), LABEL(read_whitespace, SKIP, OPTION)),
+    ALL(";", LABEL(whitespace, SKIP, OPTION)),
     ALL(
-      read_varlist,
-      LABEL(read_whitespace, SKIP, OPTION),
-      TERM("="),
-      LABEL(read_whitespace, SKIP, OPTION),
-      read_explist),
-    read_functioncall,
+      varlist,
+      LABEL(whitespace, SKIP, OPTION),
+      "=",
+      LABEL(whitespace, SKIP, OPTION),
+      explist),
+    functioncall,
+    label,
+    "break",
+    _goto,
+    ALL("do", block, "end"),
+    _while,
+    ALL("repeat", block, "until", exp)
+
+
     -- do
     --repeat
     -- if
@@ -394,66 +391,64 @@ local read_stat = factor_nonterminal(stat,
     -- funnction
     -- local function
     -- local name list
-    read_label,
-    TERM("break"),
-    read_goto,
-    read_while
+    
   ) end)
 
 
--- read_stat = factor_nonterminal(
+-- stat = factor_nonterminal(
 --   ANY(
---     read_semicolon,
---     ALL(read_varlist, read_equals, read_explist),
---     read_functioncall,
---     read_label,
---     read_break,
---     ALL(read_goto, read_Name),
---     ALL(read_do, read_block, read_end)
+--     semicolon,
+--     ALL(varlist, equals, explist),
+--     functioncall,
+--     label,
+--     break,
+--     ALL(goto, Name),
+--     ALL(do, block, end)
 -- )
 
-read_explist = factor_nonterminal(explist,
+explist = factor_nonterminal("explist",
   -- explist ::= exp {‘,’ exp}
   function() return ALL(
-    read_exp,
-    LABEL(read_whitespace, SKIP, OPTION),
+    exp,
+    LABEL(whitespace, SKIP, OPTION),
     LABEL(ALL(      
-      TERM(","),
-      LABEL(read_whitespace, SKIP, OPTION),
-      read_exp), REPEAT)
+      ",",
+      LABEL(whitespace, SKIP, OPTION),
+      exp), REPEAT)
   ) end)
 
-local read_retstat = factor_nonterminal(retstat,
+local retstat = factor_nonterminal("retstat",
   -- retstat ::= return [explist] [‘;’]
   function() return ALL(
-    TERM("return"),
-    LABEL(read_whitespace),
-    LABEL(read_explist, OPTION), --should be explist
+    "return",
+    whitespace,
+    LABEL(explist, OPTION), --should be explist
     LABEL(TERM(";"), OPTION)
   ) end)
 
-read_block = factor_nonterminal(block,
+block = factor_nonterminal("block",
+  -- block ::= {stat} [retstat]
   function() return ALL(
-    LABEL(read_whitespace, SKIP, OPTION),
-    LABEL(read_stat, REPEAT),
-    LABEL(read_whitespace, SKIP, OPTION),
-    LABEL(read_retstat, OPTION)
+    LABEL(whitespace, SKIP, OPTION),
+    LABEL(stat, REPEAT),
+    LABEL(whitespace, SKIP, OPTION),
+    LABEL(retstat, OPTION)
   ) end)
 
 --- Return the default _R table.
 local function block_R()
   return {
-    list(read_block)
+    list(block)
   }
 end
 
 return {
     block_R = block_R,
-    read_functioncall = read_functioncall,
-    read_retstat = read_retstat,
-    read_Name = read_Name,
-    read_stat = read_stat,
-    read_functioncall = read_functioncall,
-    read_var = read_var,
-    read_prefixexp = read_prefixexp
+    functioncall = functioncall,
+    retstat = retstat,
+    Name = Name,
+    stat = stat,
+    functioncall = functioncall,
+    var = var,
+    prefixexp = prefixexp
 }
