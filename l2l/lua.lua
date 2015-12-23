@@ -12,13 +12,15 @@ local SET = grammar.SET
 local ALL = grammar.ALL
 local ANY = grammar.ANY
 local TERM = grammar.TERM
-local READ = grammar.READ
+local LABEL = grammar.LABEL
 local SKIP = grammar.SKIP
-local OPT = grammar.OPT
+local OPTION = grammar.OPTION
 local REPEAT = grammar.REPEAT
 local Terminal = grammar.Terminal
 local NonTerminal = grammar.NonTerminal
-local read_nonterminal = grammar.read_nonterminal
+local factor_nonterminal = grammar.factor_nonterminal
+
+local ParseException = grammar.ParseException
 
 -- Lua Grammar
 -- chunk ::= block
@@ -158,89 +160,95 @@ local var = NonTerminal("var")
 local functioncall = NonTerminal("functioncall")
 local _args = NonTerminal("args")
 
-local read_number = SET(number, function(environment, bytes)
-  local values, rest = reader.read_number(environment, bytes)
-  if values then
-    return list(Terminal(car(values))), rest
-  end
-  return nil, bytes
-end)
+local read_number = factor_nonterminal(number,
+  function() return
+    function(environment, bytes)
+      local values, rest = reader.read_number(environment, bytes)
+      if values then
+        return list(Terminal(car(values))), rest
+      end
+      return nil, bytes
+    end
+  end)
 
-local read_whitespace = SET(whitespace, function(environment, bytes)
--- * Mandatory read_whitespace after keywords should not be "SKIP"ed.
---   Otherwise when output the code could produce like "gotolabel",
---   which is not valid.
--- * In "ALL", read_whitespace prepend content elements that can have
---   whitespaces prepending it.
-  local patterns = {}
-  local bounds = {
-    ["("]=true,
-    [")"]=true,
-    ["{"]=true,
-    ["}"]=true,
-    [","]=true,
-    [";"]=true,
-  }
+local read_whitespace = factor_nonterminal(whitespace,
+  function() return
+    function(environment, bytes)
+    -- * Mandatory read_whitespace after keywords should not be "SKIP"ed.
+    --   Otherwise when output the code could produce like "gotolabel",
+    --   which is not valid.
+    -- * In "ALL", read_whitespace prepend content elements that can have
+    --   whitespaces prepending it.
+      local patterns = {}
+      local bounds = {
+        ["("]=true,
+        [")"]=true,
+        ["{"]=true,
+        ["}"]=true,
+        [","]=true,
+        [";"]=true,
+      }
 
-  if not bytes then
-    return list(whitespace("")), bytes
-  end
+      if not bytes then
+        return list(whitespace("")), bytes
+      end
 
-  for byte, _ in pairs(bounds) do
-    table.insert(patterns, "^%"..byte.."$")
-  end
+      for byte, _ in pairs(bounds) do
+        table.insert(patterns, "^%"..byte.."$")
+      end
 
-  local values, rest = read_predicate(environment, whitespace,
-    match("^%s+$", unpack(patterns)), bytes)
+      local values, rest = read_predicate(environment, bytes, whitespace,
+        match("^%s+$", unpack(patterns)))
 
-  -- Convert boundary characters into zero string tokens.
-  if values and bounds[tostring(car(values))] then
-    return list(whitespace("")), bytes
-  end
-  return values, rest
-end)
+      -- Convert boundary characters into zero string tokens.
+      if values and bounds[tostring(car(values))] then
+        return list(whitespace("")), bytes
+      end
+      return values, rest
+    end
+  end)
 
 local read_Name  = SET(Name, function(environment, bytes)
   -- Names (also called identifiers) in Lua can be any string of letters,
   -- digits, and underscores, not beginning with a digit and not being a
   -- reserved word. Identifiers are used to name variables, table fields, and
   -- labels.
-  local values, rest = read_predicate(environment,
+  local values, rest = read_predicate(environment, bytes,
     Name, function(token, byte)
       return (token..byte):match("^[%w_][%w%d_]*$")
-    end, bytes)
+    end)
   if values and car(values) and keywords[tostring(car(values))] then
     return nil, bytes
   end
   return values, rest
 end)
 
-local read_unop = read_nonterminal(unop,
+local read_unop = factor_nonterminal(unop,
   -- unop ::= ‘-’ | not | ‘#’ | ‘~’
   function() return ANY(
     TERM("-"),
     ALL(TERM("not"), read_whitespace),
     TERM("#"),
     TERM("~")
-  ) end, true)
+  ) end)
 
-local read_label = read_nonterminal(label,
+local read_label = factor_nonterminal(label,
   -- label ::= ‘::’ Name ‘::’
   function() return ALL(
     TERM("::"),
-    READ(read_whitespace, SKIP, OPT),
-    READ(read_Name),
-    READ(read_whitespace, SKIP, OPT),
+    LABEL(read_whitespace, SKIP, OPTION),
+    LABEL(read_Name),
+    LABEL(read_whitespace, SKIP, OPTION),
     TERM("::")
-  ) end, true)
+  ) end)
 
-local read_goto = read_nonterminal(_goto,
+local read_goto = factor_nonterminal(_goto,
   -- goto Name
   function() return ALL(
     TERM("goto"),
-    READ(read_whitespace),
+    LABEL(read_whitespace),
     read_Name
-  ) end, true)
+  ) end)
 
 local read_exp
 local read_var
@@ -248,41 +256,41 @@ local read_prefixexp
 local read_block
 local read_explist
 
-local read_args = read_nonterminal(_args,
+local read_args = factor_nonterminal(_args,
   -- args ::=  ‘(’ [explist] ‘)’ | tableconstructor | LiteralString 
   function() return ANY(
     ALL(
       TERM("("),
-      READ(read_whitespace, SKIP, OPT),
-      READ(read_explist, OPT),
-      READ(read_whitespace, SKIP, OPT),
+      LABEL(read_whitespace, SKIP, OPTION),
+      LABEL(read_explist, OPTION),
+      LABEL(read_whitespace, SKIP, OPTION),
       TERM(")"))
-  ) end, true)
+  ) end)
 
-local read_functioncall = read_nonterminal(functioncall,
+local read_functioncall = factor_nonterminal(functioncall,
   -- functioncall ::=  prefixexp args | prefixexp ‘:’ Name args 
   function()
     return ANY(
       ALL(
         read_prefixexp,
-        READ(read_whitespace, SKIP, OPT),
+        LABEL(read_whitespace, SKIP, OPTION),
         read_args)
-  ) end, true)
+  ) end)
 
-local read_while = read_nonterminal(_while,
+local read_while = factor_nonterminal(_while,
   -- while exp do block end
   function() return ALL(
     TERM("while"),
     read_whitespace, -- omit SKIP to prevent "whilenil"
-    READ(read_exp),
+    LABEL(read_exp),
     TERM("do"),
     read_whitespace, -- omit SKIP to prevent "doreturn"
-    READ(read_block, OPT),
+    LABEL(read_block, OPTION),
     TERM("end"),
     read_whitespace
-  ) end, true)
+  ) end)
 
-read_exp = read_nonterminal(exp,
+read_exp = factor_nonterminal(exp,
   -- exp ::=  nil | false | true | Numeral | LiteralString | ‘...’ |  
   --      functiondef | prefixexp | tableconstructor | exp binop exp | unop exp 
   function() return ALL(
@@ -291,73 +299,70 @@ read_exp = read_nonterminal(exp,
         TERM("nil"),
         TERM("false"),
         TERM("true"),
-        READ(read_number),
+        LABEL(read_number),
         TERM("...")),
-        READ(read_whitespace)),
+        LABEL(read_whitespace)),
       read_prefixexp,
       ALL(read_unop, read_exp)
     )
-  ) end, true)
+  ) end)
 
-read_prefixexp = read_nonterminal(prefixexp,
+read_prefixexp = factor_nonterminal(prefixexp,
   -- prefixexp ::= var | functioncall | ‘(’ exp ‘)’
-  function(left)
-    local read_head = ALL(
-      READ(TERM("("), OPT),
-      READ(read_whitespace, SKIP, OPT),
-      read_Name,
-      READ(read_whitespace, SKIP, OPT),
-      READ(TERM(")"), OPT))
-
+  function(LEFT)
     return ANY(
       -- Give the parser a hint to avoid infinite loop on Left-recursion.
-      -- `var` can only begin with a Name or "(".
-      left(read_head, read_functioncall),
-      left(read_head, read_var),
+      -- We must call LEFT in `read_prefixexp` because the LEFT operator
+      -- can only be used when either:
+      --  1. the ALL clause argument, e.g. LEFT(ALL(read_prefixexp, ...))
+      --  2. the read_* argument standing alone
+      -- left recursions back to this nonterminal.
+      LEFT(read_functioncall),
+      LEFT(read_var),
       ALL(
         TERM("("),
-        READ(read_whitespace, SKIP, OPT),
+        LABEL(read_whitespace, SKIP, OPTION),
         read_exp,
-        READ(read_whitespace, SKIP, OPT),
+        LABEL(read_whitespace, SKIP, OPTION),
         TERM(")"),
-        READ(read_whitespace, SKIP, OPT)
+        LABEL(read_whitespace, SKIP, OPTION)
       )
     ) end)
 
-read_var = read_nonterminal(var,
+read_var = factor_nonterminal(var,
   -- var ::=  Name | prefixexp ‘[’ exp ‘]’ | prefixexp ‘.’ Name 
   function()
     return ANY(
       ALL(
         read_prefixexp,
-        READ(read_whitespace, SKIP, OPT),
+        LABEL(read_whitespace, SKIP, OPTION),
         TERM('['),
-        READ(read_whitespace, SKIP, OPT),
+        LABEL(read_whitespace, SKIP, OPTION),
         read_exp,
-        READ(read_whitespace, SKIP, OPT),
+        LABEL(read_whitespace, SKIP, OPTION),
         TERM("]"),
-        READ(read_whitespace, SKIP, OPT)),
+        LABEL(read_whitespace, SKIP, OPTION)),
       ALL(
         read_prefixexp,
-        READ(read_whitespace, SKIP, OPT),
+        LABEL(read_whitespace, SKIP, OPTION),
         TERM("."),
-        READ(read_whitespace, SKIP, OPT),
+        LABEL(read_whitespace, SKIP, OPTION),
         read_Name),
       read_Name
-    ) end, true)
+    ) end)
 
-local read_varlist = read_nonterminal(varlist,
+local read_varlist = factor_nonterminal(varlist,
   -- varlist ::= var {‘,’ var}
   function() return ALL(
     read_var,
-    READ(ALL(
-      READ(read_whitespace, SKIP, OPT),
+    LABEL(ALL(
+      LABEL(read_whitespace, SKIP, OPTION),
       TERM(","),
-      READ(read_whitespace, SKIP, OPT),
+      LABEL(read_whitespace, SKIP, OPTION),
       read_var), REPEAT)
-  ) end, true)
+  ) end)
 
-local read_stat = read_nonterminal(stat,
+local read_stat = factor_nonterminal(stat,
   -- stat ::=  ‘;’ | 
   --      varlist ‘=’ explist | 
   --      functioncall | 
@@ -374,12 +379,12 @@ local read_stat = read_nonterminal(stat,
   --      local function Name funcbody | 
   --      local namelist [‘=’ explist] 
   function() return ANY(
-    ALL(TERM(";"), READ(read_whitespace, SKIP, OPT)),
+    ALL(TERM(";"), LABEL(read_whitespace, SKIP, OPTION)),
     ALL(
       read_varlist,
-      READ(read_whitespace, SKIP, OPT),
+      LABEL(read_whitespace, SKIP, OPTION),
       TERM("="),
-      READ(read_whitespace, SKIP, OPT),
+      LABEL(read_whitespace, SKIP, OPTION),
       read_explist),
     read_functioncall,
     -- do
@@ -393,10 +398,10 @@ local read_stat = read_nonterminal(stat,
     TERM("break"),
     read_goto,
     read_while
-  ) end, true)
+  ) end)
 
 
--- read_stat = read_nonterminal(
+-- read_stat = factor_nonterminal(
 --   ANY(
 --     read_semicolon,
 --     ALL(read_varlist, read_equals, read_explist),
@@ -407,33 +412,33 @@ local read_stat = read_nonterminal(stat,
 --     ALL(read_do, read_block, read_end)
 -- )
 
-read_explist = read_nonterminal(explist,
+read_explist = factor_nonterminal(explist,
   -- explist ::= exp {‘,’ exp}
   function() return ALL(
     read_exp,
-    READ(read_whitespace, SKIP, OPT),
-    READ(ALL(      
+    LABEL(read_whitespace, SKIP, OPTION),
+    LABEL(ALL(      
       TERM(","),
-      READ(read_whitespace, SKIP, OPT),
+      LABEL(read_whitespace, SKIP, OPTION),
       read_exp), REPEAT)
-  ) end, true)
+  ) end)
 
-local read_retstat = read_nonterminal(retstat,
+local read_retstat = factor_nonterminal(retstat,
   -- retstat ::= return [explist] [‘;’]
   function() return ALL(
     TERM("return"),
-    READ(read_whitespace),
-    READ(read_explist, OPT), --should be explist
-    READ(TERM(";"), OPT)
-  ) end, true)
+    LABEL(read_whitespace),
+    LABEL(read_explist, OPTION), --should be explist
+    LABEL(TERM(";"), OPTION)
+  ) end)
 
-read_block = read_nonterminal(block,
+read_block = factor_nonterminal(block,
   function() return ALL(
-    READ(read_whitespace, SKIP, OPT),
-    READ(read_stat, REPEAT),
-    READ(read_whitespace, SKIP, OPT),
-    READ(read_retstat, OPT)
-  ) end, true)
+    LABEL(read_whitespace, SKIP, OPTION),
+    LABEL(read_stat, REPEAT),
+    LABEL(read_whitespace, SKIP, OPTION),
+    LABEL(read_retstat, OPTION)
+  ) end)
 
 --- Return the default _R table.
 local function block_R()
@@ -446,5 +451,9 @@ return {
     block_R = block_R,
     read_functioncall = read_functioncall,
     read_retstat = read_retstat,
-    read_Name = read_Name
+    read_Name = read_Name,
+    read_stat = read_stat,
+    read_functioncall = read_functioncall,
+    read_var = read_var,
+    read_prefixexp = read_prefixexp
 }

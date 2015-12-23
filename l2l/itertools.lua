@@ -109,17 +109,6 @@ list = setmetatable({
     end
     return value
   end,
-  contains = function(self, obj)
-    if not self then
-      return false
-    end
-    for i, v in ipairs(self) do
-      if v == obj then
-        return i
-      end
-    end
-    return false
-  end,
   concat = function(self, separator)
     separator = separator or ""
     if self == nil then
@@ -324,7 +313,15 @@ local function keys(objs)
   return orig[2]
 end
 
-local function contains(objs, target)
+local function search(f, objs)
+  for i, v in pairs(objs or {}) do
+    if f(v) then
+      return v
+    end
+  end
+end
+
+local function contains(target, objs)
   for i, v in pairs(objs or {}) do
     if v == target then
       return i
@@ -378,7 +375,7 @@ local function filter(f, objs)
   f = f or id
   local origin = cons(nil)
   local last = origin
-  for i, obj in ipairs(objs) do
+  for i, obj in ipairs(objs or {}) do
     if f(obj) then
       last[2] = cons(obj)
       last = last[2]
@@ -407,7 +404,7 @@ local function slice(objs, start, finish)
 end
 
 local function car(t)
-  assert(t)
+  assert(t, "car: `t` missing.")
   return t[1]
 end
 
@@ -416,7 +413,26 @@ local function cdr(t)
   return t[2]
 end
 
+local function take_while(f, objs)
+  local origin = cons(nil)
+  local last = origin
+  for i, v in ipairs(objs or {}) do
+    if not f(v) then
+      break
+    end
+    last[2] = cons(v)
+    last = last[2]
+  end
+  return origin[2]
+end
+
 local function take(n, objs)
+  if not objs then
+    return nil
+  end
+  if n == 1 then
+    return cons(objs[1])
+  end
   local orig = cons(nil)
   local last = orig
   for i, v in ipairs(objs or {}) do
@@ -432,6 +448,10 @@ end
 local function drop(n, objs)
   if n <= 0 or not objs then
     return objs
+  end
+  if n == 1 and objs then
+    -- Optimisation.
+    return objs[2]
   end
   return drop(n-1, cdr(objs))
 end
@@ -465,5 +485,7 @@ return {
   take=take,
   drop=drop,
   filter=filter,
-  keys=keys
+  keys=keys,
+  take_while=take_while,
+  search=search
 }

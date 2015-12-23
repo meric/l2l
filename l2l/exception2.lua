@@ -137,12 +137,14 @@ Exception = setmetatable({
       end
       return value
     end, {...})
+    local message = self.message:format(list.unpack(parameters))
     return setmetatable({
         environment=environment, 
         bytes=bytes,
         arguments={...},
         name=self.name,
-        message=self.message:format(list.unpack(parameters))},
+        traceback=debug.traceback(("%s: %s"):format(self.name, message), 2),
+        message=message},
       self)
   end
 }, {__call = function(Exception, name, message)
@@ -153,9 +155,10 @@ Exception = setmetatable({
         local lines = formatsource(
           self.environment._META.source, self.message,
           #self.environment._META.source  - #list.concat(self.bytes))
-        return ("%s: %s"):format(
+        return ("%s: %s\n%s"):format(
           self.name,
-          table.concat(lines, "\n"))
+          table.concat(lines, "\n"),
+          self.traceback)
       end,
       formatted = function(self)
         return ("%s: %s"):format(

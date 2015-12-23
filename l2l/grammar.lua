@@ -9,11 +9,12 @@ local contains = itertools.contains
 local drop = itertools.drop
 local id = itertools.id
 local list = itertools.list
-local map = itertools.map
 local show = itertools.show
 local slice = itertools.slice
 local take = itertools.take
 local tolist = itertools.tolist
+local vector = itertools.vector
+local take_while = itertools.take_while
 
 local raise = exception.raise
 local execute = reader.execute
@@ -33,7 +34,7 @@ local function NonTerminal(name)
   -- Consists of one or more of the same type
   local non_terminal = setmetatable({
     representation = function(self)
-      local origin = list(self.read)
+      local origin = list(name)
       local last = origin
       for i, value in ipairs(self) do
         local repr = type(value) == "string" and value or value:representation()
@@ -41,9 +42,6 @@ local function NonTerminal(name)
         last = last[2]
       end
       return origin
-    end,
-    is_valid = function(self)
-      return pcall(execute, self.read, nil, tolist(tostring(self)))
     end,
     __tostring = function(self)
       local repr = {}
@@ -76,9 +74,6 @@ local Terminal = setmetatable({
   representation = function(self)
     return self
   end,
-  is_valid = function(self)
-    return pcall(execute, self.read, nil, tolist(tostring(self)))
-  end,
   __tostring = function(self)
     return tostring(self[1])
   end,
@@ -96,36 +91,35 @@ Terminal.__index = Terminal
 
 local SKIP = "SKIP"
 local PEEK = "PEEK"
-local OPT = "OPT"
+local OPTION = "OPTION"
 local REPEAT = "REPEAT"
 
-local READ, ALL, ANY
+local LABEL, ALL, ANY, SET
 
 local function is(reader, flag)
   local rule = getmetatable(reader)
   if flag == nil then -- verify `reader` is a rule
-    return rule == ALL or rule == ANY or rule == READ
+    return rule == ALL or rule == ANY or rule == LABEL or rule == SET
   end
-  if flag == ALL or flag == ANY or flag == READ then
+  if flag == ALL or flag == ANY or flag == LABEL or flag == SET then
     return rule == flag
   end
-  assert(contains({SKIP, PEEK, OPT, REPEAT}, flag))
-  if rule ~= READ then
+  if rule ~= LABEL then
     return false
   end
   return reader[flag]
 end
 
-READ = setmetatable({
+LABEL = setmetatable({
   representation = function(self)
     return tostring(self)
   end,
-  __call = function(self, environment, bytes, targets)
-    return self[1](environment, bytes, targets)
+  __call = function(self, environment, bytes, stack)
+    return self[1](environment, bytes, stack)
   end,
   __tostring = function(self)
     local text = tostring(car(self))
-    if is(self, OPT) then
+    if is(self, OPTION) then
       text = "["..text.."]"
     end
     if is(self, REPEAT) then
@@ -137,8 +131,8 @@ READ = setmetatable({
     return text
   end
 }, {
-  __call = function(READ, reader, ...)
-    local self = setmetatable({reader}, READ)
+  __call = function(LABEL, reader, ...)
+    local self = setmetatable({reader}, LABEL)
     assert(reader, "missing `reader` argument.")
     for i, value in ipairs({...}) do
       self[value] = true
@@ -146,27 +140,25 @@ READ = setmetatable({
     return self
   end,
   __tostring = function()
-    return "READ"
+    return "LABEL"
   end
 })
 
-READ.__index = READ
+LABEL.__index = LABEL
 
-local SET = setmetatable({
-  __call = function(self, environment, bytes, targets)  
-    -- CALL THIS WITH THE NONTERMINAL STATE? SO I CAN CHECK WHERE ITS LOOPING FROM.
-    -- SOME SORT OF STACK?
-    return self[1](environment, bytes, list.push(targets, self.target))
+SET = setmetatable({
+  __call = function(self, environment, bytes, stack)
+    return self[1](environment, bytes, list.push(stack, self.nonterminal))
   end,
   __tostring = function(self)
-    return tostring(self.target)
+    return tostring(self.nonterminal)
   end
 }, {
-  __call = function(SET, target, reader, factory)
-    assert(target)
-    local self = setmetatable({reader, target=target}, SET)
-    target.read = self
-    target.factory = factory
+  __call = function(SET, nonterminal, reader, factory)
+    assert(nonterminal)
+    local self = setmetatable({reader,
+      nonterminal=nonterminal,
+      factory=factory}, SET)
     return self
   end,
   __tostring = function()
@@ -175,25 +167,17 @@ local SET = setmetatable({
 })
 SET.__index = SET
 
-local function index_of_sublist(origin, sub)
-  local count = 0 
-  if origin == sub then
-    return 0
-  end
-  return 1 + index_of_sublist(origin[2], sub)
-end
-
 ANY = setmetatable({
-  __call = function(self, environment, bytes, targets)
+  __call = function(self, environment, bytes, stack)
     -- find the one that consumes most tokens
     for i, reader in ipairs(self) do
       if reader ~= nil then
-        assert(not is(reader, OPT))
+        assert(not is(reader, OPTION))
         assert(not is(reader, SKIP))
         assert(not is(reader, REPEAT))
         assert(reader)
         local ok, values, rest = pcall(execute, reader, environment, bytes,
-          targets)
+          stack)
         if ok and values and rest ~= bytes then
           return values, rest
         end
@@ -224,9 +208,8 @@ ANY = setmetatable({
   end
 })
 
-
 ALL = setmetatable({
-  __call = function(self, environment, bytes, targets)
+  __call = function(self, environment, bytes, stack)
     local values, rest, all, ok = nil, bytes, {}
     for i, reader in ipairs(self) do
       if reader ~= nil then
@@ -234,9 +217,9 @@ ALL = setmetatable({
           assert(reader)
           local prev = rest
           local prev_meta = environment._META[rest]
-          if is(reader, OPT) or is(reader, REPEAT) then
+          if is(reader, OPTION) or is(reader, REPEAT) then
             ok, values, rest = pcall(execute, reader, environment, rest,
-              targets)
+              stack)
             if not ok then
               rest = prev -- restore to previous point.
               if getmetatable(values) == ExpectedNonTerminalException then
@@ -246,12 +229,12 @@ ALL = setmetatable({
               end
             end
           else
-            values, rest = execute(reader, environment, rest, targets)
+            values, rest = execute(reader, environment, rest, stack)
           end
           if not values then
             if is(reader, REPEAT) then
               break
-            elseif not is(reader, OPT) then
+            elseif not is(reader, OPTION) then
               return nil, bytes
             end
           end
@@ -263,7 +246,7 @@ ALL = setmetatable({
             environment._META[prev] = prev_meta
             rest = prev
           elseif not is(reader, SKIP) then
-            targets = list()
+            stack = list()
             for j, value in ipairs(values or {}) do
               table.insert(all, value)
             end
@@ -297,7 +280,7 @@ ALL = setmetatable({
   end
 })
 
-local function read_terminal(terminal)
+local function factor_terminal(terminal)
   local value = tostring(terminal)
   local reader = SET(terminal, function(environment, bytes)
     if list.concat(take(#value, bytes)) == value then
@@ -308,27 +291,8 @@ local function read_terminal(terminal)
   return reader
 end
 
-
---- Return the value of the first node in `parent` whose value when called on
--- `f` returns true. 
--- @param f the function that returns true to return that argument. It will
---        also be given the parent.
--- @param parent the tree to go through.
-local function search(f, parent)
-  assert(is(parent), parent)
-  local origin = list(nil)
-  local last = origin
-  for i, child in ipairs(parent) do
-    if type(child) == "table" then
-      if f(child, parent) then
-        return child
-      end
-      if is(child) and not is(child, SKIP) then
-        search(f, child)
-      end
-    end
-  end
-  return origin[2]
+local function TERM(text)
+  return factor_terminal(Terminal(text))
 end
 
 --- Returns a list of values from `parent` that when called on `f` returns
@@ -336,18 +300,18 @@ end
 -- @param f the function that returns true to return that argument. It will
 --        also be given the parent.
 -- @param parent the tree to go through.
-local function filter(f, parent)
+local function filter(f, parent, ...)
   assert(is(parent), parent)
   local origin = list(nil)
   local last = origin
   for i, child in ipairs(parent) do
     if type(child) == "table" then
-      if f(child, parent) then
+      if f(child, parent, ...) then
         last[2] = cons(child)
         last = last[2]
       end
       if is(child) and not is(child, SKIP) then
-        last[2] = filter(f, child)
+        last[2] = filter(f, child, parent, ...)
         if last[2] then
           last = last[2]
         end
@@ -357,123 +321,274 @@ local function filter(f, parent)
   return origin[2]
 end
 
-local read_nonterminal
+local factor_nonterminal
 
-
--- Return how many times child should be recursively called.
-local function find_maximum_count(environment, bytes, head, parent, child)
-  local tail = child.factory(environment, bytes, list(),
-    function(head, reader)
-      return reader
-    end)
-  local values, rest = head(environment, bytes)
-  if values == nil and rest == bytes then
-    return 0
+--- Return a list of all spans inside a rule wrapped in an ANY.
+-- A span is any part of the rule that is an ALL or have no ALL ancestor.
+-- that can satisfy a rule.
+-- @param rule The rule to search for ALL's.
+local function factor_spans(rule, ...)
+  if not ... and is(rule, ALL) then
+    return ANY(rule)
   end
-  local minimum_repeats = 1
-  filter(function(value, rule)
-    if getmetatable(rule) == ALL then
-      return false
-    end
-    local found = false
-    for i, reader in ipairs(value) do
-      if type(reader) == "table" and reader.target == parent then
-        found = true
-        break
-      end
-    end
-    if not found then
-      if minimum_repeats > 0 and value(environment, bytes) then
-        minimum_repeats = 0
-      end
-    end
-  end, tail)
-
-  local spans = filter(function(value)
-    if getmetatable(value) ~= ALL then
-      return false
-    end
-    local found = false
-    for i, reader in ipairs(value) do
-      if type(reader) == "table" and reader.target == parent then
-        found = true
-        break
-      end
-    end
-    return found
-  end, tail)
-
-  -- ALL rule spans beginning with `parent`.
-  local sections = map(function(section)
-    local index
-    for i, value in ipairs(section) do
-      if value.target == parent then 
-        index = i
-        break
-      end
-    end
-    local span = ALL(unpack(slice(section, index + 1)))
-    return read_nonterminal(NonTerminal(tostring(span)), function()
-      return span
-    end, true)
-  end, spans)
-  local repeats = ALL(READ(ANY(list.unpack(sections)), REPEAT))
-  local ok, values, _rest = pcall(repeats, environment, rest)
-  if not ok then
-    return 0
-  end
-  local count = list.__len(values)
-  return count + (1-minimum_repeats)
+  local parents = {...}
+  return ANY(list.unpack(filter(function(value, parent, ...)
+    return not itertools.search(function(parent)
+      return is(parent, ALL)
+    end, {parent, ...})
+  end, rule)))
 end
 
+--- Given a rule, return a set of rules that return the possible
+-- terminals that could occur before it recurses into `nonterminal`.
+-- @param factory The factory to generate the rule to extract the possible 
+--                prefix terminals rule from.
+-- @param nonterminal The nonterminal to find prefix of.
+local function factor_prefix_left_nonterminal(factory, nonterminal)
+  local rules = {}
+  table.insert(rules, factory(function(child)
+    table.insert(rules,
+      child.factory and child.factory(function() end) or child)
+  end))
+  local patterns = ANY()
+  for i, rule in ipairs(rules) do
+    local pattern = ALL(list.unpack(itertools.filter(function(span)
+        if is(span, ALL) and span[1].nonterminal == nonterminal then
+          return false
+        end
+        return true
+      end, factor_spans(rule))))
+    if #pattern > 0 then
+      table.insert(patterns, pattern)
+    end
+  end
+  return patterns
+end
 
-read_nonterminal = function(nonterminal, factory, const)
+--- Factor `rule` by removing spans involving left recursion of `nonterminal`.
+-- A span is any part of the rule that is an ALL or have no ALL ancestor.
+-- @param rule The rule to remove  `nonterminal` from.
+-- @param nonterminal The nonterminal to remove.
+local function factor_without_left_nonterminal(rule, nonterminal)
+  return ANY(list.unpack(itertools.filter(function(child)
+    if is(child, SKIP) then
+      return false
+    end
+    if child.nonterminal == nonterminal then
+      return false
+    end
+    if not is(child, ALL) then
+      return true
+    end
+    if child[1].nonterminal == nonterminal or child.nonterminal == nonterminal then
+      return false
+    end
+    return true
+  end, factor_spans(rule))))
+end
+
+--- Factor `rule` into suffixes of spans involving left recursion of
+-- `nonterminal`.
+-- A span is any part of the rule that is an ALL or have no ALL ancestor.
+-- @param nonterminal The nonterminal to remove.
+local function factor_left_suffix(rule, nonterminal)
+  return ANY(list.unpack(itertools.map(
+    function(child)
+      return ALL(unpack(slice(child, 2)))
+    end, itertools.filter(function(child)
+        if is(child, SKIP) then
+          return false
+        end
+        if not is(child, ALL) then
+          return false
+        end
+        if child[1].nonterminal == nonterminal
+            or child.nonterminal == nonterminal then
+          return true
+        end
+        return false
+      end, factor_spans(rule)))))
+  end
+
+factor_nonterminal = function(nonterminal, factory)
   assert(factory, "missing `factory` argument")
-  local maximum_counts, origin, ok = {}
+  local ok, origin = pcall(factory, id)
 
-  local state = nil
- 
+  if ok and not is(origin) then
+    return SET(nonterminal, origin)
+  else
+    origin = nil
+  end
 
-  local reader = SET(nonterminal, function(environment, bytes, targets)
-    if not const and not state and nonterminal then
-      state = {
-        lefts={}
-      }
+  local left, is_annotated, read_take_terminals = {}
+  local paths = setmetatable({}, {__mode='k'})
+  local cache = setmetatable({}, {__mode='k'})
+  local spans
 
-      state.origin = factory(function(head, reader)
-        table.insert(state.lefts, reader)
-        return reader
-      end)
-      -- state = {}
+  return SET(nonterminal, function(environment, bytes, stack)
+    if not bytes then
+      return nil, nil
     end
-    if state then
-      -- print(nonterminal, state.origin, show(state.lefts))
-    end
+    cache[bytes] = cache[bytes] or {}
+    local memoize = cache[bytes]
+    local history = environment._META[bytes]
 
-    if not origin or not const then
-      ok, origin = pcall(factory, function(head, reader)
-          -- mutual recursion can't just rely on counts.
-          local child = reader.target
-          local count = list.count(targets, child)
-          maximum_counts[bytes] = maximum_counts[bytes] or {}
-          local maximum_count = maximum_counts[bytes][child]
-          if not maximum_count then
-            maximum_counts[bytes][child] = 1
-            maximum_count = find_maximum_count(environment, bytes,
-              head, nonterminal, child)
-            maximum_counts[bytes][child] = maximum_count
-          end
-          return (count == 0 or count < maximum_count) and reader
+    -- If memoized, then perform result from cache.
+    if memoize[nonterminal] then
+      if memoize[nonterminal].stack == stack then
+        if memoize[nonterminal].exception then
+          raise(memoize[nonterminal].exception)
+        end
+        if memoize[nonterminal].values or memoize[nonterminal].rest then
+          return memoize[nonterminal].values,
+            memoize[nonterminal].rest
+        end
+      end
+    end
+    if not origin then
+      spans = factor_without_left_nonterminal(
+        factory(function() end), nonterminal)
+      origin = factory(
+        function(read)
+          local rule = read.factory and read.factory(id) or read
+          table.insert(left, {
+            index = #left + 1,
+            rule = rule,
+            nonterminal = read.factory and read.nonterminal or nil,
+            suffixes = factor_left_suffix(rule, nonterminal),
+            spans = factor_without_left_nonterminal(rule, nonterminal)
+          })
+          return read
         end)
+      is_annotated = #left > 0
+      if is_annotated then
+        -- `read_take_terminals` is a function for left recursion.
+        read_take_terminals = factor_prefix_left_nonterminal(
+          factory, nonterminal)
+        -- We have all the Left recursions in `left`, and prefixes in `prefix`.
+        -- We need to refactor the Left's into a flat shape and project it onto 
+        -- `bytes`. Then figure out which step which left is called on each 
+        -- iteration. This is done next, and saved in paths[bytes].
+      end
+    end
+
+    if is_annotated then
+      if history and history.values and paths[bytes]
+        and not cdr(paths[bytes]) then
+        -- We have executed all we want to execute and at a point where we
+        -- already have a value collected, but left recursion has taken us
+        -- back here. Return the collected value.
+        if car(paths[bytes]) then
+          return history.values, history.rest
+        end
+      end
+
+      -- Check `list.count(stack, nonterminal) == 1` because we only want to
+      -- calculate the recursion path once, on first recursion at each byte. 
+      if list.count(stack, nonterminal) == 1 then
+        -- check if left does not precede nonterminal in stack
+        local from = itertools.search(function(nonterminal)
+            return itertools.search(function(info) return
+                info.nonterminal == nonterminal end, left)
+          end, cdr(stack))
+        if from then
+          -- Called from `from`. E.g.
+          -- With the following Grammar:
+          --   read_functioncall = ALL(read_prefixexp args)
+          --   read_prefixexp = LEFT(read_functioncall) | name
+          --
+          -- The following call is made:
+          --   read_functioncall(environment, bytes)
+          --
+          -- At this line in the code with the above scenario,
+          --   `stack` is (prefixexp functioncall)
+          --   `nonterminal` is `prefixexp`.
+          --   `from` is `read_functioncall`, is the parent call that's
+          --          executed the current `read_prefixexp`.
+          -- 
+          -- When deriving `prefixexp` we want to drop the last call to
+          -- `read_functioncall`, and leave stuff for the parent 
+          -- `read_functioncall` call to parse.
+          --
+          -- Otherise `args` in `read_functioncall` will be missing.
+          --
+          -- Also see the following block later on:
+          -- ```
+          -- if from then
+          --   paths[bytes] = cdr(paths[bytes])
+          -- end
+          -- ```
+          -- It does the actual dropping.
+          --
+          -- Here we replace the `functioncall` at the end with a `prefixexp`
+          -- at the beginning of the path, to provide the first `prefixexp`
+          -- term in `functioncall` to `functioncall`.
+          paths[bytes] = list.push(paths[bytes], nil)
+        end
+
+        -- Left recursing paths that can have no suffix, can be "independent".
+        -- E.g. read_a = ANY(TERM("a"), ALL(TERM("("), read_exp, TERM(")"))
+        --      read_t = ANY(read_exp, read_a)
+        --    Assume `read_exp` left recurses back to `read_t`.
+        -- The `read_a` non-left-recursion choice makes `read_t` "independent".
+        local independent = itertools.search(
+            function(info)
+              return #info.spans > 0 and info.spans(environment, bytes)
+            end, left)
+        if independent then
+          paths[bytes] = list.push(paths[bytes], independent.index)
+        elseif #spans > 0 and spans(environment, bytes) then
+          paths[bytes] = list.push(paths[bytes], nil)
+        end        
+
+        local prefix, rest = read_take_terminals(environment, bytes)
+        -- If no prefix match, and no independent match, it means this doesn't
+        -- match.
+        if not prefix and not independent then
+          memoize[nonterminal] = {
+            values=nil,
+            rest=bytes,
+            stack=stack
+          }
+          return nil, bytes
+        end
+        -- Try each suffix, while we can find a matching iteration, keep going
+        -- and build a path for the recursion later. We don't return results
+        -- of what we have here because we're factoring the grammar into a
+        -- different shape, it would return a different tree to what the
+        -- caller expected.
+        local matching, values = prefix
+        while matching and rest do
+          matching = nil
+          for i, info in ipairs(left) do
+            values, rest = info.suffixes(environment, rest)
+            if values ~= nil and rest ~= bytes then
+              matching = true
+              paths[bytes] = list.push(paths[bytes], info.index)
+              break
+            end
+          end
+        end
+        if from then
+          paths[bytes] = cdr(paths[bytes])
+        end
+      end
+      local index, path = 0
+      local ordering = paths[bytes]
+      path, paths[bytes] = unpack(ordering or {})
+      ok, origin = pcall(factory, function(reader)
+        -- Whether to show `reader` on this iteration.
+        index = index + 1
+        if index == path then
+          return reader
+        end
+      end)
       if not ok then
         local err = origin
         raise(GrammarException(environment, bytes, nonterminal, err))
       end
     end
-    -- print("[", nonterminal, bytes)
-    local ok, values, rest = pcall(execute, origin, environment, bytes,
-      targets)
-    -- print("]", nonterminal, rest, ok, values)
+    local ok, values, rest = pcall(execute, origin, environment, bytes, stack)
     if not ok then
       local err = values
       if getmetatable(values) == ExpectedNonTerminalException then
@@ -485,32 +600,38 @@ read_nonterminal = function(nonterminal, factory, const)
       end
     end
     if #({list.unpack(values)}) == 0 then
-      raise(ExpectedNonTerminalException(environment, bytes, origin,
-        show(list.concat(bytes))))
+      -- Memoize
+      memoize[nonterminal] = {
+        exception = ExpectedNonTerminalException(environment, bytes, origin,
+          show(list.concat(bytes))),
+        stack=stack
+      }
+      raise(memoize[nonterminal].exception)
     end
-    return list(nonterminal(list.unpack(values))), rest
+    -- Memoize
+    memoize[nonterminal] = {
+      values=list(nonterminal(list.unpack(values))),
+      rest=rest,
+      stack=stack
+    }
+    return memoize[nonterminal].values, rest
   end, factory)
-  return reader
-end
-
-local function TERM(text)
-  return read_terminal(Terminal(text))
 end
 
 return {
   TERM=TERM,
   SKIP=SKIP,
-  OPT=OPT,
+  OPTION=OPTION,
   REPEAT=REPEAT,
   ALL=ALL,
   ANY=ANY,
   SET=SET,
-  READ=READ,
+  LABEL=LABEL,
   Terminal=Terminal,
   NonTerminal=NonTerminal,
   is=is,
-  read_nonterminal=read_nonterminal,
-  read_terminal=read_terminal,
+  factor_nonterminal=factor_nonterminal,
+  factor_terminal=factor_terminal,
   search=search,
   filter=filter,
   ExpectedNonTerminalException=ExpectedNonTerminalException,

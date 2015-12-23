@@ -24,12 +24,17 @@
     `(,true "($ while nil do return -1.23 end)")
     `(,true "($ while nil do return 1.23, true end)")
     `(,true "($ while nil do return not 1.23, not true end);")
+    `(,true "($ while nil do return not 1.23, not true end; 
+                while nil do return not 1.23, not true end; 
+                while nil do return not 1.23, not true end; 
+                while nil do return not 1.23, not true end;);")
     `(,true "($
       while nil do return -1.23 end;
       while nil do return -1.23 end;
       return;)")
     `(,true "($ return a)")
     `(,true "($ return (a), nil)")
+    `(,true "($ return a.b.c().d.e.f )")
     `(,true "($ return (a), b)")
     `(,true "($ return(a))")
     `(,true "($ return a.b)")
@@ -49,7 +54,10 @@
     `(,true "($ return (e)[f]   )")
     `(,true "($ return f(e, f)   )")
     `(,true "($ return f(e, f(d))   )")
+    `(,true "($ return f(a)(b)(c)(d)   )")
     `(,true "($ return f()[d]   )")
+    `(,true "($ return f()[d](e)[f].g   )")
+    `(,true "($ return ((((((f(a))))))) )") ; slow
   ]
   reader (require "l2l.reader3"))
 
@@ -61,6 +69,6 @@
           (ok value rest) (pcall reader.read nil (tolist text)))
         (if (~= ok expected)
           (print "failed" text (if ok "==" "=>") value)
-          (print "ok" text (if ok "==" "=>") (if ok (car value) value)))
+          (id "ok" text (if ok "==" "=>") (if ok (car value) "<Error as expected>")))
         ))
     tests))

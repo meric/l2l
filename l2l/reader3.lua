@@ -137,7 +137,11 @@ local function execute(reader, environment, bytes, ...)
   environment = environment or environ(bytes)
   local values, rest = reader(environment, bytes, ...)
   if bytes and values and rest ~= bytes then
-    environment._META[bytes] = {read=reader, values=values}
+    environment._META[bytes] = {
+      read=reader,
+      values=values,
+      rest=rest
+    }
   end
   return values, rest
 end
@@ -181,7 +185,7 @@ end
 optimise scan, span, map
 ]]
 
-local function read_predicate(environment, transform, predicate, bytes)
+local function read_predicate(environment, bytes, transform, predicate)
   local token = ""
   local previous = nil
   while true do
@@ -205,7 +209,7 @@ end
 
 --[[--
 -- Slow
-local function read_predicate(environment, transform, predicate, bytes)
+local function read_predicate(environment, bytes, transform, predicate)
   local tokens, rest = span(car,
     map(function(token, byte) return
         predicate(token, byte) and {token, byte} or {nil, byte}
@@ -221,21 +225,21 @@ local function read_symbol(environment, bytes)
   -- Any byte that is not defined as a read macro can be part of a symbol.
   -- ".", "-" and "[0-9]" can always be part of a symbol if it is not the first
   -- character.
-  return read_predicate(environment,
+  return read_predicate(environment, bytes,
     symbol, function(token, byte)
       return byte
         and (matchreadmacro(environment, byte) == 1
           or byte == "."
           or byte == "-"
           or byte:match("[0-9]"))
-    end, bytes)
+    end)
 end
 
 local function read_number(environment, bytes)
-  local negative, rest = read_predicate(environment,
-    id, bind(operator["=="], "-"), bytes)
-  local numbers, rest = read_predicate(environment,
-    tonumber, match("^%d+%.?%d*$", "^%d*%.?%d+$"), rest)
+  local negative, rest = read_predicate(environment, bytes,
+    id, bind(operator["=="], "-"))
+  local numbers, rest = read_predicate(environment, rest,
+    tonumber, match("^%d+%.?%d*$", "^%d*%.?%d+$"))
   if not numbers then
     -- Not a number.
     return nil, bytes
@@ -254,8 +258,8 @@ local function read_right_paren(environment, bytes)
 end
 
 local function read_whitespace(environment, bytes)
-  return read_predicate(environment, id,
-    match("^%s+$"), bytes)
+  return read_predicate(environment, bytes, id,
+    match("^%s+$"))
 end
 
 --- Return next expression after whitespace.
@@ -348,9 +352,10 @@ end
 
 if debug.getinfo(3) == nil then
   local lua = require("l2l.lua")
-  local bytes = tolist("return f(e, f(d))")
-  local values, rest = lua.read_retstat(environ(bytes), bytes)
+  local bytes = tolist("a[d](e)")
+  local values, rest = lua.read_stat(environ(bytes), bytes)
   print(show(values), rest)
+
   print(show(car(values):representation()))
   -- -- (print ($ ))
   -- --[[

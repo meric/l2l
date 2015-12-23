@@ -21,3 +21,11 @@ assert(fac(8) == 40320, "Factorial failed!")
 assert(fib(16) == 987, "Fibonacci failed!")
 
 eval.dofile("tests/lua.lisp")
+
+local values, rest = loadfile("tests/left.lua")()
+assert(tostring(values) == "(((1)2)112(2)112211)" and not rest,
+    "Parse left recursion grammar failed.")
+
+local values, rest = loadfile("tests/left2.lua")()
+assert(tostring(values) == "(1-(1-9*(7-3))*(4-7)*7)" and not rest,
+    "Parse left recursion grammar failed.")
