@@ -92,11 +92,6 @@ local Terminal = setmetatable({
 
 Terminal.__index = Terminal
 
-local skip = "skip"
-local peek = "peek"
-local option = "option"
-local repeating = "repeating"
-
 local mark, span, any, associate
 
 local function is(reader, flag)
@@ -123,6 +118,12 @@ local function factor_terminal(terminal)
   end)
   return reader
 end
+
+-- These are attributes that can be marked onto an expression grammar.
+local skip = "skip"
+local peek = "peek"
+local option = "option"
+local repeating = "repeating"
 
 mark = setmetatable({
   representation = function(self)
@@ -163,6 +164,7 @@ mark = setmetatable({
 
 mark.__index = mark
 
+-- associate a read function with a nonterminal.
 associate = setmetatable({
   __call = function(self, environment, bytes, stack)
     return self[1](environment, bytes, list.push(stack, self.nonterminal))
@@ -541,10 +543,11 @@ factor = function(nonterminal, factory)
         spans = factor_without_left_nonterminal(
           factor_expand_left_nonterminal(factory(function() end),
             nonterminal))
-        -- We have all the Left recursions in `left`, and prefixes in `prefix`.
-        -- We need to refactor the Left's into a flat shape and project it onto 
-        -- `bytes`. Then figure out which step which left is called on each 
-        -- iteration. This is done next, and saved in paths[bytes].
+        -- We have all the Left recursions in `left`, and prefixes in
+        -- `read_take_terminals`. We need to refactor the Left's into a flat
+        -- shape and project it onto `bytes`. Then figure out which step which
+        -- left is called on each iteration. This is done next, and saved in 
+        -- paths[bytes].
       else
         spans = factor_without_left_nonterminal(factory(function() end))
       end
