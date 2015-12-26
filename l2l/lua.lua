@@ -255,7 +255,7 @@ prefixexp = factor("prefixexp", function(left) return
   -- Give the parser a hint to avoid infinite loop on Left-recursion.
   -- We must call left in `prefixexp` because the left operator
   -- can only be used when either:
-  --  1. the all clause argument, e.g. left(span(prefixexp, ...))
+  --  1. the span clause argument, e.g. left(span(prefixexp, ...))
   --  2. the * argument standing alone
   -- left recursions back to this nonterminal.
    any(left(functioncall), left(var), span("(", __, exp, __, ")", __))
