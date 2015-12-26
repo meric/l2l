@@ -462,23 +462,35 @@ end
 
 local function drop(n, nextvalue, invariant, state)
   nextvalue, invariant, state = generate(nextvalue, invariant, state)
-  local t, value = type(n) == "number"
-  while state and (t and state < n or true) do
-    state, value = nextvalue(invariant, state)
-    if not t and not n(value, state) then
-      break
+  local is_number, has_dropped, value = type(n) == "number", false
+  return function(cache, index)
+    local state = cache[index]
+    if not has_dropped then
+      if is_number then
+        while state and state <= n do
+          state, value = nextvalue(invariant, state)
+        end
+      else
+        while state do
+          state, value = nextvalue(invariant, state)
+          if not n(value, state) then
+            state = nil
+            break
+          end
+        end
+      end
+      has_dropped = true
+      if state ~= nil then
+        cache[index] = state
+        return index, value
+      end
+    else
+      cache[index + 1], value = nextvalue(invariant, state)
+      if cache[index + 1] ~= nil then
+        return index + 1, value
+      end
     end
-  end
-  return function(invariant, index)
-    if t ~= nil then
-      t = nil
-      return index + 1, value
-    end
-    state, value = nextvalue(invariant, state)
-    if state ~= nil then
-      return index + 1, value
-    end
-  end, invariant, 0
+  end, {[0]=state}, 0
 end
 
 local function scan(f, initial, nextvalue, invariant, state)

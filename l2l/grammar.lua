@@ -12,7 +12,6 @@ local show = itertools.show
 local slice = itertools.slice
 local take = itertools.take
 local tolist = itertools.tolist
-local vector = itertools.vector
 
 local raise = exception.raise
 local execute = reader.execute
@@ -37,9 +36,9 @@ NonTerminal = setmetatable({
     return self.name
   end,
   representation = function(self)
-    local origin = list(name)
+    local origin = list(self.name)
     local last = origin
-    for i, value in ipairs(self) do
+    for _, value in ipairs(self) do
       local repr = type(value) == "string" and value or value:representation()
       last[2] = cons(repr)
       last = last[2]
@@ -47,12 +46,12 @@ NonTerminal = setmetatable({
     return origin
   end
 }, {
-__call = function(NonTerminal, name)
+__call = function(_, name)
   local self = setmetatable({
     name = name,
     __tostring = function(self)
       local repr = {}
-      for i, value in ipairs(self) do
+      for _, value in ipairs(self) do
           table.insert(repr, tostring(value))
       end
       table.insert(repr, "")
@@ -66,7 +65,7 @@ __call = function(NonTerminal, name)
   self.__index = self
   return self
 end,
-__tostring = function(self)
+__tostring = function()
   return "NonTerminal"
 end})
 
@@ -92,9 +91,9 @@ Terminal.__index = Terminal
 
 local mark, span, any, associate
 
-local function is(reader, flag)
-  local rule = getmetatable(reader)
-  if flag == nil then -- verify `reader` is a rule
+local function is(obj, flag)
+  local rule = getmetatable(obj)
+  if flag == nil then -- verify `obj` is a rule
     return rule == span or rule == any or rule == mark or rule == associate
   end
   if flag == span or flag == any or flag == mark or flag == associate then
@@ -103,18 +102,17 @@ local function is(reader, flag)
   if rule ~= mark then
     return false
   end
-  return reader[flag]
+  return obj[flag]
 end
 
 local function factor_terminal(terminal)
   local value = tostring(terminal)
-  local reader = associate(terminal, function(environment, bytes)
+  return associate(terminal, function(_, bytes)
     if list.concat(tolist(take(#value, bytes))) == value then
       return list(terminal), tolist(drop(#value, bytes))
     end
     return nil, bytes
   end)
-  return reader
 end
 
 -- These are attributes that can be marked onto an expression grammar.
@@ -144,13 +142,13 @@ mark = setmetatable({
     return text
   end
 }, {
-  __call = function(mark, reader, ...)
-    if type(reader) == "string" then
-      reader = factor_terminal(Terminal(reader))
+  __call = function(_, read, ...)
+    if type(read) == "string" then
+      read = factor_terminal(Terminal(read))
     end
-    local self = setmetatable({reader}, mark)
-    assert(reader, "missing `reader` argument.")
-    for i, value in ipairs({...}) do
+    local self = setmetatable({read}, mark)
+    assert(read, "missing `read` argument.")
+    for _, value in ipairs({...}) do
       self[value] = true
     end
     return self
@@ -171,12 +169,12 @@ associate = setmetatable({
     return tostring(self.nonterminal)
   end
 }, {
-  __call = function(associate, nonterminal, reader, factory)
+  __call = function(_, nonterminal, read, factory)
     if getmetatable(nonterminal) ~= NonTerminal then
       nonterminal = NonTerminal(
         tostring(nonterminal ~= nil and nonterminal or factory))
     end
-    local self = setmetatable({reader,
+    local self = setmetatable({read,
       nonterminal=nonterminal,
       factory=factory}, associate)
     return self
@@ -189,16 +187,16 @@ associate.__index = associate
 
 any = setmetatable({
   __call = function(self, environment, bytes, stack)
+    assert(bytes[1], tostring(self))
     -- find the one that consumes most tokens
-    for i, reader in ipairs(self) do
-      if reader ~= nil then
-        assert(not is(reader, option))
-        assert(not is(reader, skip))
-        assert(not is(reader, repeating))
-        assert(reader)
-        local ok, values, rest = pcall(execute, reader, environment, bytes,
+    for _, read in ipairs(self) do
+      if read ~= nil then
+        assert(not is(read, option))
+        assert(not is(read, skip))
+        assert(not is(read, repeating))
+        assert(read)
+        local ok, values, rest = pcall(execute, read, environment, bytes,
           stack)
-        print(self, ok, values, rest)
         if ok and values and rest ~= bytes then
           return values, rest
         end
@@ -221,7 +219,7 @@ any = setmetatable({
     return table.concat(repr, "")
   end
 }, {
-  __call = function(any, ...)
+  __call = function(_, ...)
     return setmetatable({list.unpack(tolist(itertools.map(
       function(value)
         if type(value) == "string" then
@@ -238,15 +236,15 @@ any = setmetatable({
 
 span = setmetatable({
   __call = function(self, environment, bytes, stack)
-    local values, rest, all, ok = nil, bytes, {}
-    for i, reader in ipairs(self) do
-      if reader ~= nil then
+    local rest, all, ok, values = bytes, {}
+    for _, read in ipairs(self) do
+      if read ~= nil then
         while true do
-          assert(reader)
+          assert(read)
           local prev = rest
           local prev_meta = environment._META[rest]
-          if is(reader, option) or is(reader, repeating) then
-            ok, values, rest = pcall(execute, reader, environment, rest,
+          if is(read, option) or is(read, repeating) then
+            ok, values, rest = pcall(execute, read, environment, rest,
               stack)
             if not ok then
               rest = prev -- restore to previous point.
@@ -257,30 +255,30 @@ span = setmetatable({
               end
             end
           else
-            values, rest = execute(reader, environment, rest, stack)
+            values, rest = execute(read, environment, rest, stack)
           end
           if not values then
-            if is(reader, repeating) then
+            if is(read, repeating) then
               break
-            elseif not is(reader, option) then
+            elseif not is(read, option) then
               return nil, bytes
             end
           end
-          if is(reader, peek) then
+          if is(read, peek) then
             -- Restore any metadata at this point
             -- We don't want a peek operation to affect state.
             -- We didn't consume any input, it should not be recorded as we
             -- have.
             environment._META[prev] = prev_meta
             rest = prev
-          elseif not is(reader, skip) then
+          elseif not is(read, skip) then
             stack = list()
-            for j, value in ipairs(values or {}) do
+            for _, value in ipairs(values or {}) do
               table.insert(all, value)
             end
           end
 
-          if not is(reader, repeating) then
+          if not is(read, repeating) then
             break
           end
         end
@@ -300,7 +298,7 @@ span = setmetatable({
     return table.concat(repr, "")
   end
 }, {
-  __call = function(span, ...)
+  __call = function(_, ...)
     return setmetatable({list.unpack(tolist(itertools.map(
       function(value)
         if type(value) == "string" then
@@ -324,7 +322,7 @@ local function filter(f, parent, ...)
   assert(is(parent), parent)
   local origin = list(nil)
   local last = origin
-  for i, child in ipairs(parent) do
+  for _, child in ipairs(parent) do
     if type(child) == "table" then
       if f(child, parent, ...) then
         last[2] = cons(child)
@@ -347,19 +345,20 @@ local factor
 -- A span is any part of the rule that is an all or have no all ancestor.
 -- that can satisfy a rule.
 -- @param rule The rule to search for span's.
-local function factor_spans(rule, ...)
-  while not ... and is(rule, any) and #rule == 1 do
+local function factor_spans(rule)
+  while is(rule, any) and #rule == 1 do
     rule = rule[1]
   end
-  if not ... and (is(rule, span) or not is(rule, any)) then
+  if is(rule, span) or not is(rule, any) then
     return any(rule)
   end
-  local parents = {...}
-  return any(list.unpack(filter(function(value, parent, ...)
-    return not itertools.search(function(parent)
-      return is(parent, span)
-    end, {parent, ...})
-  end, rule)))
+  return any(list.unpack(
+    filter(function(_, parent, ...) return
+      not itertools.search(
+        function(ancestor) return
+          is(ancestor, span)
+        end, {parent, ...})
+      end, rule)))
 end
 
 --- Given a rule, keep expanding each span's first nonterminal until it is
@@ -407,7 +406,7 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
         nonterminal))
   end))
   local patterns = any()
-  for i, rule in ipairs(rules) do
+  for _, rule in ipairs(rules) do
     local pattern = span(list.unpack(tolist(itertools.filter(function(child)
         if is(child, span) and child[1].nonterminal == nonterminal then
           return false
@@ -493,6 +492,7 @@ factor = function(nonterminal, factory)
     if not bytes then
       return nil, nil
     end
+    assert(bytes[1], tostring(nonterminal))
     cache[bytes] = cache[bytes] or {}
     local memoize = cache[bytes]
     local history = environment._META[bytes]
@@ -567,9 +567,9 @@ factor = function(nonterminal, factory)
       -- calculate the recursion path once, on first recursion at each byte. 
       if list.count(stack, nonterminal) == 1 then
         -- check if left does not precede nonterminal in stack
-        local from = itertools.search(function(nonterminal)
+        local from = itertools.search(function(caller)
             return itertools.search(function(info) return
-                info.nonterminal == nonterminal end, left)
+                info.nonterminal == caller end, left)
           end, cdr(stack))
         if from then
           -- Called from `from`. E.g.
@@ -619,8 +619,7 @@ factor = function(nonterminal, factory)
           paths[bytes] = list.push(paths[bytes], independent.index)
         elseif #spans > 0 and spans(environment, bytes) then
           paths[bytes] = list.push(paths[bytes], nil)
-        end        
-        -- print(read_take_terminals, bytes)
+        end
         local prefix, rest = read_take_terminals(environment, bytes)
 
         -- If no prefix match, and no independent match, it means this doesn't
@@ -641,7 +640,7 @@ factor = function(nonterminal, factory)
         local matching, values = prefix
         while matching and rest do
           matching = nil
-          for i, info in ipairs(left) do
+          for _, info in ipairs(left) do
             values, rest = info.suffixes(environment, rest)
             if values ~= nil and rest ~= bytes then
               matching = true
@@ -657,11 +656,11 @@ factor = function(nonterminal, factory)
       local index, path = 0
       local ordering = paths[bytes]
       path, paths[bytes] = unpack(ordering or {})
-      ok, origin = pcall(factory, function(reader)
-        -- Whether to show `reader` on this iteration.
+      ok, origin = pcall(factory, function(read)
+        -- Whether to show `read` on this iteration.
         index = index + 1
         if index == path then
-          return reader
+          return read
         end
       end)
       if not ok then
@@ -669,7 +668,8 @@ factor = function(nonterminal, factory)
         raise(GrammarException(environment, bytes, nonterminal, err))
       end
     end
-    local ok, values, rest = pcall(execute, origin, environment, bytes, stack)
+    local values, rest
+    ok, values, rest = pcall(execute, origin, environment, bytes, stack)
     if not ok then
       local err = values
       if getmetatable(values) == ExpectedNonTerminalException then
@@ -712,7 +712,6 @@ return {
   is=is,
   factor=factor,
   factor_terminal=factor_terminal,
-  search=search,
   filter=filter,
   ExpectedNonTerminalException=ExpectedNonTerminalException,
   ParseException=ParseException,

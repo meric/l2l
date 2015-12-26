@@ -62,7 +62,7 @@
   ]
   reader (require "l2l.reader3"))
 
-  (map
+  (foreach
     (=> (test)
       (let (
           expected (car test)

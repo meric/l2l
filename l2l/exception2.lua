@@ -1,5 +1,7 @@
-local list = require("l2l.itertools").list
-local map = require("l2l.itertools").map
+local itertools = require("l2l.itertools")
+local list = itertools.list
+local map = itertools.map
+local tolist = itertools.tolist
 
 --- Return a the line, and its start and end indices in a string at a position.
 -- @param src The string.
@@ -130,13 +132,13 @@ Exception = setmetatable({
     return ("%s(%s)"):format(self.name, self.message)
   end,
   __call = function(self, environment, bytes, ...)
-    local parameters = map(function(value)
+    local parameters = tolist(map(function(value)
       local Class = getmetatable(value)
       if Class and getmetatable(Class) == Exception then
         return Class.formatted(value)
       end
       return value
-    end, {...})
+    end, {...}))
     local message = self.message:format(list.unpack(parameters))
     return setmetatable({
         environment=environment, 
@@ -147,7 +149,7 @@ Exception = setmetatable({
         message=message},
       self)
   end
-}, {__call = function(Exception, name, message)
+}, {__call = function(_, name, message)
   return setmetatable({
       name = name,
       message = message or "",

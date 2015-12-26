@@ -15,11 +15,7 @@ local mark = grammar.mark
 local skip = grammar.skip
 local option = grammar.option
 local repeating = grammar.repeating
-local Terminal = grammar.Terminal
-local NonTerminal = grammar.NonTerminal
 local factor = grammar.factor
-
-local ParseException = grammar.ParseException
 
 -- Lua Grammar
 -- chunk ::= block
@@ -146,9 +142,6 @@ local unop = factor(unop,
    space = function() )
 ]]--
 
-
-local Name = NonTerminal("space")
-
 local number = factor("number",
   function() return
     function(environment, bytes)
@@ -199,13 +192,14 @@ local space = factor("space",
 
 local __ = mark(space, skip, option)
 
-local Name  = associate(Name, function(environment, bytes)
+local Name
+Name = associate("space", function(environment, bytes)
   -- Names (also called identifiers) in Lua can be any string of letters,
   -- digits, and underscores, not beginning with a digit and not being a
   -- reserved word. Identifiers are used to name variables, table fields, and
   -- labels.
   local values, rest = read_predicate(environment, bytes,
-    Name, function(token, byte)
+    Name.nonterminal, function(token, byte)
       return (token..byte):match("^[%w_][%w%d_]*$")
     end)
   if values and car(values) and keywords[tostring(car(values))] then
@@ -256,7 +250,7 @@ prefixexp = factor("prefixexp", function(left) return
   -- We must call left in `prefixexp` because the left operator
   -- can only be used when either:
   --  1. the span clause argument, e.g. left(span(prefixexp, ...))
-  --  2. the * argument standing alone
+  --  2. the nonterminal standing alone
   -- left recursions back to this nonterminal.
    any(left(functioncall), left(var), span("(", __, exp, __, ")", __))
   end)
