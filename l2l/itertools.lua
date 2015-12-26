@@ -1,3 +1,7 @@
+local function id(...)
+  return ...
+end
+
 local function resolve(str, t)
   local obj = t or _G
   for name in str:gmatch("[^.]+") do
@@ -61,25 +65,52 @@ local function show(obj)
   return obj
 end
 
-local function fold(f, initial, objs)
-  if objs == nil then
-    return
+local function car(t)
+  assert(t, "car: `t` missing.")
+  return t[1]
+end
+
+local function cdr(t)
+  assert(t)
+  return t[2]
+end
+
+local function nextchar(invariant, index)
+  local index = (index or 0) + 1
+  if index > #invariant then
+    return nil
   end
-  for _, v in ipairs(objs or {}) do
-    initial = f(initial, v)
-  end 
-  return initial
+  return index, invariant:sub(index, index)
 end
 
-local function foreach(f, objs)
-  local orig = {}
-  for i, v in pairs(objs or {}) do
-    orig[i] = f(v, i)
-  end 
-  return orig
+local function nextnil() end
+
+
+local list
+
+local function generate(obj, invariant, state)
+  local t = type(obj)
+  if t == "string" then
+    return nextchar, obj, 0
+  elseif getmetatable(obj) == list then
+    return ipairs(obj)
+  elseif t == "table" then
+    if obj[1] ~= nil then
+      return ipairs(obj)
+    end
+    return pairs(obj)
+  elseif t == "function" then
+    return obj, invariant, state
+  elseif obj == nil then
+    return nextnil, invariant, state
+  else
+    error(("object %s of type \"%s\" is not iterable"):format(obj, type(obj)))
+  end
 end
 
-local list, pair
+local pair = function(t)
+  return setmetatable(t, list)
+end
 
 list = setmetatable({
   unpack = function(self)
@@ -147,21 +178,6 @@ list = setmetatable({
     end
     return self == other
   end,
-  __ipairs = function(self)
-    local orig = self
-    local i = 0
-    return function() 
-      if self then
-        if self[2] ~= nil and getmetatable(self[2]) ~= list then
-          self[2] = pair({self[2]})
-        end
-        local obj = self[1]
-        self = self[2]
-        i = i + 1
-        return i, obj 
-      end 
-    end
-  end,
   __tostring = function(self)
     local str = "("
     repeat
@@ -177,6 +193,34 @@ list = setmetatable({
       end
     until not self
     return str .. ")"
+  end,
+  next = function(cache, index)
+    local self = cache[index]
+    if self ~= nil then
+      cache[index + 1] = cdr(self)
+      return index + 1, car(self)
+    end
+  end,
+  __ipairs = function(self)
+    return list.next, {[0]=self}, 0
+  end,
+  __index = function(self, i)
+    local nextvalue = rawget(self, "next")
+    if i == 2 and nextvalue then
+      local invariant = self.invariant
+      local state, value = nextvalue(invariant, self.state)
+      if state == nil then
+        return self.ending
+      end
+      local rest = setmetatable({value,
+        next=nextvalue,
+        invariant=invariant,
+        state=state,
+        ending=self.ending}, list)
+      self[2] = rest
+      return rest
+    end
+    return rawget(list, i)
   end
 }, {__call = function(_, ...)
     local orig = setmetatable({}, list)
@@ -188,141 +232,118 @@ list = setmetatable({
     return orig[2]
   end})
 
-list.__index = list
-
-local function id(...)
-  return ...
+local function tolist(nextvalue, invariant, state)
+  -- tolist({1, 2, 3, 4})
+  -- tolist(map(f, {1, 2, 3}))
+  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  local state, value = nextvalue(invariant, state)
+  if state then
+    return setmetatable({value,
+      next=nextvalue,
+      invariant=invariant,
+      state=state,
+      ending=obj}, list)
+  end
 end
 
-local function tolist(t, obj)
-  -- tolist({1, 2}, 3) == '(1 2 . 3)
-  local orig = setmetatable({}, list)
-  local last = orig
-  if type(t) == "table" then
-    local maxn = table.maxn or function(tb) return #tb end
-    for i=1, maxn(t) do
-      last[2] = setmetatable({t[i], nil}, list)
-      last = last[2]
+local function tovector(nextvalue, invariant, state)
+  local t = {}
+  for i, value in generate(nextvalue, invariant, state) do
+    t[i] = value
+  end
+  return t
+end
+
+local function each(f, nextvalue, invariant, state)
+  f = f or id
+  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  return function(invariant, state)
+    local state, value = nextvalue(invariant, state)
+    if state ~= nil then
+      return state, f(value, state)
     end
-    last[2] = obj
-  elseif type(t) == "string" then
-    for i=1, #t do
-      last[2] = setmetatable({string.char(t:byte(i)), nil}, list)
-      last = last[2]
-    end
-    last[2] = obj
-  end
-  return orig[2]
+  end, invariant, state
 end
 
-local function zip(...)
-  local parameters = {}
-  local smallest
-  for i=1, select("#", ...) do
-    local collection = select(i, ...)
-    local count = 0
-    for j, obj in ipairs(collection) do
-      if smallest and j > smallest then
-        break
-      end
-      if i == 1 then
-        parameters[j] = {}
-      end
-      parameters[j][i] = obj
-      count = count + 1
-    end
-    smallest = math.min(smallest or count, count)
-  end
-  local trimmed = {}
-  for i = 1, smallest do
-    trimmed[i] = parameters[i]
-  end
-  return tolist(trimmed)
+local function map(f, nextvalue, invariant, state)
+  return each(function(value) return f(value) end, nextvalue, invariant, state)
 end
 
-pair = function(t)
-  return setmetatable(t, list)
-end
-
-local function cons(a, b)
-  return pair({a, b})
-end
-
-local function map1(f, objs)
-  local origin = cons(nil)
-  local last = origin
-  for i, value in ipairs(objs or {}) do
-    last[2] = cons(f(value))
-    last = last[2]
-  end
-  return origin[2]
-end
-
-local function map(f, ...)
-  local count = select("#", ...)
-  if count == 1 then
-    return map1(f, ...)
-  end
-  local iterators = {}
-  for i=1, count do
-    iterators[i] = ipairs(select(i, ...) or {})
-  end
-
-  local origin = pair({nil})
-  local last = origin
-  local index = 0
-  while true do
-    local parameters = {}
-    local do_break = false
-    for i=1, count do
-      local _index, value = iterators[i](select(i, ...) or {}, index)
-      if not _index then
-        do_break = true
-      end
-      parameters[i] = value
-    end
-    index = index + 1
-    if do_break then
-      return origin[2]
-    end
-    last[2] = cons(f(unpack(parameters)))
-    last=last[2]
-  end
-end
-
-local function each(f, objs)
-  if objs == nil then
+local function mapcar(f, l)
+  if l == nil then
     return nil
   end
-  local orig = pair({nil})
-  local last = orig
-  for i, v in ipairs(objs or {}) do
-    last[2] = pair({f(v, i), nil})
-    last=last[2]
-  end 
-  return orig[2]
+  return cons(f(l), mapcar(f, cdr(l)))
 end
 
-local function keys(objs)
-  local orig = pair({nil})
-  local last = orig
-  for k, _ in pairs(objs) do
-    last[2] = cons(k, nil)
-    last = last[2]
-  end
-  return orig[2]
+local function arguments(...)
+  local count = select("#", ...)
+  local parameters = {...}
+  return function(invariant, index)
+    if index < count then
+      return index + 1, parameters[index + 1]
+    end
+  end, invariant, 0
 end
 
-local function search(f, objs)
-  for i, v in pairs(objs or {}) do
+local eacharg = function(f, ...)
+  return each(f, arguments(...))
+end
+
+local maparg = function(f, ...)
+  return map(f, arguments(...))
+end
+
+local function range(start_or_stop, stop, step)
+  local start = (stop and (start_or_stop or 1)) or 1
+  stop = stop or start_or_stop
+  step = step or (start <= stop and 1 or -1)
+  return function(invariant, index)
+    local value = start + index * step
+    if not stop or value <= stop then
+      return index + 1, start + index * step
+    end
+  end, step, 0
+end
+
+local function fold(f, initial, nextvalue, invariant, state)
+  -- assert(not invariant or state, "`nextvalue` is a required argument.")
+  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  local value
+  repeat
+    state, value = nextvalue(invariant, state)
+    if state then
+      initial = f(initial, value)
+    end
+  until state == nil
+  return initial
+end
+
+local function filter(f, nextvalue, invariant, state)
+  f = f or id
+  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  return function(cache, index)
+    local state, value = cache[index]
+    repeat
+      state, value = nextvalue(invariant, state)
+    until not state or f(value, state)
+    if state then
+      cache[index + 1] = state
+      return index + 1, value
+    end
+  end, {[0] = state}, 0
+end
+
+local function search(f, nextvalue, invariant, state)
+  for i, v in generate(nextvalue, invariant, state) do
     if f(v) then
       return v
     end
   end
 end
 
-local function contains(target, objs)
-  for i, v in pairs(objs or {}) do
+local function contains(target, nextvalue, invariant, state)
+  for i, v in generate(nextvalue, invariant, state) do
     if v == target then
       return i
     end
@@ -330,36 +351,21 @@ local function contains(target, objs)
   return false
 end
 
-local function span(predicate, objs)
-  local left, right = list(nil), list(nil)
-  local left_last, right_last = left, right
-  for i, value in ipairs(objs or {}) do
-    if predicate and predicate(value) then
-      left_last[2] = cons(value)
-      left_last = left_last[2]
-    else
-      predicate = nil
-      right_last[2] = cons(value)
-      right_last = right_last[2]
+local function keys(nextvalue, invariant, state)
+  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  return function(invariant, index)
+    local value
+    state, value = nextvalue(invariant, state)
+    if state ~= nil then
+      return index + 1, state
     end
-  end
-  return left[2], right[2]
+  end, invariant, 0
 end
 
-local function scan(f, initial, objs)
-  local origin = cons(nil)
-  local last = origin
-  for i, value in ipairs(objs or {}) do
-    initial = f(initial, value)
-    last[2] = cons(initial)
-    last = last[2]
-  end
-  return origin[2]
-end
 
-local function last(objs)
+local function last(nextvalue, invariant, state)
   local obj
-  for i, value in ipairs(objs or {}) do
+  for i, value in generate(nextvalue, invariant, state) do
     obj = value
   end
   return obj
@@ -371,91 +377,155 @@ local function flip(f)
   end
 end
 
-local function filter(f, objs)
-  f = f or id
-  local origin = cons(nil)
-  local last = origin
-  for i, obj in ipairs(objs or {}) do
-    if f(obj) then
-      last[2] = cons(obj)
-      last = last[2]
-    end
-  end
-  return origin[2]
-end
-
 --- Returns array inclusive of start and finish indices.
 -- 1 is first position. 0 is last position. -1 is second last position.
 -- @objs iterable to slice.
 -- @start first index.
 -- @finish second index
-local function slice(objs, start, finish)
+local function slice(start, finish, nextvalue, invariant, state)
+  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+
   if finish and finish <= 0 then
-    finish = #objs + finish
+    finish = #tolist(nextvalue, invariant, state) + finish
   end
 
-  local orig = {}
-  for i, v in ipairs(objs) do
-    if i >= start and (not finish or i <= finish) then
-      table.insert(orig, v)
+  return function(cache, index)
+    local value
+    state, value = nextvalue(invariant, cache[index])
+    while state and state < start and (not finish or state <= finish) do
+      state, value = nextvalue(invariant, state)
     end
+    if state and state >= start and (not finish or state <= finish) then
+      cache[index + 1] = state
+      return index + 1, value
+    end
+  end, {[0] = state}, 0
+end
+
+local function cons(a, b)
+  return pair({a, b})
+end
+
+local function force(nextvalue, invariant, state)
+  for i, value in generate(nextvalue, invariant, state) do
+    -- Do nothing.
   end
-  return orig
+  return nextvalue, invariant, state
 end
 
-local function car(t)
-  assert(t, "car: `t` missing.")
-  return t[1]
+local function span(n, nextvalue, invariant, state)
+  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  local finalized, secondstate, secondvalue = false
+  local t = type(n) == "number"
+  local value
+  local first = tolist(function(invariant, index)
+      if finalized then
+        return
+      end
+      state, value = nextvalue(invariant, state)
+      if state and (t and state <= n or not t and n(value, state)) then
+        secondstate = state
+        secondvalue = value
+        return state, value
+      else
+        finalized = true
+      end
+    end, invariant, 0)
+  return first,
+    tolist(function(invariant, index)
+      if not finalized then
+        -- evaluate first
+        force(first)
+      end
+      if t ~= nil then
+        t = nil
+        return index + 1, secondvalue
+      end
+      state, value = nextvalue(invariant, state)
+      if state ~= nil then
+        return index + 1, value
+      end
+    end, invariant, secondstate)
 end
 
-local function cdr(t)
-  assert(t)
-  return t[2]
+local function take(n, nextvalue, invariant, state)
+  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  local t = type(n) == "number"
+  return function(invariant, state)
+    local value
+    state, value = nextvalue(invariant, state)
+    if state and (t and state <= n or not t and n(value, state)) then
+      return state, value
+    end
+  end, invariant, state
 end
 
-local function take_while(f, objs)
-  local origin = cons(nil)
-  local last = origin
-  for i, v in ipairs(objs or {}) do
-    if not f(v) then
+local function drop(n, nextvalue, invariant, state)
+  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  local t, value = type(n) == "number"
+  while state and (t and state < n or true) do
+    state, value = nextvalue(invariant, state)
+    if not t and not n(value, state) then
       break
     end
-    last[2] = cons(v)
-    last = last[2]
   end
-  return origin[2]
-end
-
-local function take(n, objs)
-  if not objs then
-    return nil
-  end
-  if n == 1 then
-    return cons(objs[1])
-  end
-  local orig = cons(nil)
-  local last = orig
-  for i, v in ipairs(objs or {}) do
-    last[2] = cons(v)
-    last = last[2]
-    if i == n then
-      break
+  return function(invariant, index)
+    if t ~= nil then
+      t = nil
+      return index + 1, value
     end
-  end
-  return orig[2]
+    state, value = nextvalue(invariant, state)
+    if state ~= nil then
+      return index + 1, value
+    end
+  end, invariant, 0
 end
 
-local function drop(n, objs)
-  if n <= 0 or not objs then
-    return objs
-  end
-  if n == 1 and objs then
-    -- Optimisation.
-    return objs[2]
-  end
-  return drop(n-1, cdr(objs))
+local function scan(f, initial, nextvalue, invariant, state)
+  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  local value
+  return function(invariant, state)
+    state, value = nextvalue(invariant, state)
+    if state then
+      initial = f(initial, value)
+      return state, initial
+    end
+  end, invariant, state
 end
 
+local function zip(...)
+  local cache = {[0] = {}}
+  local invariants = {}
+  local nextvalues = {}
+  cache[0] = tovector(eacharg(function(argument, i)
+      local nextvalue, invariant, state = generate(argument)
+      invariants[i] = invariant
+      nextvalues[i] = nextvalue
+      return state
+    end, ...))
+  return function(cache, index)
+    local complete = false
+    local states = {}
+    local values = force(tolist(each(function(state, i)
+        local nextvalue = nextvalues[i]
+        local invariant = invariants[i]
+        states[i], value = nextvalue(invariant, state)
+        if states[i] == nil then
+          complete = true
+        end
+        return value
+      end, cache[index])))
+    if complete == false then
+      cache[index + 1] = states
+      return index + 1, values
+    end
+  end, cache, 0
+end
+
+
+local function foreach(f, nextvalue, invariant, state)
+  return force(each(f, nextvalue, invariant, state))
+end
 
 return {
   vector=vector,
@@ -475,6 +545,7 @@ return {
   slice=slice,
   each=each,
   tolist=tolist,
+  tovector=tovector,
   id=id,
   scan=scan,
   span=span,
@@ -486,6 +557,6 @@ return {
   drop=drop,
   filter=filter,
   keys=keys,
-  take_while=take_while,
-  search=search
+  search=search,
+  mapcar = mapcar
 }

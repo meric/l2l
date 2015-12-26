@@ -13,7 +13,7 @@ local FunctionArgumentException =
     return "Argument is not a ".. (tostring(...) or "symbol")
   end)
 
-local list, tolist = itertools.list, itertools.tolist
+local list, tolist, tovector = itertools.list, itertools.tolist, itertools.tovector
 local slice = itertools.slice
 local map, fold, zip = itertools.map, itertools.fold, itertools.zip
 local foreach, each = itertools.foreach, itertools.each
@@ -271,7 +271,7 @@ local function variadic(f, step, initial, prefix, suffix)
       return f(block, stream, {...})
     else
       local var = declare(block)
-      local literals = slice({...}, 1, -1)
+      local literals = tovector(slice(1, -1, {...}))
       assign(block, var,
         #literals > 0 and f(block, stream, literals)
         or initial)
@@ -300,14 +300,14 @@ local function compile_comparison(operator, block, stream, ...)
     return "true"
   end
   local objs = (list(...) or {})
-  return list.concat((map(function(tuple)
+  return list.concat(tolist(map(function(tuple)
       return
       "("..
         compile(block, stream, tuple[1])..
       operator..
-        compile(block, stream, tuple[2])..
+        compile(block, stream, tuple[2][1])..
       ")"
-    end, zip(objs, objs[2])) or {}), " and ")
+    end, zip(objs, objs[2]))), " and ")
 end
 
 local compile_equals = bind(compile_comparison, "==")
@@ -324,7 +324,7 @@ end
 
 local compile_and = variadic(
   function(block, stream, parameters)
-    return list.concat(map(bind(compile, block, stream), parameters), " and ")
+    return list.concat(tolist(map(bind(compile, block, stream), parameters)), " and ")
   end,
   function(reference, value)
     return reference .. " and " .. value
@@ -334,7 +334,7 @@ local compile_and = variadic(
 
 local compile_or = variadic(
   function(block, stream, parameters)
-    return list.concat(map(bind(compile, block, stream), parameters), " or ")
+    return list.concat(tolist(map(bind(compile, block, stream), parameters)), " or ")
   end,
   function(reference, value)
     return reference .. " or " .. value
@@ -344,7 +344,7 @@ local compile_or = variadic(
 
 local compile_multiply = variadic(
   function(block, stream, parameters)
-    return list.concat(map(bind(compile, block, stream), parameters), " * ")
+    return list.concat(tolist(map(bind(compile, block, stream), parameters)), " * ")
   end,
   function(reference, value)
     return reference .. " * " .. value
@@ -352,7 +352,7 @@ local compile_multiply = variadic(
 
 local compile_concat = variadic(
   function(block, stream, parameters)
-    return list.concat(map(bind(compile, block, stream), parameters), " .. ")
+    return list.concat(tolist(map(bind(compile, block, stream), parameters)), " .. ")
   end,
   function(reference, value)
     return reference .. " .. " .. value
@@ -360,7 +360,7 @@ local compile_concat = variadic(
 
 local compile_add = variadic(
   function(block, stream, parameters)
-    return list.concat(map(bind(compile, block, stream), parameters), " + ")
+    return list.concat(tolist(map(bind(compile, block, stream), parameters)), " + ")
   end,
   function(reference, value)
     return reference .. " + " .. value
@@ -368,7 +368,7 @@ local compile_add = variadic(
 
 local compile_divide = variadic(
   function(block, stream, parameters)
-    return list.concat(map(bind(compile, block, stream), parameters), " / ")
+    return list.concat(tolist(map(bind(compile, block, stream), parameters)), " / ")
   end,
   function(reference, value)
     return reference .." and "..reference.." / "..value .." or "..value
@@ -376,7 +376,7 @@ local compile_divide = variadic(
 
 local compile_subtract = variadic(
   function(block, stream, parameters)
-    return list.concat(map(bind(compile, block, stream), parameters), " - ")
+    return list.concat(tolist(map(bind(compile, block, stream), parameters)), " - ")
   end,
   function(reference, value)
     return reference .." and "..reference.." - " ..value .." or "..value
@@ -401,9 +401,9 @@ end
 
 local function compile_table_call(block, stream, attribute, parent, ...)
   local arguments = list(...)
-  local parameters = list.concat(map(function(argument)
+  local parameters = list.concat(tolist(map(function(argument)
       return compile(block, stream, argument)
-    end, arguments), ",")
+    end, arguments)), ",")
   return "("..compile(block, stream, parent)..")".. ":" ..
     tostring(attribute) .. "(" .. parameters .. ")"
 end
@@ -546,7 +546,7 @@ local function compile_cond(block, stream, ...)
       end
     end, pack(...))
   if _VERSION == "Lua 5.1" then
-    each(
+    foreach(
       function(_, index)
         if index % 2 == 0 then
           insert("end")
@@ -716,7 +716,7 @@ local function compile_let(block, stream, vars, ...)
     else
       value = obj
       if getmetatable(name) == list then
-        table.insert(block, "local " .. map(hash, name):concat(", ") .. "=" .. 
+        table.insert(block, "local " .. tolist(map(hash, name)):concat(", ") .. "=" .. 
           compile(block, stream, value))
       elseif getmetatable(name) ~= symbol then
         raise(FunctionArgumentException(stream, "symbol"))

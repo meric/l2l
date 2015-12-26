@@ -5,7 +5,6 @@ local exception = require("l2l.exception2")
 local car = itertools.car
 local cdr = itertools.cdr
 local cons = itertools.cons
-local contains = itertools.contains
 local drop = itertools.drop
 local id = itertools.id
 local list = itertools.list
@@ -14,7 +13,6 @@ local slice = itertools.slice
 local take = itertools.take
 local tolist = itertools.tolist
 local vector = itertools.vector
-local take_while = itertools.take_while
 
 local raise = exception.raise
 local execute = reader.execute
@@ -111,8 +109,8 @@ end
 local function factor_terminal(terminal)
   local value = tostring(terminal)
   local reader = associate(terminal, function(environment, bytes)
-    if list.concat(take(#value, bytes)) == value then
-      return list(terminal), drop(#value, bytes)
+    if list.concat(tolist(take(#value, bytes))) == value then
+      return list(terminal), tolist(drop(#value, bytes))
     end
     return nil, bytes
   end)
@@ -200,6 +198,7 @@ any = setmetatable({
         assert(reader)
         local ok, values, rest = pcall(execute, reader, environment, bytes,
           stack)
+        print(self, ok, values, rest)
         if ok and values and rest ~= bytes then
           return values, rest
         end
@@ -223,14 +222,14 @@ any = setmetatable({
   end
 }, {
   __call = function(any, ...)
-    return setmetatable({list.unpack(itertools.map(
+    return setmetatable({list.unpack(tolist(itertools.map(
       function(value)
         if type(value) == "string" then
           return factor_terminal(Terminal(value))
         end
         return value
       end,
-      itertools.filter(id, list(...))))}, any)
+      itertools.filter(id, list(...)))))}, any)
   end,
   __tostring = function()
     return "any"
@@ -302,14 +301,14 @@ span = setmetatable({
   end
 }, {
   __call = function(span, ...)
-    return setmetatable({list.unpack(itertools.map(
+    return setmetatable({list.unpack(tolist(itertools.map(
       function(value)
         if type(value) == "string" then
           return factor_terminal(Terminal(value))
         end
         return value
       end,
-      itertools.filter(id, list(...))))}, span)
+      itertools.filter(id, list(...)))))}, span)
   end,
   __tostring = function()
     return "span"
@@ -372,7 +371,7 @@ local function factor_expand_left_nonterminal(rule, nonterminal)
   rule = factor_spans(rule)
   while continue do
     continue = false
-    rule = factor_spans(any(list.unpack(itertools.map(
+    rule = factor_spans(any(list.unpack(tolist(itertools.map(
       function(child)
         if not is(child, span) then
           return child
@@ -380,10 +379,10 @@ local function factor_expand_left_nonterminal(rule, nonterminal)
         if #child > 0 and child[1].nonterminal ~= nonterminal
             and child[1].factory then
             continue = true
-          return span(child[1].factory(function() end), unpack(slice(child, 2)))
+          return span(child[1].factory(function() end), list.unpack(tolist(slice(2, 0, child))))
         end
         return child
-      end, rule))))
+      end, rule)))))
   end
 
   -- Refactor away span(any(span(any(....)))) wrapping.
@@ -409,12 +408,12 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
   end))
   local patterns = any()
   for i, rule in ipairs(rules) do
-    local pattern = span(list.unpack(itertools.filter(function(child)
+    local pattern = span(list.unpack(tolist(itertools.filter(function(child)
         if is(child, span) and child[1].nonterminal == nonterminal then
           return false
         end
         return true
-      end, factor_spans(rule))))
+      end, factor_spans(rule)))))
     if #pattern > 0 then
       table.insert(patterns, pattern)
     end
@@ -428,7 +427,7 @@ end
 -- @param rule The rule to remove  `nonterminal` from.
 -- @param nonterminal The nonterminal to remove.
 local function factor_without_left_nonterminal(rule, nonterminal)
-  return any(list.unpack(itertools.filter(function(child)
+  return any(list.unpack(tolist(itertools.filter(function(child)
     if is(child, skip) then
       return false
     end
@@ -442,7 +441,7 @@ local function factor_without_left_nonterminal(rule, nonterminal)
       return false
     end
     return true
-  end, factor_spans(rule))))
+  end, factor_spans(rule)))))
 end
 
 --- Factor `rule` into suffixes of spans involving left recursion of
@@ -451,9 +450,9 @@ end
 -- that is not an any.
 -- @param nonterminal The nonterminal to remove.
 local function factor_left_suffix(rule, nonterminal)
-  return any(list.unpack(itertools.map(
+  return any(list.unpack(tolist(itertools.map(
     function(child)
-      return span(unpack(slice(child, 2)))
+      return span(unpack(itertools.tovector(slice(2, 0, child))))
     end, itertools.filter(function(child)
         if is(child, skip) then
           return false
@@ -466,7 +465,7 @@ local function factor_left_suffix(rule, nonterminal)
           return true
         end
         return false
-      end, factor_spans(rule)))))
+      end, factor_spans(rule))))))
 end
 
 factor = function(nonterminal, factory)
@@ -621,8 +620,9 @@ factor = function(nonterminal, factory)
         elseif #spans > 0 and spans(environment, bytes) then
           paths[bytes] = list.push(paths[bytes], nil)
         end        
-
+        -- print(read_take_terminals, bytes)
         local prefix, rest = read_take_terminals(environment, bytes)
+
         -- If no prefix match, and no independent match, it means this doesn't
         -- match.
         if not prefix and not independent then
