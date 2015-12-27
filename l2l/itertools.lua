@@ -85,10 +85,9 @@ end
 
 local function nextnil() end
 
-
 local list
 
-local function generate(obj, invariant, state)
+local function tonext(obj, invariant, state)
   local t = type(obj)
   if t == "string" then
     return nextchar, obj, 0
@@ -147,7 +146,7 @@ list = setmetatable({
     end
     local str = tostring(self[1])
     if self[2] then
-      str = str .. separator .. self[2]:concat(separator)
+      str = str .. separator .. list.concat(self[2], separator)
     end
     return str
   end,
@@ -197,23 +196,25 @@ list = setmetatable({
   next = function(cache, index)
     local self = cache[index]
     if self ~= nil then
-      cache[index + 1] = cdr(self)
-      return index + 1, car(self)
+      cache[index + 1] = self[2]
+      return index + 1, self[1]
     end
   end,
   __ipairs = function(self)
     return list.next, {[0]=self}, 0
   end,
   __index = function(self, i)
-    local nextvalue = rawget(self, "next")
+    local nextvalue = rawget(self, "nextvalue")
     if i == 2 and nextvalue then
+      self.next = nil
       local invariant = self.invariant
       local state, value = nextvalue(invariant, self.state)
       if state == nil then
+        self[2] = self.ending
         return self.ending
       end
       local rest = setmetatable({value,
-        next=nextvalue,
+        nextvalue=nextvalue,
         invariant=invariant,
         state=state,
         ending=self.ending}, list)
@@ -223,23 +224,27 @@ list = setmetatable({
     return rawget(list, i)
   end
 }, {__call = function(_, ...)
-    local orig = setmetatable({}, list)
-    local last = orig
-    for i=1, select('#', ...) do
+    local origin = setmetatable({}, list)
+    local last = origin
+    local count = select('#', ...)
+    for i=1, count do
       last[2] = setmetatable({select(i, ...), nil}, list)
       last = last[2]
     end
-    return orig[2]
+    return origin[2]
   end})
 
 local function tolist(nextvalue, invariant, state)
   -- tolist({1, 2, 3, 4})
   -- tolist(map(f, {1, 2, 3}))
-  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  if getmetatable(nextvalue) == list and not invariant and not state then
+    return nextvalue
+  end
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   local state, value = nextvalue(invariant, state)
   if state then
     return setmetatable({value,
-      next=nextvalue,
+      nextvalue=nextvalue,
       invariant=invariant,
       state=state,
       ending=obj}, list)
@@ -248,15 +253,32 @@ end
 
 local function tovector(nextvalue, invariant, state)
   local t = {}
-  for i, value in generate(nextvalue, invariant, state) do
+  for i, value in tonext(nextvalue, invariant, state) do
     t[i] = value
+  end
+  return t
+end
+
+local function foreach(f, nextvalue, invariant, state)
+  local t = {}
+  for i, value in tonext(nextvalue, invariant, state) do
+    t[i] = f(value, i)
+  end
+  return t
+end
+
+local function foreacharg(f, ...)
+  local t = {}
+  local count = select("#", ...)
+  for i=1, count do
+    t[i] = f(select(i, ...), i)
   end
   return t
 end
 
 local function each(f, nextvalue, invariant, state)
   f = f or id
-  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   return function(invariant, state)
     local state, value = nextvalue(invariant, state)
     if state ~= nil then
@@ -267,6 +289,10 @@ end
 
 local function map(f, nextvalue, invariant, state)
   return each(function(value) return f(value) end, nextvalue, invariant, state)
+end
+
+local function cons(a, b)
+  return pair({a, b})
 end
 
 local function mapcar(f, l)
@@ -308,7 +334,7 @@ end
 
 local function fold(f, initial, nextvalue, invariant, state)
   -- assert(not invariant or state, "`nextvalue` is a required argument.")
-  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   local value
   repeat
     state, value = nextvalue(invariant, state)
@@ -321,21 +347,25 @@ end
 
 local function filter(f, nextvalue, invariant, state)
   f = f or id
-  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   return function(cache, index)
-    local state, value = cache[index]
+    if cache[index * 2 + 2] then
+      return cache[index * 2 + 2], cache[index * 2 + 3]
+    end
+    local state = cache[index * 2]
     repeat
       state, value = nextvalue(invariant, state)
     until not state or f(value, state)
     if state then
-      cache[index + 1] = state
+      cache[index * 2 + 2] = state
+      cache[index * 2 + 3] = value
       return index + 1, value
     end
   end, {[0] = state}, 0
 end
 
 local function search(f, nextvalue, invariant, state)
-  for i, v in generate(nextvalue, invariant, state) do
+  for i, v in tonext(nextvalue, invariant, state) do
     if f(v) then
       return v
     end
@@ -343,7 +373,7 @@ local function search(f, nextvalue, invariant, state)
 end
 
 local function contains(target, nextvalue, invariant, state)
-  for i, v in generate(nextvalue, invariant, state) do
+  for i, v in tonext(nextvalue, invariant, state) do
     if v == target then
       return i
     end
@@ -352,7 +382,7 @@ local function contains(target, nextvalue, invariant, state)
 end
 
 local function keys(nextvalue, invariant, state)
-  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   return function(invariant, index)
     local value
     state, value = nextvalue(invariant, state)
@@ -365,7 +395,7 @@ end
 
 local function last(nextvalue, invariant, state)
   local obj
-  for i, value in generate(nextvalue, invariant, state) do
+  for i, value in tonext(nextvalue, invariant, state) do
     obj = value
   end
   return obj
@@ -383,10 +413,10 @@ end
 -- @start first index.
 -- @finish second index
 local function slice(start, finish, nextvalue, invariant, state)
-  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
 
   if finish and finish <= 0 then
-    finish = #tolist(nextvalue, invariant, state) + finish
+    finish = #tovector(nextvalue, invariant, state) + finish
   end
 
   return function(cache, index)
@@ -402,54 +432,95 @@ local function slice(start, finish, nextvalue, invariant, state)
   end, {[0] = state}, 0
 end
 
-local function cons(a, b)
-  return pair({a, b})
+-- Return whether the arguments do not contain values that have yet to be
+-- calculated.
+local function finalized(nextvalue, invariant, state)
+  if type(nextvalue) == "function" or invariant or state then
+    return false
+  end
+  if type(nextvalue) == "string" then
+    return true
+  end
+  local mt = getmetatable(nextvalue)
+  if not mt then
+    return true
+  end
+  return mt == list and not list.nextvalue
 end
 
-local function force(nextvalue, invariant, state)
-  for i, value in generate(nextvalue, invariant, state) do
-    -- Do nothing.
+local function finalize(nextvalue, invariant, state)
+  if not finalized(nextvalue, invariant, state)
+      or getmetatable(nextvalue) == list then
+    for i, value in tonext(nextvalue, invariant, state) do
+      -- Do nothing.
+    end
   end
   return nextvalue, invariant, state
 end
 
+local function identify(nextvalue, invariant, state, f)
+  local islist = getmetatable(nextvalue) == list
+  return function(nextvalue, invariant, state)
+    if islist and invariant and finalized(invariant[state]) then
+      if f then
+        invariant, state = f(invariant, state)
+      end
+      return invariant[state]
+    end
+    if f then
+      nextvalue, invariant, state = tonext(nextvalue, invariant, state)
+      return function(invariant, state)
+        local value
+        invariant, state = f(invariant, state)
+        return nextvalue(invariant, state)
+      end, invariant, state
+    end
+    return nextvalue, invariant, state
+  end
+end
+
 local function span(n, nextvalue, invariant, state)
-  nextvalue, invariant, state = generate(nextvalue, invariant, state)
-  local finalized, secondstate, secondvalue = false
-  local t = type(n) == "number"
+  if n == 0 then
+    return nil, tolist(nextvalue, invariant, state)
+  end
+  local identity = identify(nextvalue, invariant, state)
+
+  local first = {}
   local value
-  local first = tolist(function(invariant, index)
-      if finalized then
-        return
-      end
+
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
+
+  if type(n) == "number" then
+    while state do
       state, value = nextvalue(invariant, state)
-      if state and (t and state <= n or not t and n(value, state)) then
-        secondstate = state
-        secondvalue = value
-        return state, value
-      else
-        finalized = true
+      if not state then
+        break
       end
-    end, invariant, 0)
-  return first,
-    tolist(function(invariant, index)
-      if not finalized then
-        -- evaluate first
-        force(first)
+      first[state] = value
+      if state == n then
+        break
       end
-      if t ~= nil then
-        t = nil
-        return index + 1, secondvalue
-      end
+    end
+  else
+    while state do
       state, value = nextvalue(invariant, state)
-      if state ~= nil then
-        return index + 1, value
+      if not state then
+        break
       end
-    end, invariant, secondstate)
+      first[state] = value
+      if n(value, state) then
+        break
+      end
+    end
+  end
+  if not state then
+    return tovector(nextvalue, invariant, state)
+  end
+  return first, tolist(identity(nextvalue, invariant, state))
 end
 
 local function take(n, nextvalue, invariant, state)
-  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   local t = type(n) == "number"
   return function(invariant, state)
     local value
@@ -460,8 +531,39 @@ local function take(n, nextvalue, invariant, state)
   end, invariant, state
 end
 
+-- TODO: make sure list is same.
 local function drop(n, nextvalue, invariant, state)
-  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  if n == 0 then
+    return nextvalue, invariant, state
+  end
+  local count, value = 0
+  local identity = identify(nextvalue, invariant, state,
+    function(invariant, state)
+      if type(n) == "number" then
+        while count < n and state do
+          state, value = nextvalue(invariant, state)
+          count = count + 1
+        end
+      else
+        local previous
+        repeat
+          previous = state
+          state, value = nextvalue(invariant, state)
+          if not state then
+            break
+          end
+        until not n(value, state)
+        state = previous
+      end
+      return invariant, state
+    end)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
+  return identity(nextvalue, invariant, state)
+end
+
+
+--[[
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   local is_number, has_dropped, value = type(n) == "number", false
   return function(cache, index)
     local state = cache[index]
@@ -491,10 +593,11 @@ local function drop(n, nextvalue, invariant, state)
       end
     end
   end, {[0]=state}, 0
-end
+]]--
+-- end
 
 local function scan(f, initial, nextvalue, invariant, state)
-  nextvalue, invariant, state = generate(nextvalue, invariant, state)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   local value
   return function(invariant, state)
     state, value = nextvalue(invariant, state)
@@ -506,19 +609,18 @@ local function scan(f, initial, nextvalue, invariant, state)
 end
 
 local function zip(...)
-  local cache = {[0] = {}}
   local invariants = {}
   local nextvalues = {}
-  cache[0] = tovector(eacharg(function(argument, i)
-      local nextvalue, invariant, state = generate(argument)
+  local cache = {[0] = tovector(eacharg(function(argument, i)
+      local nextvalue, invariant, state = tonext(argument)
       invariants[i] = invariant
       nextvalues[i] = nextvalue
       return state
-    end, ...))
+    end, ...))}
   return function(cache, index)
     local complete = false
     local states = {}
-    local values = force(tolist(each(function(state, i)
+    local values = tovector(each(function(state, i)
         local nextvalue = nextvalues[i]
         local invariant = invariants[i]
         states[i], value = nextvalue(invariant, state)
@@ -526,7 +628,7 @@ local function zip(...)
           complete = true
         end
         return value
-      end, cache[index])))
+      end, cache[index]))
     if complete == false then
       cache[index + 1] = states
       return index + 1, values
@@ -534,9 +636,46 @@ local function zip(...)
   end, cache, 0
 end
 
+local function concat(separator, nextvalue, invariant, state)
+  separator = separator or ""
+  local mt = getmetatable(nextvalue)
+  if type(nextvalue) == "table" and not mt then
+    return table.concat(nextvalue, separator)
+  end
+  if mt == list then
+    return list.concat(nextvalue, separator)
+  end
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
+  local text, value = "", ""
+  state, text = nextvalue(invariant, state)
+  if state then
+    while true do
+      state, value = nextvalue(invariant, state)
+      if not state then
+        break
+      end
+      text = text .. separator .. value
+    end
+  end
+  return text
+end
 
-local function foreach(f, nextvalue, invariant, state)
-  return force(each(f, nextvalue, invariant, state))
+local function _unpack(nextvalue, invariant, state)
+  if type(nextvalue) == "table" and not getmetatable(nextvalue) then
+    return unpack(nextvalue)
+  end
+  return unpack(tovector(nextvalue, invariant, state))
+end
+
+local function rawtostring(obj)
+  if type(obj) ~= "table" then
+    return tostring(obj)
+  end
+  local mt = getmetatable(obj)
+  setmetatable(obj, nil)
+  local text = tostring(obj)
+  setmetatable(obj, mt)
+  return text
 end
 
 return {
@@ -550,6 +689,7 @@ return {
   fold=fold,
   show=show,
   foreach=foreach,
+  foreacharg=foreacharg,
   pack=pack,
   resolve=resolve,
   bind=bind,
@@ -570,5 +710,10 @@ return {
   filter=filter,
   keys=keys,
   search=search,
-  mapcar = mapcar
+  mapcar = mapcar,
+  concat=concat,
+  finalize=finalize,
+  finalized=finalized,
+  unpack = _unpack,
+  rawtostring = rawtostring
 }

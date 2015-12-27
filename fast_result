@@ -1,0 +1,343 @@
+lua tests/init.lua
+function	line	total time	number of calls
+fac	34	0.000 seconds	1 calls
+car	408	0.000 seconds	11 calls
+@./l2l/grammar.lua:172	173	0.000 seconds	12 calls
+step	366	0.000 seconds	11 calls
+@./l2l/itertools.lua:316	322	0.000 seconds	8 calls
+variadic	292	0.000 seconds	7 calls
+bind	45	0.000 seconds	17 calls
+@./l2l/grammar.lua:176	184	0.000 seconds	8 calls
+@./l2l/itertools.lua:112	121	0.000 seconds	11 calls
+cdr	413	0.000 seconds	39 calls
+exception	181	0.000 seconds	11 calls
+@./l2l/itertools.lua:197	215	0.000 seconds	2 calls
+@./l2l/grammar.lua:135	146	0.000 seconds	3 calls
+local _var0
+do
+local Y=(function (h)
+local _var0
+return (function (x)
+local _var0
+return x(x)
+end)((function (g)
+local _var0
+return h((function (x)
+local _var0
+return g(g)(x)
+end))
+end))
+end)
+local fac=Y((function (f)
+local _var0
+return (function (x)
+local _var0
+local _var1
+if (x<2) then
+
+_var1={1}
+else
+local _var0
+_var0=x
+local _var2
+local _var3
+for _var2, _var3 in next, {f(x - 1)} do
+_var0 = _var0 * _var3
+end
+_var1={_var0}
+end
+return unpack(_var1 or {})
+end)
+end))
+local fib=Y((function (f)
+local _var0
+return (function (x)
+local _var0
+local _var1
+if (x<2) then
+
+_var1={x}
+else
+local _var0
+_var0=f(x - 1)
+local _var2
+local _var3
+for _var2, _var3 in next, {f(x - 2)} do
+_var0 = _var0 + _var3
+end
+_var1={_var0}
+end
+return unpack(_var1 or {})
+end)
+end))
+_var0={cons(fac, fib)}
+end
+return unpack(_var0):16	35	0.000 seconds	8 calls
+insert	44	0.000 seconds	10 calls
+position	389	0.000 seconds	21 calls
+Exception	167	0.000 seconds	7 calls
+@./l2l/grammar.lua:38	39	0.000 seconds	12 calls
+assign	233	0.000 seconds	31 calls
+@./l2l/grammar.lua:213	222	0.001 seconds	3 calls
+@./l2l/reader.lua:18	19	0.001 seconds	140 calls
+nonterminal	36	0.001 seconds	101 calls
+@./l2l/grammar.lua:292	301	0.001 seconds	3 calls
+declare	226	0.001 seconds	60 calls
+local _var0
+do
+local Y=(function (h)
+local _var0
+return (function (x)
+local _var0
+return x(x)
+end)((function (g)
+local _var0
+return h((function (x)
+local _var0
+return g(g)(x)
+end))
+end))
+end)
+local fac=Y((function (f)
+local _var0
+return (function (x)
+local _var0
+local _var1
+if (x<2) then
+
+_var1={1}
+else
+local _var0
+_var0=x
+local _var2
+local _var3
+for _var2, _var3 in next, {f(x - 1)} do
+_var0 = _var0 * _var3
+end
+_var1={_var0}
+end
+return unpack(_var1 or {})
+end)
+end))
+local fib=Y((function (f)
+local _var0
+return (function (x)
+local _var0
+local _var1
+if (x<2) then
+
+_var1={x}
+else
+local _var0
+_var0=f(x - 1)
+local _var2
+local _var3
+for _var2, _var3 in next, {f(x - 2)} do
+_var0 = _var0 + _var3
+end
+_var1={_var0}
+end
+return unpack(_var1 or {})
+end)
+end))
+_var0={cons(fac, fib)}
+end
+return unpack(_var0):18	34	0.001 seconds	7 calls
+stdlib	786	0.001 seconds	5 calls
+mark	158	0.001 seconds	19 calls
+default_R	350	0.001 seconds	2 calls
+slice	403	0.001 seconds	18 calls
+symbol	19	0.001 seconds	77 calls
+environ	133	0.001 seconds	2 calls
+fold	71	0.001 seconds	20 calls
+is_variadic	246	0.001 seconds	24 calls
+read_number	76	0.001 seconds	16 calls
+@./l2l/grammar.lua:97	103	0.001 seconds	63 calls
+drop	454	0.001 seconds	84 calls
+tofile	27	0.002 seconds	10 calls
+ExpectedNonTerminalException	148	0.002 seconds	3 calls
+@./l2l/itertools.lua:123	131	0.002 seconds	33 calls
+Terminal	90	0.002 seconds	137 calls
+@./l2l/grammar.lua:80	81	0.003 seconds	313 calls
+NonTerminal	69	0.003 seconds	145 calls
+@./l2l/compiler.lua:77	79	0.003 seconds	275 calls
+count	110	0.003 seconds	40 calls
+@./l2l/compiler.lua:164	220	0.003 seconds	15 calls
+@./l2l/grammar.lua:304	312	0.004 seconds	12 calls
+any	233	0.005 seconds	18 calls
+tolist	215	0.005 seconds	95 calls
+pair	244	0.007 seconds	950 calls
+__len	131	0.007 seconds	63 calls
+@./l2l/itertools.lua:150	163	0.007 seconds	807 calls
+search	322	0.008 seconds	113 calls
+concat	121	0.008 seconds	357 calls
+pack	12	0.008 seconds	1004 calls
+@./l2l/grammar.lua:55	61	0.008 seconds	66 calls
+associate	184	0.009 seconds	137 calls
+__eq	148	0.010 seconds	614 calls
+@./l2l/grammar.lua:111	119	0.013 seconds	137 calls
+unpack	92	0.013 seconds	1535 calls
+compile_parameters	102	0.013 seconds	13 calls
+@./l2l/grammar.lua:113	115	0.016 seconds	258 calls
+show	61	0.018 seconds	267 calls
+@./l2l/itertools.lua:165	179	0.019 seconds	91 calls
+@./l2l/itertools.lua:243	244	0.019 seconds	2346 calls
+@./l2l/compiler.lua:594	618	0.021 seconds	12 calls
+list	188	0.021 seconds	660 calls
+factor_prefix_left_nonterminal	422	0.023 seconds	3 calls
+factor_expand_left_nonterminal	394	0.023 seconds	13 calls
+@./l2l/reader.lua:11	12	0.024 seconds	2813 calls
+for iterator	163	0.028 seconds	2422 calls
+local _var0
+do
+local Y=(function (h)
+local _var0
+return (function (x)
+local _var0
+return x(x)
+end)((function (g)
+local _var0
+return h((function (x)
+local _var0
+return g(g)(x)
+end))
+end))
+end)
+local fac=Y((function (f)
+local _var0
+return (function (x)
+local _var0
+local _var1
+if (x<2) then
+
+_var1={1}
+else
+local _var0
+_var0=x
+local _var2
+local _var3
+for _var2, _var3 in next, {f(x - 1)} do
+_var0 = _var0 * _var3
+end
+_var1={_var0}
+end
+return unpack(_var1 or {})
+end)
+end))
+local fib=Y((function (f)
+local _var0
+return (function (x)
+local _var0
+local _var1
+if (x<2) then
+
+_var1={x}
+else
+local _var0
+_var0=f(x - 1)
+local _var2
+local _var3
+for _var2, _var3 in next, {f(x - 2)} do
+_var0 = _var0 + _var3
+end
+_var1={_var0}
+end
+return unpack(_var1 or {})
+end)
+end))
+_var0={cons(fac, fib)}
+end
+return unpack(_var0):37	56	0.032 seconds	3193 calls
+?	741	0.033 seconds	120 calls
+is	106	0.033 seconds	2402 calls
+left	666	0.036 seconds	83 calls
+filter	384	0.043 seconds	354 calls
+pointat	55	0.047 seconds	87 calls
+with_C	34	0.049 seconds	1 calls
+span	312	0.052 seconds	83 calls
+defun	618	0.052 seconds	8 calls
+@./l2l/grammar.lua:225	233	0.055 seconds	138 calls
+suffixes	211	0.056 seconds	44 calls
+execute	146	0.058 seconds	183 calls
+@./l2l/itertools.lua:251	258	0.060 seconds	285 calls
+read_take_terminals	204	0.060 seconds	25 calls
+compile	220	0.061 seconds	170 calls
+hash	85	0.063 seconds	582 calls
+reader	204	0.072 seconds	234 calls
+macroexpand	110	0.081 seconds	1180 calls
+spans	204	0.086 seconds	31 calls
+numberat	70	0.115 seconds	87 calls
+local _var0
+do
+local Y=(function (h)
+local _var0
+return (function (x)
+local _var0
+return x(x)
+end)((function (g)
+local _var0
+return h((function (x)
+local _var0
+return g(g)(x)
+end))
+end))
+end)
+local fac=Y((function (f)
+local _var0
+return (function (x)
+local _var0
+local _var1
+if (x<2) then
+
+_var1={1}
+else
+local _var0
+_var0=x
+local _var2
+local _var3
+for _var2, _var3 in next, {f(x - 1)} do
+_var0 = _var0 * _var3
+end
+_var1={_var0}
+end
+return unpack(_var1 or {})
+end)
+end))
+local fib=Y((function (f)
+local _var0
+return (function (x)
+local _var0
+local _var1
+if (x<2) then
+
+_var1={x}
+else
+local _var0
+_var0=f(x - 1)
+local _var2
+local _var3
+for _var2, _var3 in next, {f(x - 2)} do
+_var0 = _var0 + _var3
+end
+_var1={_var0}
+end
+return unpack(_var1 or {})
+end)
+end))
+_var0={cons(fac, fib)}
+end
+return unpack(_var0):39	55	0.128 seconds	3192 calls
+eval	874	0.163 seconds	5 calls
+read	117	0.184 seconds	1 calls
+lineat	33	0.191 seconds	604 calls
+@./l2l/grammar.lua:493	698	0.202 seconds	140 calls
+fib	55	0.220 seconds	1 calls
+@./l2l/reader3.lua:136	146	0.260 seconds	447 calls
+formatsource	117	0.337 seconds	87 calls
+UnmatchedRightParenException	170	0.343 seconds	87 calls
+dofile	73	0.347 seconds	4 calls
+@./l2l/reader.lua:93	122	0.377 seconds	246 calls
+_read	142	0.726 seconds	325 calls
+@./l2l/reader.lua:144	149	0.859 seconds	103 calls
+f	231	0.870 seconds	1190 calls
+method	35	1.110 seconds	1 calls

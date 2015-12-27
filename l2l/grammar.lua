@@ -5,13 +5,13 @@ local exception = require("l2l.exception2")
 local car = itertools.car
 local cdr = itertools.cdr
 local cons = itertools.cons
-local drop = itertools.drop
 local id = itertools.id
 local list = itertools.list
 local show = itertools.show
 local slice = itertools.slice
-local take = itertools.take
+local concat = itertools.concat
 local tolist = itertools.tolist
+local tovector = itertools.tovector
 
 local raise = exception.raise
 local execute = reader.execute
@@ -91,26 +91,35 @@ Terminal.__index = Terminal
 
 local mark, span, any, associate
 
-local function is(obj, flag)
-  local rule = getmetatable(obj)
-  if flag == nil then -- verify `obj` is a rule
-    return rule == span or rule == any or rule == mark or rule == associate
+local function ismark(obj, flag)
+  return getmetatable(obj) and (not flag or obj[flag])
+end
+
+local function isgrammar(obj, kind)
+  local mt = getmetatable(obj)
+  if kind then
+    return mt == kind
   end
-  if flag == span or flag == any or flag == mark or flag == associate then
-    return rule == flag
-  end
-  if rule ~= mark then
-    return false
-  end
-  return obj[flag]
+  return mt == mark or mt == span or mt == any or mt == associate
 end
 
 local function factor_terminal(terminal)
   local value = tostring(terminal)
+  local count = #value
+  local cache = {}
   return associate(terminal, function(_, bytes)
-    if list.concat(tolist(take(#value, bytes))) == value then
-      return list(terminal), tolist(drop(#value, bytes))
+    local first, rest = itertools.span(count, bytes)
+    if concat("", first) == value then
+      cache[bytes] = {
+        values=list(terminal),
+        rest=rest
+      }
+      return list(terminal), rest
     end
+    cache[bytes] = {
+      values=nil,
+      rest=bytes
+    }
     return nil, bytes
   end)
 end
@@ -130,13 +139,13 @@ mark = setmetatable({
   end,
   __tostring = function(self)
     local text = tostring(car(self))
-    if is(self, option) then
+    if self[option] then
       text = "["..text.."]"
     end
-    if is(self, repeating) then
+    if self[repeating] then
       text = "{"..text.."}"
     end
-    if is(self, skip) then
+    if self[skip] then
       text = "~"
     end
     return text
@@ -187,14 +196,10 @@ associate.__index = associate
 
 any = setmetatable({
   __call = function(self, environment, bytes, stack)
-    assert(bytes[1], tostring(self))
+    assert(bytes[1], self)
     -- find the one that consumes most tokens
     for _, read in ipairs(self) do
       if read ~= nil then
-        assert(not is(read, option))
-        assert(not is(read, skip))
-        assert(not is(read, repeating))
-        assert(read)
         local ok, values, rest = pcall(execute, read, environment, bytes,
           stack)
         if ok and values and rest ~= bytes then
@@ -220,14 +225,14 @@ any = setmetatable({
   end
 }, {
   __call = function(_, ...)
-    return setmetatable({list.unpack(tolist(itertools.map(
+    return setmetatable(tovector(itertools.map(
       function(value)
         if type(value) == "string" then
           return factor_terminal(Terminal(value))
         end
         return value
       end,
-      itertools.filter(id, list(...)))))}, any)
+      itertools.filter(id, {...}))), any)
   end,
   __tostring = function()
     return "any"
@@ -243,7 +248,7 @@ span = setmetatable({
           assert(read)
           local prev = rest
           local prev_meta = environment._META[rest]
-          if is(read, option) or is(read, repeating) then
+          if ismark(read, option) or ismark(read, repeating) then
             ok, values, rest = pcall(execute, read, environment, rest,
               stack)
             if not ok then
@@ -258,27 +263,27 @@ span = setmetatable({
             values, rest = execute(read, environment, rest, stack)
           end
           if not values then
-            if is(read, repeating) then
+            if ismark(read, repeating) then
               break
-            elseif not is(read, option) then
+            elseif not ismark(read, option) then
               return nil, bytes
             end
           end
-          if is(read, peek) then
+          if ismark(read, peek) then
             -- Restore any metadata at this point
             -- We don't want a peek operation to affect state.
             -- We didn't consume any input, it should not be recorded as we
             -- have.
             environment._META[prev] = prev_meta
             rest = prev
-          elseif not is(read, skip) then
+          elseif not ismark(read, skip) then
             stack = list()
             for _, value in ipairs(values or {}) do
               table.insert(all, value)
             end
           end
 
-          if not is(read, repeating) then
+          if not ismark(read, repeating) then
             break
           end
         end
@@ -299,14 +304,14 @@ span = setmetatable({
   end
 }, {
   __call = function(_, ...)
-    return setmetatable({list.unpack(tolist(itertools.map(
+    return setmetatable(tovector(itertools.map(
       function(value)
         if type(value) == "string" then
           return factor_terminal(Terminal(value))
         end
         return value
       end,
-      itertools.filter(id, list(...)))))}, span)
+      itertools.filter(id, list(...)))), span)
   end,
   __tostring = function()
     return "span"
@@ -319,7 +324,7 @@ span = setmetatable({
 --        also be given the parent.
 -- @param parent the tree to go through.
 local function filter(f, parent, ...)
-  assert(is(parent), parent)
+  -- assert(isgrammar(parent), parent)
   local origin = list(nil)
   local last = origin
   for _, child in ipairs(parent) do
@@ -328,7 +333,7 @@ local function filter(f, parent, ...)
         last[2] = cons(child)
         last = last[2]
       end
-      if is(child) and not is(child, skip) then
+      if isgrammar(child) and not ismark(child, skip) then
         last[2] = filter(f, child, parent, ...)
         if last[2] then
           last = last[2]
@@ -346,17 +351,17 @@ local factor
 -- that can satisfy a rule.
 -- @param rule The rule to search for span's.
 local function factor_spans(rule)
-  while is(rule, any) and #rule == 1 do
+  while isgrammar(rule, any) and #rule == 1 do
     rule = rule[1]
   end
-  if is(rule, span) or not is(rule, any) then
+  if isgrammar(rule, span) or not isgrammar(rule, any) then
     return any(rule)
   end
-  return any(list.unpack(
+  return any(itertools.unpack(
     filter(function(_, parent, ...) return
       not itertools.search(
         function(ancestor) return
-          is(ancestor, span)
+          isgrammar(ancestor, span)
         end, {parent, ...})
       end, rule)))
 end
@@ -370,22 +375,23 @@ local function factor_expand_left_nonterminal(rule, nonterminal)
   rule = factor_spans(rule)
   while continue do
     continue = false
-    rule = factor_spans(any(list.unpack(tolist(itertools.map(
+    rule = factor_spans(any(itertools.unpack(itertools.map(
       function(child)
-        if not is(child, span) then
+        if not isgrammar(child, span) then
           return child
         end
         if #child > 0 and child[1].nonterminal ~= nonterminal
             and child[1].factory then
             continue = true
-          return span(child[1].factory(function() end), list.unpack(tolist(slice(2, 0, child))))
+          return span(child[1].factory(function() end),
+            itertools.unpack(slice(2, 0, child)))
         end
         return child
-      end, rule)))))
+      end, rule))))
   end
 
   -- Refactor away span(any(span(any(....)))) wrapping.
-  while (is(rule, any) or is(rule, span)) and #rule == 1 do
+  while (isgrammar(rule, any) or isgrammar(rule, span)) and #rule == 1 do
     rule = rule[1]
   end
 
@@ -407,12 +413,12 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
   end))
   local patterns = any()
   for _, rule in ipairs(rules) do
-    local pattern = span(list.unpack(tolist(itertools.filter(function(child)
-        if is(child, span) and child[1].nonterminal == nonterminal then
+    local pattern = span(itertools.unpack(itertools.filter(function(child)
+        if isgrammar(child, span) and child[1].nonterminal == nonterminal then
           return false
         end
         return true
-      end, factor_spans(rule)))))
+      end, factor_spans(rule))))
     if #pattern > 0 then
       table.insert(patterns, pattern)
     end
@@ -426,21 +432,22 @@ end
 -- @param rule The rule to remove  `nonterminal` from.
 -- @param nonterminal The nonterminal to remove.
 local function factor_without_left_nonterminal(rule, nonterminal)
-  return any(list.unpack(tolist(itertools.filter(function(child)
-    if is(child, skip) then
+  return any(itertools.unpack(itertools.filter(function(child)
+    if ismark(child, skip) then
       return false
     end
     if child.nonterminal == nonterminal then
       return false
     end
-    if not is(child, span) then
+    if not isgrammar(child, span) then
       return true
     end
-    if child[1].nonterminal == nonterminal or child.nonterminal == nonterminal then
+    if child[1].nonterminal == nonterminal
+        or child.nonterminal == nonterminal then
       return false
     end
     return true
-  end, factor_spans(rule)))))
+  end, factor_spans(rule))))
 end
 
 --- Factor `rule` into suffixes of spans involving left recursion of
@@ -449,14 +456,14 @@ end
 -- that is not an any.
 -- @param nonterminal The nonterminal to remove.
 local function factor_left_suffix(rule, nonterminal)
-  return any(list.unpack(tolist(itertools.map(
+  local contents = tovector(itertools.map(
     function(child)
-      return span(unpack(itertools.tovector(slice(2, 0, child))))
+      return span(unpack(tovector(slice(2, 0, child))))
     end, itertools.filter(function(child)
-        if is(child, skip) then
+        if ismark(child, skip) then
           return false
         end
-        if not is(child, span) then
+        if not isgrammar(child, span) then
           return false
         end
         if child[1].nonterminal == nonterminal
@@ -464,7 +471,11 @@ local function factor_left_suffix(rule, nonterminal)
           return true
         end
         return false
-      end, factor_spans(rule))))))
+      end, factor_spans(rule))))
+  if #contents == 1 then
+    return contents[1]
+  end
+  return any(unpack(contents))
 end
 
 factor = function(nonterminal, factory)
@@ -477,7 +488,7 @@ factor = function(nonterminal, factory)
       tostring(nonterminal ~= nil and nonterminal or factory))
   end
 
-  if ok and not is(origin) then
+  if ok and not isgrammar(origin) then
     return associate(nonterminal, origin)
   else
     origin = nil
@@ -492,7 +503,6 @@ factor = function(nonterminal, factory)
     if not bytes then
       return nil, nil
     end
-    assert(bytes[1], tostring(nonterminal))
     cache[bytes] = cache[bytes] or {}
     local memoize = cache[bytes]
     local history = environment._META[bytes]
@@ -709,7 +719,8 @@ return {
   mark=mark,
   Terminal=Terminal,
   NonTerminal=NonTerminal,
-  is=is,
+  ismark=ismark,
+  isgrammar=isgrammar,
   factor=factor,
   factor_terminal=factor_terminal,
   filter=filter,

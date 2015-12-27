@@ -67,7 +67,7 @@
       (let (
           expected (car test)
           text (cadr test)
-          (ok value rest) (pcall reader.read nil (tolist text)))
+          (ok value rest) (pcall reader.read nil (finalize (tolist text))))
         (if (~= ok expected)
           (print "failed" text (if ok "==" "=>") value)
           (id "ok" text (if ok "==" "=>") (if ok (car value) "<Error as expected>")))

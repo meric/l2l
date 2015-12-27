@@ -181,9 +181,6 @@ local function read(environment, bytes)
   raise(UnmatchedReadMacroException(environment, bytes, byte))
 end
 
---[[
-optimise scan, span, map
-]]
 
 local function read_predicate(environment, bytes, transform, predicate)
   local token = ""
@@ -206,6 +203,14 @@ local function read_predicate(environment, bytes, transform, predicate)
   end
   return list(transform(token)), bytes
 end
+
+-- local function read_predicate(environment, bytes, transform, predicate)
+--   itertools.finalize(map(function(token, byte)
+--       print(token[1], token[2])
+--       os.exit()
+--   end, zip(scan(operator[".."], "", bytes),
+--     itertools.mapcar(id, bytes))))
+-- end
 
 --[[--
 -- Slow
