@@ -60,7 +60,8 @@ __call = function(_, name)
     __eq = function(self, other)
       return getmetatable(self) == getmetatable(other) and
         tostring(self) == tostring(other)
-    end
+    end,
+    representation = NonTerminal.representation
   }, NonTerminal)
   self.__index = self
   return self
@@ -385,13 +386,24 @@ local function factor_expand_left_nonterminal(rule, nonterminal)
         if #child > 0 and child[1].nonterminal ~= nonterminal
             and child[1].factory then
             continue = true
-          return span(child[1].factory(function() end),
+          local nonterminalspan = false
+          local expanded = span(child[1].factory(function(grandchild)
+              if isgrammar(grandchild, span)
+                  and grandchild[1]
+                  and grandchild[1].nonterminal == nonterminal then
+                  nonterminalspan = grandchild
+                return
+              end
+            end),
             itertools.unpack(slice(2, 0, child)))
+          if not nonterminalspan then
+            return expanded
+          end
+          return nonterminalspan
         end
         return child
       end, rule))))
   end
-
   -- Refactor away span(any(span(any(....)))) wrapping.
   while (isgrammar(rule, any) or isgrammar(rule, span)) and #rule == 1 do
     rule = rule[1]
