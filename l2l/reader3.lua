@@ -13,6 +13,9 @@ local raise = exception.raise
 local UnmatchedRightParenException =
   exception.Exception("UnmatchedRightParenException",
     "Unmatched right parenthesis.")
+local UnmatchedRightBraceException =
+  exception.Exception("UnmatchedRightBraceException",
+    "Unmatched right brace.")
 local EOFException =
   exception.Exception("EOFException",
     "End of file")
@@ -22,6 +25,9 @@ local UnmatchedReadMacroException =
 local UnmatchedLeftParenException =
   exception.Exception("UnmatchedLeftParenException",
     "Unmatched left parenthesis.")
+local UnmatchedDoubleQuoteException =
+  exception.Exception("UnmatchedDoubleQuoteException",
+    "Unmatched double quote.")
 
 -- Create a new type `symbol`.
 local symbol = setmetatable({
@@ -262,6 +268,10 @@ local function read_right_paren(environment, bytes)
   raise(UnmatchedRightParenException(environment, bytes))
 end
 
+local function read_right_brace(environment, bytes)
+  raise(UnmatchedRightBraceException(environment, bytes))
+end
+
 local function read_whitespace(environment, bytes)
   return read_predicate(environment, bytes, id,
     match("^%s+$"))
@@ -320,22 +330,60 @@ local function read_list(environment, bytes)
   end)
 end
 
+local function read_table(environment, bytes)
+  local parameters = {}
+  local rest = bytes[2]
+  local ok, value, _ = true
+  local index = 0
+  while ok do
+    ok, values, rest = pcall(read, environment, rest)
+    if ok then
+      index = index + 1
+      parameters[index] = car(values)
+    elseif getmetatable(values) == UnmatchedRightBraceException then
+      return list(cons(symbol("dict"), tolist(parameters))), cdr(values.bytes)
+    else
+      raise(values)
+    end
+  end
+end
+
+local function read_string(environment, bytes)
+  local text, byte = "", ""
+  local escaped = false
+  repeat
+    if not escaped and byte == '\\' then
+      escaped = true
+    else
+      if escaped and byte == "n" then
+        byte = "\n"
+      end
+      text = text..byte  
+      escaped = false
+    end
+    bytes = cdr(bytes)
+    byte = bytes and car(bytes) or nil
+  until not byte or (byte == '"' and not escaped)
+  if not byte then
+    raise(UnmatchedDoubleQuoteException(environment, bytes))
+  end
+  return list(text), cdr(bytes)
+end
+
 --- Return the default _R table.
 function default_R()
   return {
     -- Single byte read macros are prioritised.
     ["("] = list(read_lua, read_list),
     [")"] = list(read_right_paren),
-    -- ['{'] = read_table,
-    -- ['}'] = read_right_brace,
-    -- ['['] = read_vector,
-    -- [']'] = read_right_bracket,
-    -- ['"'] = read_string,
-    -- ['#'] = read_dispatch_macro,
-    -- ['`'] = read_quasiquote,
-    -- [','] = read_quasiquote_eval,
+    ['{'] = list(read_table),
+    ['}'] = list(read_right_brace),
+    -- ['['] = list(read_vector),
+    -- [']'] = list(read_right_bracket),
+    ["\""] = list(read_string),
+    -- ['`'] = list(read_quasiquote),
+    -- [','] = list(read_quasiquote_eval),
     ["'"] = list(read_quote),
-
     ["-"]=list(read_number, read_symbol),
 
     -- Implement skip_whitespace as a single byte read macro, because
@@ -395,6 +443,11 @@ return {
   execute = execute,
   read_predicate = read_predicate,
   read_number = read_number,
+  read_string = read_string,
+  read_table = read_table,
+  read_right_brace = read_right_brace,
+  read_list = read_list,
+  read_right_paren = read_right_paren,
   match=match,
   environ=environ
 }
