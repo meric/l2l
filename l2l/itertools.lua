@@ -66,12 +66,12 @@ local function show(obj)
 end
 
 local function car(t)
-  assert(t, "car: `t` missing.")
+  -- assert(t, "car: `t` missing.")
   return t[1]
 end
 
 local function cdr(t)
-  assert(t)
+  -- assert(t)
   return t[2]
 end
 

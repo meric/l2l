@@ -24,6 +24,4 @@ end)
 local bytes = itertools.tolist("1237618263")
 local environment = reader.environ(bytes)
 
-local values, rest = a(environment, bytes)
-
-print(itertools.car(values):representation())
+return a(environment, bytes)

@@ -35,4 +35,6 @@ local id = require("l2l.itertools").id;
     assert(tostring(values) == "(1-(1-9*(7-3))*(4-7)*7)" and not rest,
         "Parse left recursion grammar failed. "..tostring(values))
 
+    local values, rest = loadfile("tests/left3.lua")()
+
 -- end)

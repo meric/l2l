@@ -307,7 +307,7 @@ local function read_list(environment, bytes)
         last[2] = values
         last = last[2] or last
       elseif getmetatable(values) == UnmatchedRightParenException then
-        return tolist({origin[2]}), cdr(values.bytes)
+        return cons(origin[2]), cdr(values.bytes)
       else
         raise(values)
       end
