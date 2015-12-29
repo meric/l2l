@@ -84,19 +84,108 @@ local keywords ={
 }
 
 --[[[
-${x} means hash
-$ => hash next lisp symbol into Name.
-${} => quasiquote eval???
-
-(print ${<div>Hello</div>})
-(print $.{1 + 2})
-(print ${ x << local x = 1 + $z + $(+ 7 8)})
-
 
 (let
   (z 8)
-  (print ${x <- local x = 1 + $z + $(+ 7 8)}) ;; Prints 9
-  (print `${x <- local x = 1 + ${z} + $z))
+  (print (<- (x y z)
+    local x = 1;
+    y = x + 1;
+    z = y * 2;)))
+  (print (<- (1 * 2))
+
+
+
+
+print((1 + (+ 2 3)) * 7);
+(do
+  (print 5));
+
+--------------------------------------------------------------------------------
+(filter g (map f (range 5)))
+for i=1, 5 do
+  if g(f(i)) then
+    ...
+  end
+end
+
+(reduce + 0 (map (@> (x i) `(* ,x ,x)) (range 5)))
+
+
+--------------------------------------------------------------------------------
+
+(range 10) -> iterator
+function(invariant, index)
+  local value = start + index * step
+  if not stop or value <= stop then
+    return index + 1, start + index * step
+  end
+end, step, 0
+
+(take 5 (range 10)) ->
+function(invariant, index)
+  -- range application
+  local value = start + index * step
+  -- take application
+
+  -- take return
+  if index > n then
+    break
+  end
+  -- range return
+  if not stop or value <= stop then
+    return index + 1, start + index * step
+  end
+end
+
+An iterator context contains a stack of transforms, then a stack of returns.
+minimum one function call loop.
+
+function (block, bytes, expr_or_transform, expr_or_iteration)
+    --> return lua expr?
+    --> check if luaexpr table, string, or (function, invariant, state) tuple.
+    --> If function then go in? but don't know where is "middle".
+    --> maybe it should return a wrapper.
+
+  -- expr_or_iteration could be lua expr, or iterable.
+  -- tonext will be applied to it.
+  local iterable = functional(block, bytes, expr_or_iteration)
+  return iterable(
+  -- Value Transform
+  function(invariant, index, value)
+    return compile_call(expr_or_transform, value, index)
+  end,
+  function(invariant, index, value)
+    return
+  end)
+end
+
+(take 2 (map (@> (x i) `(* ,x ,x)) (range 5)))
+function(invariant, index)
+  -- Identity
+  local value = index
+  -- Range transform
+  value = start + index * step
+  -- Map transform
+  value = value * value
+  -- Take transform
+  -- Default
+
+  -- Take return
+  if index > n then
+    return
+  end
+  -- Map return
+  -- Default
+  
+  -- Range return
+  if stop and value > stop then
+    return
+  end
+  return index + 1, value
+end, invariant, index
+
+--------------------------------------------------------------------------------
+
 
 (let 
   (z-x 7)

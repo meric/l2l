@@ -439,12 +439,14 @@ function default_R()
 end
 
 if debug.getinfo(3) == nil then
-  local lua = require("l2l.lua")
-  local bytes = tolist("a[d](e)")
-  local values, rest = lua.read_stat(environ(bytes), bytes)
-  print(show(values), rest)
+  local bytes = tolist('{1 1 2 2 "1" 5}')
+  print(read(environ(bytes), bytes))
+  -- local lua = require("l2l.lua")
+  -- local bytes = tolist("a[d](e)")
+  -- local values, rest = lua.read_stat(environ(bytes), bytes)
+  -- print(show(values), rest)
 
-  print(show(car(values):representation()))
+  -- print(show(car(values):representation()))
   -- -- (print ($ ))
   -- --[[
   -- (print ($ 
