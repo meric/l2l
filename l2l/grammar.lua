@@ -613,11 +613,11 @@ factor = function(nonterminal, factory)
         if from then
           -- Called from `from`. E.g.
           -- With the following Grammar:
-          --   read_functioncall = span(read_prefixexp args)
-          --   read_prefixexp = LEFT(read_functioncall) | name
+          --   functioncall = span(prefixexp args)
+          --   prefixexp = left(functioncall) | name
           --
           -- The following call is made:
-          --   read_functioncall(environment, bytes)
+          --   functioncall(environment, bytes)
           --
           -- At this line in the code with the above scenario,
           --   `stack` is (prefixexp functioncall)
@@ -626,8 +626,8 @@ factor = function(nonterminal, factory)
           --          executed the current `read_prefixexp`.
           -- 
           -- When deriving `prefixexp` we want to drop the last call to
-          -- `read_functioncall`, and leave stuff for the parent 
-          -- `read_functioncall` call to parse.
+          -- `functioncall`, and leave stuff for the parent `functioncall`
+          -- call to parse.
           --
           -- Otherise `args` in `read_functioncall` will be missing.
           --
@@ -646,10 +646,10 @@ factor = function(nonterminal, factory)
         end
 
         -- Left recursing paths that can have no suffix, can be "independent".
-        -- E.g. read_a = any("a", all("(", read_exp, ")")
-        --      read_t = any(read_exp, read_a)
-        --    Assume `read_exp` left recurses back to `read_t`.
-        -- The `read_a` non-left-recursion choice makes `read_t` "independent".
+        -- E.g. a = any("a", all("(", exp, ")")
+        --      t = any(exp, a)
+        --    Assume `exp` left recurses back to `t`.
+        -- The `a` non-left-recursion choice makes `t` "independent".
         local independent = itertools.search(
             function(info)
               return #info.spans > 0 and info.spans(environment, bytes)
