@@ -116,10 +116,12 @@ local function factor_terminal(terminal)
       }
       return list(terminal), rest
     end
-    cache[bytes] = {
-      values=nil,
-      rest=bytes
-    }
+    if bytes then
+      cache[bytes] = {
+        values=nil,
+        rest=bytes
+      }
+    end
     return nil, bytes
   end)
 end
@@ -394,7 +396,6 @@ local function factor_expand_left_nonterminal(rule, nonterminal)
   while (isgrammar(rule, any) or isgrammar(rule, span)) and #rule == 1 do
     rule = rule[1]
   end
-
   return rule
 end
 
@@ -413,14 +414,26 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
   end))
   local patterns = any()
   for _, rule in ipairs(rules) do
-    local pattern = span(itertools.unpack(itertools.filter(function(child)
-        if isgrammar(child, span) and child[1].nonterminal == nonterminal then
-          return false
+    if not isgrammar(rule, any) then
+      rule = any(rule)
+    end
+    for i, section in ipairs(rule) do
+
+      local pattern = span(itertools.unpack(itertools.filter(function(child)
+          if isgrammar(child, span) and child[1].nonterminal == nonterminal then
+            return false
+          end
+          return true
+        end, factor_spans(section))))
+
+      if #pattern > 0 then
+        while (isgrammar(pattern, any)
+            or isgrammar(pattern, span))
+            and #pattern == 1 do
+          pattern = pattern[1]
         end
-        return true
-      end, factor_spans(rule))))
-    if #pattern > 0 then
-      table.insert(patterns, pattern)
+        table.insert(patterns, pattern)
+      end
     end
   end
   return patterns
@@ -631,7 +644,6 @@ factor = function(nonterminal, factory)
           paths[bytes] = list.push(paths[bytes], nil)
         end
         local prefix, rest = read_take_terminals(environment, bytes)
-
         -- If no prefix match, and no independent match, it means this doesn't
         -- match.
         if not prefix and not independent then
@@ -647,12 +659,12 @@ factor = function(nonterminal, factory)
         -- of what we have here because we're factoring the grammar into a
         -- different shape, it would return a different tree to what the
         -- caller expected.
-        local matching, values = prefix
+        local matching, values, ok = prefix
         while matching and rest do
           matching = nil
           for _, info in ipairs(left) do
-            values, rest = info.suffixes(environment, rest)
-            if values ~= nil and rest ~= bytes then
+            ok, values, rest = pcall(info.suffixes, environment, rest)
+            if ok and values ~= nil and rest ~= bytes then
               matching = true
               paths[bytes] = list.push(paths[bytes], info.index)
               break
