@@ -6,6 +6,9 @@ local span = grammar.span
 local any = grammar.any
 local factor = grammar.factor
 
+
+-- This example demonstrates mutual recursion.
+-- The grammar is taken from:
 -- https://theantlrguy.atlassian.net/wiki/display/ANTLR3/Left-Recursion+Removal
 b = factor("b", function(left)
     return any(left(span(a, integer)), integer)
