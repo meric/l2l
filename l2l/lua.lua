@@ -7,6 +7,7 @@ local car = itertools.car
 
 local match = reader.match
 local read_predicate = reader.read_predicate
+local skip_whitespace = reader.skip_whitespace
 
 local associate = grammar.associate
 local span = grammar.span
@@ -307,6 +308,15 @@ local label = factor("label", function() return
     span("::", __, Name, __, "::")
   end)
 
+local binop = factor("binop", function() return
+    -- binop ::=  ‘+’ | ‘-’ | ‘*’ | ‘/’ | ‘//’ | ‘^’ | ‘%’ |
+    --      ‘&’ | ‘~’ | ‘|’ | ‘>>’ | ‘<<’ | ‘..’ |
+    --      ‘<’ | ‘<=’ | ‘>’ | ‘>=’ | ‘==’ | ‘~=’ |
+    --      and | or
+    any("+", "-", "*", "/", "//", "^", "%", "&", "~", "|", ">>", "<<", "..",
+        "<", "<=", ">", ">=", "==", "~=")
+  end)
+
 local exp
 local var
 local prefixexp
@@ -323,10 +333,11 @@ local functioncall = factor("functioncall", function() return
     any(span(prefixexp, __, args), span(prefixexp, __, ":", __, Name, __, args))
   end)
 
-exp = factor("exp", function() return
+exp = factor("exp", function(left) return
   -- exp ::=  nil | false | true | Numeral | LiteralString | ‘...’ |  
   --      functiondef | prefixexp | tableconstructor | exp binop exp | unop exp 
     any(
+      left(span(exp, __, binop, __, exp)),
       span(any("nil", "false", "true", number, "..."), space),
       prefixexp,
       span(unop, exp))
@@ -408,17 +419,36 @@ block = factor("block", function() return
 --- Return the default _R table.
 local function block_R()
   return {
-    list(block)
+    list(block),
+    [" "]=list(skip_whitespace),
+    ["\t"]=list(skip_whitespace),
+    ["\n"]=list(skip_whitespace),
+    ["\r"]=list(skip_whitespace),
+    ["\r\n"]=list(skip_whitespace)
+  }
+end
+
+--- Return the default _R table.
+local function explist_R()
+  return {
+    list(explist),
+    [" "]=list(skip_whitespace),
+    ["\t"]=list(skip_whitespace),
+    ["\n"]=list(skip_whitespace),
+    ["\r"]=list(skip_whitespace),
+    ["\r\n"]=list(skip_whitespace)
   }
 end
 
 return {
     block_R = block_R,
+    explist_R = explist_R,
     functioncall = functioncall,
     retstat = retstat,
     Name = Name,
     stat = stat,
     functioncall = functioncall,
     var = var,
-    prefixexp = prefixexp
+    prefixexp = prefixexp,
+    exp = exp
 }
