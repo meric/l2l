@@ -2,15 +2,10 @@ local grammar = require("l2l.grammar")
 local reader = require("l2l.reader3")
 local itertools = require("l2l.itertools")
 
-local associate = grammar.associate
 local span = grammar.span
 local any = grammar.any
 local mark = grammar.mark
-local skip = grammar.skip
-local option = grammar.option
 local repeating = grammar.repeating
-local Terminal = grammar.Terminal
-local NonTerminal = grammar.NonTerminal
 local factor = grammar.factor
 
 read_one = factor("one", function() return

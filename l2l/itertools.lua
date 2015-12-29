@@ -76,7 +76,7 @@ local function cdr(t)
 end
 
 local function nextchar(invariant, index)
-  local index = (index or 0) + 1
+  index = (index or 0) + 1
   if index > #invariant then
     return nil
   end
@@ -155,7 +155,7 @@ list = setmetatable({
       return 0
     end
     local count = 0
-    for i, value in ipairs(self) do
+    for _, _ in ipairs(self) do
       count = count + 1
     end
     return count
@@ -236,12 +236,20 @@ list = setmetatable({
 
 local function tolist(nextvalue, invariant, state)
   -- tolist({1, 2, 3, 4})
+  -- tolist({1, 2, 3}, 1) -- make improper list.
   -- tolist(map(f, {1, 2, 3}))
-  if getmetatable(nextvalue) == list and not invariant and not state then
-    return nextvalue
+  local obj
+  if getmetatable(nextvalue) == list then
+    if not invariant and not state then
+      return nextvalue
+    end
+    if invariant and not state then
+      obj = invariant
+    end
   end
   nextvalue, invariant, state = tonext(nextvalue, invariant, state)
-  local state, value = nextvalue(invariant, state)
+  local value
+  state, value = nextvalue(invariant, state)
   if state then
     return setmetatable({value,
       nextvalue=nextvalue,
@@ -279,10 +287,11 @@ end
 local function each(f, nextvalue, invariant, state)
   f = f or id
   nextvalue, invariant, state = tonext(nextvalue, invariant, state)
-  return function(invariant, state)
-    local state, value = nextvalue(invariant, state)
-    if state ~= nil then
-      return state, f(value, state)
+  return function(_, index)
+    local value
+    index, value = nextvalue(invariant, index)
+    if index ~= nil then
+      return index, f(value, index)
     end
   end, invariant, state
 end
@@ -305,11 +314,11 @@ end
 local function arguments(...)
   local count = select("#", ...)
   local parameters = {...}
-  return function(invariant, index)
+  return function(_, index)
     if index < count then
       return index + 1, parameters[index + 1]
     end
-  end, invariant, 0
+  end, parameters, 0
 end
 
 local eacharg = function(f, ...)
@@ -324,7 +333,7 @@ local function range(start_or_stop, stop, step)
   local start = (stop and (start_or_stop or 1)) or 1
   stop = stop or start_or_stop
   step = step or (start <= stop and 1 or -1)
-  return function(invariant, index)
+  return function(_, index)
     local value = start + index * step
     if not stop or value <= stop then
       return index + 1, start + index * step
@@ -352,7 +361,8 @@ local function filter(f, nextvalue, invariant, state)
     if cache[index * 2 + 2] then
       return cache[index * 2 + 2], cache[index * 2 + 3]
     end
-    local state = cache[index * 2]
+    local value
+    state = cache[index * 2]
     repeat
       state, value = nextvalue(invariant, state)
     until not state or f(value, state)
@@ -365,7 +375,7 @@ local function filter(f, nextvalue, invariant, state)
 end
 
 local function search(f, nextvalue, invariant, state)
-  for i, v in tonext(nextvalue, invariant, state) do
+  for _, v in tonext(nextvalue, invariant, state) do
     if f(v) then
       return v
     end
@@ -383,19 +393,17 @@ end
 
 local function keys(nextvalue, invariant, state)
   nextvalue, invariant, state = tonext(nextvalue, invariant, state)
-  return function(invariant, index)
-    local value
-    state, value = nextvalue(invariant, state)
+  return function(_, index)
+    state = nextvalue(invariant, state)
     if state ~= nil then
       return index + 1, state
     end
   end, invariant, 0
 end
 
-
 local function last(nextvalue, invariant, state)
   local obj
-  for i, value in tonext(nextvalue, invariant, state) do
+  for _, value in tonext(nextvalue, invariant, state) do
     obj = value
   end
   return obj
@@ -451,31 +459,29 @@ end
 local function finalize(nextvalue, invariant, state)
   if not finalized(nextvalue, invariant, state)
       or getmetatable(nextvalue) == list then
-    for i, value in tonext(nextvalue, invariant, state) do
+    for _, _ in tonext(nextvalue, invariant, state) do
       -- Do nothing.
     end
   end
   return nextvalue, invariant, state
 end
 
-local function identify(nextvalue, invariant, state, f)
-  local islist = getmetatable(nextvalue) == list
-  return function(nextvalue, invariant, state)
-    if islist and invariant and finalized(invariant[state]) then
+local function identify(target, _, _, f)
+  local islist = getmetatable(target) == list
+  return function(nextvalue, invariant, index)
+    if islist and invariant and finalized(invariant[index]) then
       if f then
-        invariant, state = f(invariant, state)
+        invariant, index = f(invariant, index)
       end
-      return invariant[state]
+      return invariant[index]
     end
     if f then
-      nextvalue, invariant, state = tonext(nextvalue, invariant, state)
-      return function(invariant, state)
-        local value
-        invariant, state = f(invariant, state)
-        return nextvalue(invariant, state)
-      end, invariant, state
+      nextvalue, invariant, index = tonext(nextvalue, invariant, index)
+      return function(...)
+        return nextvalue(f(...))
+      end, invariant, index
     end
-    return nextvalue, invariant, state
+    return nextvalue, invariant, index
   end
 end
 
@@ -522,11 +528,11 @@ end
 local function take(n, nextvalue, invariant, state)
   nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   local t = type(n) == "number"
-  return function(invariant, state)
+  return function(_, index)
     local value
-    state, value = nextvalue(invariant, state)
-    if state and (t and state <= n or not t and n(value, state)) then
-      return state, value
+    index, value = nextvalue(invariant, index)
+    if index and (t and state <= n or not t and n(value, index)) then
+      return index, value
     end
   end, invariant, state
 end
@@ -538,24 +544,24 @@ local function drop(n, nextvalue, invariant, state)
   end
   local count, value = 0
   local identity = identify(nextvalue, invariant, state,
-    function(invariant, state)
+    function(_, index)
       if type(n) == "number" then
-        while count < n and state do
-          state, value = nextvalue(invariant, state)
+        while count < n and index do
+          index, value = nextvalue(invariant, index)
           count = count + 1
         end
       else
         local previous
         repeat
-          previous = state
-          state, value = nextvalue(invariant, state)
-          if not state then
+          previous = index
+          index, value = nextvalue(invariant, index)
+          if not index then
             break
           end
-        until not n(value, state)
-        state = previous
+        until not n(value, index)
+        index = previous
       end
-      return invariant, state
+      return invariant, index
     end)
   nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   return identity(nextvalue, invariant, state)
@@ -564,11 +570,11 @@ end
 local function scan(f, initial, nextvalue, invariant, state)
   nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   local value
-  return function(invariant, state)
-    state, value = nextvalue(invariant, state)
-    if state then
+  return function(_, index)
+    index, value = nextvalue(invariant, index)
+    if index then
       initial = f(initial, value)
-      return state, initial
+      return index, initial
     end
   end, invariant, state
 end
@@ -576,18 +582,12 @@ end
 local function zip(...)
   local invariants = {}
   local nextvalues = {}
-  local cache = {[0] = tovector(eacharg(function(argument, i)
-      local nextvalue, invariant, state = tonext(argument)
-      invariants[i] = invariant
-      nextvalues[i] = nextvalue
-      return state
-    end, ...))}
   return function(cache, index)
     local complete = false
     local states = {}
     local values = tovector(each(function(state, i)
         local nextvalue = nextvalues[i]
-        local invariant = invariants[i]
+        local invariant, value = invariants[i]
         states[i], value = nextvalue(invariant, state)
         if states[i] == nil then
           complete = true
@@ -598,7 +598,12 @@ local function zip(...)
       cache[index + 1] = states
       return index + 1, values
     end
-  end, cache, 0
+  end, {[0] = tovector(eacharg(function(argument, i)
+      local nextvalue, invariant, state = tonext(argument)
+      invariants[i] = invariant
+      nextvalues[i] = nextvalue
+      return state
+    end, ...))}, 0
 end
 
 local function concat(separator, nextvalue, invariant, state)
@@ -611,7 +616,7 @@ local function concat(separator, nextvalue, invariant, state)
     return list.concat(nextvalue, separator)
   end
   nextvalue, invariant, state = tonext(nextvalue, invariant, state)
-  local text, value = "", ""
+  local text, value
   state, text = nextvalue(invariant, state)
   if state then
     while true do
@@ -651,6 +656,7 @@ return {
   list=list,
   zip=zip,
   map=map,
+  maparg=maparg,
   fold=fold,
   show=show,
   foreach=foreach,
@@ -666,6 +672,7 @@ return {
   id=id,
   scan=scan,
   span=span,
+  range=range,
   last=last,
   flip=flip,
   car=car,

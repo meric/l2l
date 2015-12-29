@@ -1,14 +1,18 @@
 local itertools = require("l2l.itertools")
+local exception = require("l2l.exception2")
 local operator = require("l2l.operator")
 
-local list, show, bind = itertools.list, itertools.show, itertools.bind
-local scan, map, span = itertools.scan, itertools.map, itertools.span
-local last, id, flip = itertools.last, itertools.id, itertools.flip
-local cons, pack, zip = itertools.cons, itertools.pack, itertools.zip
-local car, cdr, tolist = itertools.car, itertools.cdr, itertools.tolist
-local foreach = itertools.foreach
-local exception = require("l2l.exception2")
+local bind = itertools.bind
+local car = itertools.car
+local cdr = itertools.cdr
+local cons = itertools.cons
+local id = itertools.id
+local list = itertools.list
+local pack = itertools.pack
+local tolist =  itertools.tolist
+
 local raise = exception.raise
+
 
 local UnmatchedRightParenException =
   exception.Exception("UnmatchedRightParenException",
@@ -55,7 +59,7 @@ local function match(...)
   local patterns = {...}
   return function(text)
     assert(type(text) == "string", type(text))
-    for i, pattern in ipairs(patterns) do
+    for _, pattern in ipairs(patterns) do
       local matches = text:match(pattern)
       if matches then
         return matches
@@ -173,13 +177,15 @@ local function read(environment, bytes)
   if not bytes then
     raise(EOFException(environment, bytes))
   end
-  local byte, rest = car(bytes), cdr(bytes)
+  local rest
+  local byte = car(bytes)
   local index = matchreadmacro(environment, byte)
   local _R = environment._R
   
-  for i, reader in ipairs(_R[index] or {}) do
+  for _, reader in ipairs(_R[index] or {}) do
     if reader then
-      local values, rest = execute(reader, environment, bytes)
+      local values
+      values, rest = execute(reader, environment, bytes)
       -- A read macro return nil to indicate it does not match and the reader
       -- should continue.
       if values ~= nil or rest ~= bytes then
@@ -191,9 +197,9 @@ local function read(environment, bytes)
 end
 
 
-local function read_predicate(environment, bytes, transform, predicate)
+local function read_predicate(_, bytes, transform, predicate)
   local token = ""
-  local previous = nil
+  local previous
   while true do
     if not bytes then
       break
@@ -240,7 +246,7 @@ local function read_symbol(environment, bytes)
   -- ".", "-" and "[0-9]" can always be part of a symbol if it is not the first
   -- character.
   return read_predicate(environment, bytes,
-    symbol, function(token, byte)
+    symbol, function(_, byte)
       return byte
         and (matchreadmacro(environment, byte) == 1
           or byte == "."
@@ -252,7 +258,8 @@ end
 local function read_number(environment, bytes)
   local negative, rest = read_predicate(environment, bytes,
     id, bind(operator["=="], "-"))
-  local numbers, rest = read_predicate(environment, rest,
+  local numbers
+  numbers, rest = read_predicate(environment, rest,
     tonumber, match("^%d+%.?%d*$", "^%d*%.?%d+$"))
   if not numbers then
     -- Not a number.
@@ -288,7 +295,7 @@ end
 -- @param environment The environment.
 -- @param bytes List of bytes to read from.
 local function skip_whitespace(environment, bytes)
-  local values, rest = execute(read_whitespace, environment, bytes)
+  local _, rest = execute(read_whitespace, environment, bytes)
   return read(environment, rest)
 end
 
@@ -300,7 +307,7 @@ local function read_list(environment, bytes)
     -- ["."] = cons(read_attribute, environment._R["."]),
     -- [":"] = cons(read_method, environment._R[":"])
   }, function()
-    local ok, value, _ = true
+    local ok, values, _ = true
     while ok do
       ok, values, rest = pcall(read, environment, rest)
       if ok then
@@ -319,7 +326,7 @@ local function read_vector(environment, bytes)
   local origin = list(nil)
   local last = origin
   local rest = bytes[2]
-  local ok, value, _ = true
+  local ok, values, _ = true
   while ok do
     ok, values, rest = pcall(read, environment, rest)
     if ok then
@@ -337,7 +344,7 @@ local function read_table(environment, bytes)
   local origin = list(nil)
   local last = origin
   local rest = bytes[2]
-  local ok, value, _ = true
+  local ok, values, _ = true
   while ok do
     ok, values, rest = pcall(read, environment, rest)
     if ok then
@@ -397,7 +404,7 @@ local function read_lua(environment, bytes)
   -- ```
   local lua = require("l2l.lua")
 
-  local ok, values, rest, reader = pcall(skip_whitespace, environment, cdr(bytes))
+  local ok, values, rest = pcall(skip_whitespace, environment, cdr(bytes))
 
   -- Check first symbol is `<-`.
   if not ok or not values or car(values) ~= symbol("<-") then
@@ -406,6 +413,7 @@ local function read_lua(environment, bytes)
 
   -- Either 1. `(<- (a b) block)` or 2. `(<- exp)` is valid.
   local origin, arguments, explist = rest
+  local reader
 
   values, rest, reader = skip_whitespace(environment, rest)
 

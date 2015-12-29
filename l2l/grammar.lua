@@ -433,7 +433,7 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
     if not isgrammar(rule, any) then
       rule = any(rule)
     end
-    for i, section in ipairs(rule) do
+    for _, section in ipairs(rule) do
 
       local pattern = span(itertools.unpack(itertools.filter(function(child)
           if isgrammar(child, span) and child[1].nonterminal == nonterminal then
@@ -675,7 +675,7 @@ factor = function(nonterminal, factory)
         -- of what we have here because we're factoring the grammar into a
         -- different shape, it would return a different tree to what the
         -- caller expected.
-        local matching, values, ok = prefix
+        local matching, values = prefix
         while matching and rest do
           matching = nil
           for _, info in ipairs(left) do
