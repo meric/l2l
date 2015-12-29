@@ -12,13 +12,13 @@ local raise = exception.raise
 
 local UnmatchedRightParenException =
   exception.Exception("UnmatchedRightParenException",
-    "Unmatched right parenthesis.")
+    "Unmatched right parenthesis. Try remove ')'.")
 local UnmatchedRightBraceException =
   exception.Exception("UnmatchedRightBraceException",
-    "Unmatched right brace.")
+    "Unmatched right brace. Try remove '}'.")
 local UnmatchedRightBracketException =
   exception.Exception("UnmatchedRightBracketException",
-    "Unmatched right bracket.")
+    "Unmatched right bracket. Try remove ']'.")
 local EOFException =
   exception.Exception("EOFException",
     "End of file")
@@ -27,10 +27,10 @@ local UnmatchedReadMacroException =
     "Cannot find matching read macro for byte '%s'.")
 local UnmatchedLeftParenException =
   exception.Exception("UnmatchedLeftParenException",
-    "Unmatched left parenthesis.")
+    "Unmatched left parenthesis. Possibly missing ')'.")
 local UnmatchedDoubleQuoteException =
   exception.Exception("UnmatchedDoubleQuoteException",
-    "Unmatched double quote.")
+    "Unmatched double quote. Possibly missing '\"'.")
 
 -- Create a new type `symbol`.
 local symbol = setmetatable({
@@ -183,7 +183,7 @@ local function read(environment, bytes)
       -- A read macro return nil to indicate it does not match and the reader
       -- should continue.
       if values ~= nil or rest ~= bytes then
-        return values, rest
+        return values, rest, reader
       end
     end
   end
@@ -292,28 +292,6 @@ local function skip_whitespace(environment, bytes)
   return read(environment, rest)
 end
 
-local function read_lua(environment, bytes)
-  local lua = require("l2l.lua")
-  -- lua.lua_R()
-  local dollar, rest = skip_whitespace(environment, cdr(bytes))
-
-  if car(dollar) ~= symbol("$") then
-    return nil, bytes
-  end
-
-  local values, rest = with_R(environment, false, lua.block_R(),
-    function()
-      return read(environment, rest)
-    end)
-
-  local ok, parens
-  ok, parens, after = pcall(read, environment, rest)
-  if ok or getmetatable(parens) ~= UnmatchedRightParenException then
-    raise(UnmatchedLeftParenException(environment, cdr(bytes)))
-  end
-  return values, cdr(rest)
-end
-
 local function read_list(environment, bytes)
   local origin = list(nil)
   local last = origin
@@ -403,6 +381,62 @@ end
 local function read_quasiquote_eval(environment, bytes)
   local values, rest = read(environment, cdr(bytes))
   return list(cons(symbol('quasiquote-eval'), values)), rest
+end
+
+
+local function read_lua(environment, bytes)
+  -- Syntax.
+  -- ```
+  -- (let
+  --   (z 8)
+  --   (print (<- (x y z)
+  --     local x = 1;
+  --     y = x + 1;
+  --     z = y * 2;)))
+  --   (print (<- 1 + 2)
+  -- ```
+  local lua = require("l2l.lua")
+
+  local ok, values, rest, reader = pcall(skip_whitespace, environment, cdr(bytes))
+
+  -- Check first symbol is `<-`.
+  if not ok or not values or car(values) ~= symbol("<-") then
+    return nil, bytes
+  end
+
+  -- Either 1. `(<- (a b) block)` or 2. `(<- exp)` is valid.
+  local origin, arguments, explist = rest
+
+  values, rest, reader = skip_whitespace(environment, rest)
+
+  -- Check if item is a list.
+  if reader == read_list then
+    -- Using 1., continue reading block.
+    arguments = car(values)
+    explist, rest = with_R(environment, false, lua.block_R(),
+      function()
+        return read(environment, rest)
+      end)
+  else
+    -- Using 2., go back to `origin` and read again.
+    arguments = nil
+    explist, rest = with_R(environment, false, lua.explist_R(),
+      function()
+        return read(environment, origin)
+      end)
+  end
+
+  origin = rest
+
+  -- Check for ending `)`.
+  ok, values, rest = pcall(read, environment, rest)
+
+  if not ok and getmetatable(values) == UnmatchedRightParenException then
+    return list(list(symbol("<-"), arguments, explist)), cdr(values.bytes)
+  end
+
+  -- Missing `)`, raise error.
+  raise(UnmatchedLeftParenException(environment, cdr(origin)))
 end
 
 --- Return the default _R table.
