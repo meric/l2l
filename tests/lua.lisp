@@ -60,7 +60,7 @@
     `(,true "(<- () return ((((((f(a))))))) )")
     `(,true "(<- () return f:x():t()[d]   )")
   ]
-  reader (require "l2l.reader3"))
+  reader (require "l2l.reader2"))
 
   (foreach
     (=> (test)

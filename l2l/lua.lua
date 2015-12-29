@@ -1,5 +1,5 @@
 local itertools = require("l2l.itertools")
-local reader = require("l2l.reader3")
+local reader = require("l2l.reader2")
 local grammar = require("l2l.grammar")
 
 local list = itertools.list

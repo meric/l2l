@@ -1,5 +1,5 @@
 local itertools = require("l2l.itertools")
-local reader = require("l2l.reader3")
+local reader = require("l2l.reader2")
 local exception = require("l2l.exception2")
 
 local car = itertools.car
