@@ -16,6 +16,9 @@ local UnmatchedRightParenException =
 local UnmatchedRightBraceException =
   exception.Exception("UnmatchedRightBraceException",
     "Unmatched right brace.")
+local UnmatchedRightBracketException =
+  exception.Exception("UnmatchedRightBracketException",
+    "Unmatched right bracket.")
 local EOFException =
   exception.Exception("EOFException",
     "End of file")
@@ -272,6 +275,10 @@ local function read_right_brace(environment, bytes)
   raise(UnmatchedRightBraceException(environment, bytes))
 end
 
+local function read_right_bracket(environment, bytes)
+  raise(UnmatchedRightBracketException(environment, bytes))
+end
+
 local function read_whitespace(environment, bytes)
   return read_predicate(environment, bytes, id,
     match("^%s+$"))
@@ -330,18 +337,36 @@ local function read_list(environment, bytes)
   end)
 end
 
-local function read_table(environment, bytes)
-  local parameters = {}
+local function read_vector(environment, bytes)
+  local origin = list(nil)
+  local last = origin
   local rest = bytes[2]
   local ok, value, _ = true
-  local index = 0
   while ok do
     ok, values, rest = pcall(read, environment, rest)
     if ok then
-      index = index + 1
-      parameters[index] = car(values)
+      last[2] = values
+      last = last[2] or last
+    elseif getmetatable(values) == UnmatchedRightBracketException then
+      return list(cons(symbol("vector"), origin[2])), cdr(values.bytes)
+    else
+      raise(values)
+    end
+  end
+end
+
+local function read_table(environment, bytes)
+  local origin = list(nil)
+  local last = origin
+  local rest = bytes[2]
+  local ok, value, _ = true
+  while ok do
+    ok, values, rest = pcall(read, environment, rest)
+    if ok then
+      last[2] = values
+      last = last[2] or last
     elseif getmetatable(values) == UnmatchedRightBraceException then
-      return list(cons(symbol("dict"), tolist(parameters))), cdr(values.bytes)
+      return list(cons(symbol("dict"), origin[2])), cdr(values.bytes)
     else
       raise(values)
     end
@@ -370,6 +395,16 @@ local function read_string(environment, bytes)
   return list(text), cdr(bytes)
 end
 
+local function read_quasiquote(environment, bytes)
+  local values, rest = read(environment, cdr(bytes))
+  return list(cons(symbol('quasiquote'), values)), rest
+end
+
+local function read_quasiquote_eval(environment, bytes)
+  local values, rest = read(environment, cdr(bytes))
+  return list(cons(symbol('quasiquote-eval'), values)), rest
+end
+
 --- Return the default _R table.
 function default_R()
   return {
@@ -378,11 +413,11 @@ function default_R()
     [")"] = list(read_right_paren),
     ['{'] = list(read_table),
     ['}'] = list(read_right_brace),
-    -- ['['] = list(read_vector),
-    -- [']'] = list(read_right_bracket),
+    ['['] = list(read_vector),
+    [']'] = list(read_right_bracket),
     ["\""] = list(read_string),
-    -- ['`'] = list(read_quasiquote),
-    -- [','] = list(read_quasiquote_eval),
+    ['`'] = list(read_quasiquote),
+    [','] = list(read_quasiquote_eval),
     ["'"] = list(read_quote),
     ["-"]=list(read_number, read_symbol),
 
