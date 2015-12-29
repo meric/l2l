@@ -675,6 +675,14 @@ factor = function(nonterminal, factory)
         -- of what we have here because we're factoring the grammar into a
         -- different shape, it would return a different tree to what the
         -- caller expected.
+        --
+        -- `info.suffixes` is similar to ANTLRworks technique of refactoring a
+        -- left recursive grammar into a non-recursive one, but we only use the
+        -- result of the refactored grammar to trace a path for our original
+        -- grammar, and our technique works with mutual recursion too.
+        --
+        -- See https://theantlrguy.atlassian.net/wiki/display/ANTLR3/Left-Recursion+Removal
+        -- 
         local matching, values = prefix
         while matching and rest do
           matching = nil
