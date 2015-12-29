@@ -21,7 +21,7 @@ integer = factor("integer", function()
 end)
 
 
-local bytes = itertools.tolist("1237618263")
+local bytes = itertools.tolist("12345")
 local environment = reader.environ(bytes)
 
 return a(environment, bytes)

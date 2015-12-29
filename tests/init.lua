@@ -37,4 +37,5 @@ local id = require("l2l.itertools").id;
 
     local values, rest = loadfile("tests/left3.lua")()
 
+    assert(values and not rest, "Parse mutual left recursiono grammar failed.")
 -- end)

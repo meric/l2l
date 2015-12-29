@@ -391,7 +391,11 @@ local function factor_expand_left_nonterminal(rule, nonterminal)
               if isgrammar(grandchild, span)
                   and grandchild[1]
                   and grandchild[1].nonterminal == nonterminal then
-                  nonterminalspan = grandchild
+
+                  nonterminalspan = span(unpack(grandchild))
+                  for i=2, #child do
+                    table.insert(nonterminalspan, child[i])
+                  end
                 return
               end
             end),
