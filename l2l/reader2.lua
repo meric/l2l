@@ -481,8 +481,16 @@ function default_R()
 end
 
 if debug.getinfo(3) == nil then
-  local bytes = tolist('{1 1 2 2 "1" 5}')
-  print(read(environ(bytes), bytes))
+
+  local lua = require("l2l.lua")
+  local bytes = tolist('return a()')
+  local values, rest = lua.retstat(environ(bytes), bytes)
+
+  --(lua-binop)??
+  --(lua-block ?)
+  -- print(values[1][2][1][2][2][1][1]:representation())
+  print(values, rest)
+  -- print(car(read(environ(bytes), bytes))[2][2][1][1]:representation())
   -- local lua = require("l2l.lua")
   -- local bytes = tolist("a[d](e)")
   -- local values, rest = lua.read_stat(environ(bytes), bytes)

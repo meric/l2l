@@ -59,6 +59,7 @@
     `(,true "(<- () return f()[d](e)[f].g   )")
     `(,true "(<- () return ((((((f(a))))))) )")
     `(,true "(<- () return f:x():t()[d]   )")
+    `(,true "(<- () return 1, $(+ 1 2)   )")
   ]
   reader (require "l2l.reader2"))
 

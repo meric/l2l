@@ -274,7 +274,7 @@ local space = factor("space",
 local __ = mark(space, skip, option)
 
 local LiteralString = factor("LiteralString", function() return
-    span(mark(any('"', "'"), peek), reader.read_string)
+    span(mark(any('"', "'")), reader.read_string)
   end)
 
 local Name
@@ -325,7 +325,24 @@ local args = factor("args", function() return
 
 local functioncall = factor("functioncall", function() return
   -- functioncall ::=  prefixexp args | prefixexp ‘:’ Name args 
-    any(span(prefixexp, __, args), span(prefixexp, __, ":", __, Name, __, args))
+    any(
+      span(prefixexp, __, args) %
+        function(...)
+          return ...
+        end,
+      span(prefixexp, __, ":", __, Name, __, args))
+  end, function(nonterminal, ...)
+    -- do something interesting here.
+    -- print(">", select("#", ...), ...)
+    return nonterminal(...)
+  end)
+
+local lispexp = factor("lispexp", function() return
+  span("$", function(environment, bytes) return
+    reader.with_R(environment, false, reader.default_R(), function() return
+        reader.read(environment, bytes)
+      end)
+    end)
   end)
 
 exp = factor("exp", function(left) return
@@ -335,6 +352,7 @@ exp = factor("exp", function(left) return
       left(span(exp, __, binop, __, exp)),
       span(any("nil", "false", "true", number, "..."), space),
       LiteralString,
+      lispexp,
       prefixexp,
       span(unop, exp))
   end)
@@ -443,7 +461,6 @@ return {
     retstat = retstat,
     Name = Name,
     stat = stat,
-    functioncall = functioncall,
     var = var,
     prefixexp = prefixexp,
     exp = exp,

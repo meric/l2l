@@ -648,7 +648,12 @@ local function rawtostring(obj)
   return text
 end
 
+local function apply(f, ...)
+  return f(...)
+end
+
 return {
+  apply=apply,
   vector=vector,
   dict=dict,
   pair=pair,

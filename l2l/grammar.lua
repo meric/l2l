@@ -10,7 +10,6 @@ local list = itertools.list
 local show = itertools.show
 local slice = itertools.slice
 local concat = itertools.concat
-local tolist = itertools.tolist
 local tovector = itertools.tovector
 
 local raise = exception.raise
@@ -39,7 +38,8 @@ NonTerminal = setmetatable({
     local origin = list(self.name)
     local last = origin
     for _, value in ipairs(self) do
-      local repr = type(value) == "string" and value or value:representation()
+      local repr = (type(value) ~= "table" or not value.representation)
+        and tostring(value) or value:representation()
       last[2] = cons(repr)
       last = last[2]
     end
@@ -93,7 +93,7 @@ Terminal.__index = Terminal
 local mark, span, any, associate
 
 local function ismark(obj, flag)
-  return getmetatable(obj) and (not flag or obj[flag])
+  return getmetatable(obj) == mark and (not flag or obj[flag])
 end
 
 local function isgrammar(obj, kind)
@@ -137,8 +137,39 @@ mark = setmetatable({
   representation = function(self)
     return tostring(self)
   end,
+  __mod = function(self, apply)
+    self.apply = apply
+    return self
+  end,
   __call = function(self, environment, bytes, stack)
-    return self[1](environment, bytes, stack)
+    assert(self[1])
+    local read, all, rest = self[1], {}, bytes
+    local ok, values, prev
+    while true do
+      prev = rest
+      ok, values, rest = pcall(read, environment, rest, stack)      
+      if not ok then
+        rest = prev -- restore to previous point.
+        if (ismark(self, repeating) or ismark(self, option))
+            and getmetatable(values) == ExpectedNonTerminalException then
+          break
+        else
+          raise(values)
+        end
+      end
+      for _, value in ipairs(values or {}) do
+        table.insert(all, value)
+      end
+      if not ismark(self, repeating) or not values then
+        if not values
+            and not ismark(self, repeating)
+            and not ismark(self, option) then
+          return nil, bytes
+        end
+        break
+      end
+    end
+    return list(self.apply(unpack(all))), rest
   end,
   __tostring = function(self)
     local text = tostring(car(self))
@@ -160,6 +191,7 @@ mark = setmetatable({
     end
     local self = setmetatable({read}, mark)
     assert(read, "missing `read` argument.")
+    self.apply = id
     for _, value in ipairs({...}) do
       self[value] = true
     end
@@ -200,7 +232,6 @@ associate.__index = associate
 any = setmetatable({
   __call = function(self, environment, bytes, stack)
     assert(bytes[1], self)
-    -- find the one that consumes most tokens
     for _, read in ipairs(self) do
       if read ~= nil then
         local ok, values, rest = pcall(execute, read, environment, bytes,
@@ -243,56 +274,41 @@ any = setmetatable({
 })
 
 span = setmetatable({
+  __mod = function(self, apply)
+    self.apply = apply
+    return self
+  end,
   __call = function(self, environment, bytes, stack)
-    local rest, all, ok, values = bytes, {}
+    local rest, all, values = bytes, {}
     for _, read in ipairs(self) do
       if read ~= nil then
-        while true do
-          assert(read)
-          local prev = rest
-          local prev_meta = environment._META[rest]
-          if ismark(read, option) or ismark(read, repeating) then
-            ok, values, rest = pcall(execute, read, environment, rest,
-              stack)
-            if not ok then
-              rest = prev -- restore to previous point.
-              if getmetatable(values) == ExpectedNonTerminalException then
-                break
-              else
-                raise(values)
-              end
-            end
-          else
-            values, rest = execute(read, environment, rest, stack)
-          end
-          if not values then
-            if ismark(read, repeating) then
-              break
-            elseif not ismark(read, option) then
-              return nil, bytes
-            end
-          end
-          if ismark(read, peek) then
-            -- Restore any metadata at this point
-            -- We don't want a peek operation to affect state.
-            -- We didn't consume any input, it should not be recorded as we
-            -- have.
-            environment._META[prev] = prev_meta
-            rest = prev
-          elseif not ismark(read, skip) then
-            stack = list()
-            for _, value in ipairs(values or {}) do
-              table.insert(all, value)
-            end
-          end
+        local prev = rest 
+        local prev_meta = environment._META[rest]
 
-          if not ismark(read, repeating) then
-            break
+        values, rest = execute(read, environment, rest, stack)
+
+        if not values 
+            and not ismark(read, option)
+            and not ismark(read, repeating) then
+          return nil, bytes
+        end
+
+        if ismark(read, peek) then
+          -- Restore any metadata at this point
+          -- We don't want a peek operation to affect state.
+          -- We didn't consume any input, it should not be recorded as we
+          -- have.
+          environment._META[prev] = prev_meta
+          rest = prev
+        elseif not ismark(read, skip) then
+          stack = list()
+          for _, value in ipairs(values or {}) do
+            table.insert(all, value)
           end
         end
       end
     end
-    return tolist(all), rest
+    return list(self.apply(unpack(all))), rest
   end,
   __tostring = function(self)
     local repr = {"span("}
@@ -307,7 +323,7 @@ span = setmetatable({
   end
 }, {
   __call = function(_, ...)
-    return setmetatable(tovector(itertools.map(
+    local self = setmetatable(tovector(itertools.map(
       function(value)
         if type(value) == "string" then
           return factor_terminal(Terminal(value))
@@ -315,6 +331,10 @@ span = setmetatable({
         return value
       end,
       itertools.filter(id, list(...)))), span)
+
+    self.apply = id
+
+    return self
   end,
   __tostring = function()
     return "span"
@@ -507,7 +527,7 @@ local function factor_left_suffix(rule, nonterminal)
   return any(unpack(contents))
 end
 
-factor = function(nonterminal, factory)
+factor = function(nonterminal, factory, instantiate)
   assert(factory, "missing `factory` argument")
 
   local ok, origin = pcall(factory, id)
@@ -516,6 +536,8 @@ factor = function(nonterminal, factory)
     nonterminal = NonTerminal(
       tostring(nonterminal ~= nil and nonterminal or factory))
   end
+
+  instantiate = instantiate or itertools.apply
 
   if ok and not isgrammar(origin) then
     return associate(nonterminal, origin)
@@ -737,7 +759,7 @@ factor = function(nonterminal, factory)
     end
     -- Memoize
     memoize[nonterminal] = {
-      values=list(nonterminal(list.unpack(values))),
+      values=list(instantiate(nonterminal, list.unpack(values))),
       rest=rest,
       stack=stack
     }
