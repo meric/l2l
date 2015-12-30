@@ -273,8 +273,9 @@ local space = factor("space",
 
 local __ = mark(space, skip, option)
 
-local LiteralString = factor("LiteralString",
-  function() return reader.read_string end)
+local LiteralString = factor("LiteralString", function() return
+    span(mark(any('"', "'"), peek), reader.read_string)
+  end)
 
 local Name
 Name = associate("Name", function(environment, bytes)
