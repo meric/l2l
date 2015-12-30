@@ -52,7 +52,11 @@ __call = function(_, name)
     __tostring = function(self)
       local repr = {}
       for _, value in ipairs(self) do
-          table.insert(repr, tostring(value))
+          if type(value) == "string" then
+            table.insert(repr, show(value))
+          else
+            table.insert(repr, tostring(value))
+          end
       end
       table.insert(repr, "")
       return table.concat(repr, "")
@@ -190,7 +194,7 @@ associate = setmetatable({
       nonterminal=nonterminal,
       factory=factory}, associate)
     return self
-  end,
+  end,  
   __tostring = function()
     return "associate"
   end
