@@ -478,7 +478,7 @@ function default_R()
 end
 
 if debug.getinfo(3) == nil then
-  local bytes = tolist([[\ () return nil]])
+  local bytes = tolist([[\ (x y z) local x=1 local \x=2 local z=\3]])
   local values, rest = read(environ(bytes), bytes)
 
   --(lua-binop)??
@@ -505,6 +505,7 @@ return {
   read_right_brace = read_right_brace,
   read_list = read_list,
   read_right_paren = read_right_paren,
+  read_symbol = read_symbol,
   match=match,
   environ=environ
 }

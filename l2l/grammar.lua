@@ -757,6 +757,9 @@ factor = function(nonterminal, factory, instantiate)
       elseif getmetatable(values) == ParseException then
         raise(err)
       else
+        if type(values) == "table" and values.bytes then
+          bytes = cdr(values.bytes)
+        end
         raise(ParseException(environment, bytes, nonterminal, err))
       end
     end

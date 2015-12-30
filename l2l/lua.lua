@@ -1,6 +1,7 @@
 local itertools = require("l2l.itertools")
 local reader = require("l2l.reader2")
 local grammar = require("l2l.grammar")
+local exception = require("l2l.exception2")
 
 local list = itertools.list
 local car = itertools.car
@@ -17,6 +18,13 @@ local skip = grammar.skip
 local option = grammar.option
 local repeating = grammar.repeating
 local factor = grammar.factor
+
+local raise = exception.raise
+
+local cdr = itertools.cdr
+
+local ExpectedSymbolException =
+  exception.Exception("ExpectedSymbolException", "Expected Lisp symbol.")
 
 -- Lua Grammar
 -- chunk ::= block
@@ -274,14 +282,14 @@ local LiteralString = factor("LiteralString", function() return
     span(mark(any('"', "'")), reader.read_string)
   end)
 
-local Name
-Name = associate("Name", function(environment, bytes)
+local luaname
+luaname = associate("luaname", function(environment, bytes)
   -- Names (also called identifiers) in Lua can be any string of letters,
   -- digits, and underscores, not beginning with a digit and not being a
   -- reserved word. Identifiers are used to name variables, table fields, and
   -- labels.
   local values, rest = read_predicate(environment, bytes,
-    Name.nonterminal, function(token, byte)
+    luaname.nonterminal, function(token, byte)
       return (token..byte):match("^[%w_][%w%d_]*$")
     end)
   if values and car(values) and keywords[tostring(car(values))] then
@@ -289,6 +297,23 @@ Name = associate("Name", function(environment, bytes)
   end
   return values, rest
 end)
+
+
+local lispname = factor("lispname", function() return
+  span("\\", function(environment, bytes) return
+    reader.with_R(environment, false, reader.default_R(), function()
+        local values, rest = reader.read_symbol(environment, bytes)
+        if not values then
+          raise(ExpectedSymbolException(environment, bytes))
+        end
+        return values, rest
+      end)
+    end)
+  end)
+
+local Name = factor("Name", function() return
+    any(luaname, lispname)
+  end)
 
 local unop = factor("unop", function() return
     -- unop ::= ‘-’ | not | ‘#’ | ‘~’
