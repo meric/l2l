@@ -232,16 +232,7 @@ local unop = factor(unop,
    space = function() )
 ]]--
 
-local number = factor("number",
-  function() return
-    function(environment, bytes)
-      local values, rest = reader.read_number(environment, bytes)
-      if values then
-        return list(tonumber(car(values))), rest
-      end
-      return nil, bytes
-    end
-  end)
+local number = factor("number", function() return reader.read_number end)
 
 local space = factor("space",
   function() return
@@ -282,8 +273,11 @@ local space = factor("space",
 
 local __ = mark(space, skip, option)
 
+local LiteralString = factor("LiteralString",
+  function() return reader.read_string end)
+
 local Name
-Name = associate("space", function(environment, bytes)
+Name = associate("Name", function(environment, bytes)
   -- Names (also called identifiers) in Lua can be any string of letters,
   -- digits, and underscores, not beginning with a digit and not being a
   -- reserved word. Identifiers are used to name variables, table fields, and
@@ -325,7 +319,7 @@ local explist
 
 local args = factor("args", function() return
   -- args ::=  ‘(’ [explist] ‘)’ | tableconstructor | LiteralString 
-    any(span("(", __, mark(explist, option), __, ")"))
+    any(span("(", __, mark(explist, option), __, ")"), LiteralString)
   end)
 
 local functioncall = factor("functioncall", function() return
@@ -339,6 +333,7 @@ exp = factor("exp", function(left) return
     any(
       left(span(exp, __, binop, __, exp)),
       span(any("nil", "false", "true", number, "..."), space),
+      LiteralString,
       prefixexp,
       span(unop, exp))
   end)
@@ -450,5 +445,7 @@ return {
     functioncall = functioncall,
     var = var,
     prefixexp = prefixexp,
-    exp = exp
+    exp = exp,
+    LiteralString = LiteralString,
+    explist = explist
 }
