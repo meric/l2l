@@ -35,6 +35,9 @@ local UnmatchedLeftParenException =
 local UnmatchedDoubleQuoteException =
   exception.Exception("UnmatchedDoubleQuoteException",
     "Unmatched double quote. Possibly missing '\"'.")
+local SemicolonException = 
+  exception.Exception("SemicolonException",
+    "Expected semicolon ';' to conclude lua expression.")
 
 -- Create a new type `symbol`.
 local symbol = setmetatable({
@@ -403,55 +406,49 @@ local function read_lua(environment, bytes)
   --   (print (<- 1 + 2)
   -- ```
   local lua = require("l2l.lua")
+  local ok, values, reader, arguments, semicolon
+  local rest = cdr(bytes)
+  local origin = rest
 
-  local ok, values, rest = pcall(skip_whitespace, environment, cdr(bytes))
 
-  -- Check first symbol is `<-`.
-  if not ok or not values or car(values) ~= symbol("<-") then
-    return nil, bytes
-  end
+  ok, values, rest, reader = pcall(skip_whitespace, environment, cdr(bytes))
 
-  -- Either 1. `(<- (a b) block)` or 2. `(<- exp)` is valid.
-  local origin, arguments, explist = rest
-  local reader
+  -- Either 1. `\ (a b) <block>` or 2. `\ <exp>;` is valid.
 
-  values, rest, reader = skip_whitespace(environment, rest)
-
-  -- Check if item is a list.
-  if reader == read_list then
+  -- If first item is a list, then it's case 1., otherwise case 2..
+  if ok and values and reader == read_list then
     -- Using 1., continue reading block.
     arguments = car(values)
-    explist, rest = with_R(environment, false, lua.block_R(),
+    values, rest = with_R(environment, false, lua.block_R(),
       function()
-        return read(environment, rest)
+        return skip_whitespace(environment, rest)
       end)
   else
     -- Using 2., go back to `origin` and read again.
     arguments = nil
-    explist, rest = with_R(environment, false, lua.explist_R(),
+    values, rest = with_R(environment, false, lua.explist_R(),
       function()
         return read(environment, origin)
       end)
+
+    origin = rest
+
+    -- Consume ending semicolon.
+    semicolon, rest = read_predicate(environment, rest, id, match("^[;]$"))
+    if not semicolon then
+      raise(SemicolonException(environment, origin))
+    end
   end
 
-  origin = rest
-
-  -- Check for ending `)`.
-  ok, values, rest = pcall(read, environment, rest)
-
-  if not ok and getmetatable(values) == UnmatchedRightParenException then
-    return list(list(symbol("<-"), arguments, explist)), cdr(values.bytes)
-  end
-
-  -- Missing `)`, raise error.
-  raise(UnmatchedLeftParenException(environment, cdr(origin)))
+  return values, rest
 end
 
 --- Return the default _R table.
 function default_R()
   return {
     -- Single byte read macros are prioritised.
-    ["("] = list(read_lua, read_list),
+    ["\\"] = list(read_lua),
+    ["("] = list(read_list),
     [")"] = list(read_right_paren),
     ['{'] = list(read_table),
     ['}'] = list(read_right_brace),
@@ -481,10 +478,15 @@ function default_R()
 end
 
 if debug.getinfo(3) == nil then
-
-  local lua = require("l2l.lua")
-  local bytes = tolist('return a()')
-  local values, rest = lua.retstat(environ(bytes), bytes)
+  local bytes = tolist([[
+        (let
+          (z 8)
+          (print \ (x y z)
+             local x = 1;
+                   y = x + \(+ 2 3);
+                   z = y * 2;)
+          (print \ 1 * 2, 1 * 2; * 1))]])
+  local values, rest = read(environ(bytes), bytes)
 
   --(lua-binop)??
   --(lua-block ?)

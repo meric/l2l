@@ -88,14 +88,11 @@ local keywords ={
 
 (let
   (z 8)
-  (print (<- (x y z)
-    local x = 1;
-    y = x + 1;
-    z = y * 2;)))
-  (print (<- (1 * 2))
-
-
-
+  (print \ (x y z)
+     local x = 1;
+           y = x + \(+ 2 3);
+           z = y * 2;)
+  (print \ 1 * 2))
 
 print((1 + (+ 2 3)) * 7);
 (do
@@ -317,6 +314,7 @@ local var
 local prefixexp
 local block
 local explist
+local namelist
 
 local args = factor("args", function() return
   -- args ::=  ‘(’ [explist] ‘)’ | tableconstructor | LiteralString 
@@ -338,7 +336,7 @@ local functioncall = factor("functioncall", function() return
   end)
 
 local lispexp = factor("lispexp", function() return
-  span("$", function(environment, bytes) return
+  span("\\", function(environment, bytes) return
     reader.with_R(environment, false, reader.default_R(), function() return
         reader.read(environment, bytes)
       end)
@@ -407,7 +405,8 @@ local stat = factor("stat", function() return
     span("goto", space, Name),
     span("do", block, "end"),
     span("while", space, exp, "do", space, mark(block, option), "end", space),
-    span("repeat", block, "until", exp))
+    span("repeat", block, "until", exp),
+    span("local", space, namelist, __, mark(span("=", __, explist), option)))
     -- if
     -- for
     -- funnction
@@ -418,6 +417,11 @@ local stat = factor("stat", function() return
 explist = factor("explist", function() return
     -- explist ::= exp {‘,’ exp}
     span(exp, __, mark(span(",", __, exp), repeating))
+  end)
+
+namelist = factor("namelist", function() return
+    -- namelist ::= Name {‘,’ Name}
+    span(Name, __, mark(span(",", __, Name), repeating))
   end)
 
 local retstat = factor("retstat", function() return
