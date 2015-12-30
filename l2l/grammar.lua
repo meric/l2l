@@ -11,6 +11,7 @@ local show = itertools.show
 local slice = itertools.slice
 local concat = itertools.concat
 local tovector = itertools.tovector
+local tolist = itertools.tolist
 
 local raise = exception.raise
 local execute = reader.execute
@@ -104,11 +105,17 @@ local function isgrammar(obj, kind)
   return mt == mark or mt == span or mt == any or mt == associate
 end
 
+local getbyte = string.byte
+
 local function factor_terminal(terminal)
   local value = tostring(terminal)
   local count = #value
   local cache = {}
   return associate(terminal, function(_, bytes)
+    -- Reduce calls to `span` and `concat` by checking next byte.
+    if bytes and getbyte(bytes[1]) ~= getbyte(value) then
+      return nil, bytes
+    end
     local first, rest = itertools.span(count, bytes)
     if concat("", first) == value then
       cache[bytes] = {
@@ -142,7 +149,7 @@ mark = setmetatable({
     return self
   end,
   __call = function(self, environment, bytes, stack)
-    assert(self[1])
+    -- assert(self[1])
     local read, all, rest = self[1], {}, bytes
     local ok, values, prev
     while true do
@@ -160,16 +167,24 @@ mark = setmetatable({
       for _, value in ipairs(values or {}) do
         table.insert(all, value)
       end
-      if not ismark(self, repeating) or not values then
-        if not values
-            and not ismark(self, repeating)
-            and not ismark(self, option) then
-          return nil, bytes
+      if not values then
+        if not ismark(self, repeating) then
+          if not ismark(self, option) then
+            return nil, bytes
+          end
         end
         break
       end
+      if not ismark(self, repeating) then
+        break
+      end
     end
-    return list(self.apply(unpack(all))), rest
+    if self.apply then
+      values = list(self.apply(unpack(all)))
+    else
+      values = tolist(all)
+    end
+    return values, rest
   end,
   __tostring = function(self)
     local text = tostring(car(self))
@@ -191,7 +206,6 @@ mark = setmetatable({
     end
     local self = setmetatable({read}, mark)
     assert(read, "missing `read` argument.")
-    self.apply = id
     for _, value in ipairs({...}) do
       self[value] = true
     end
@@ -485,14 +499,14 @@ local function factor_without_left_nonterminal(rule, nonterminal)
     if ismark(child, skip) then
       return false
     end
-    if child.nonterminal == nonterminal then
+    if nonterminal and child.nonterminal == nonterminal then
       return false
     end
     if not isgrammar(child, span) then
       return true
     end
-    if child[1].nonterminal == nonterminal
-        or child.nonterminal == nonterminal then
+    if nonterminal and (child[1].nonterminal == nonterminal
+        or child.nonterminal == nonterminal) then
       return false
     end
     return true
@@ -536,8 +550,6 @@ factor = function(nonterminal, factory, instantiate)
     nonterminal = NonTerminal(
       tostring(nonterminal ~= nil and nonterminal or factory))
   end
-
-  instantiate = instantiate or itertools.apply
 
   if ok and not isgrammar(origin) then
     return associate(nonterminal, origin)
@@ -748,7 +760,10 @@ factor = function(nonterminal, factory, instantiate)
         raise(ParseException(environment, bytes, nonterminal, err))
       end
     end
-    if #({list.unpack(values)}) == 0 then
+
+    values = {list.unpack(values)}
+
+    if #values == 0 then
       -- Memoize
       memoize[nonterminal] = {
         exception = ExpectedNonTerminalException(environment, bytes, origin,
@@ -757,9 +772,16 @@ factor = function(nonterminal, factory, instantiate)
       }
       raise(memoize[nonterminal].exception)
     end
+
+    if instantiate then
+      values = list(instantiate(nonterminal, unpack(values)))
+    else
+      values = list(nonterminal(unpack(values)))
+    end
+
     -- Memoize
     memoize[nonterminal] = {
-      values=list(instantiate(nonterminal, list.unpack(values))),
+      values=values,
       rest=rest,
       stack=stack
     }

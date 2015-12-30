@@ -29,14 +29,15 @@ local function profile(method)
     table.insert(output, {
       f,
       lines[f],
-      ("%.3f seconds"):format(time),
+      time,
       ("%d calls"):format(calls[f])})
   end
   table.sort(output, function(a, b) return a[3] < b[3] end)
 
   print("function", "line", "total time", "number of calls")
   for _, value in ipairs(output) do
-    print(unpack(value))
+    local f, line, time, calls = unpack(value)
+    print(f, line, ("%.3f seconds"):format(time), calls)
   end
   return unpack(returns)
 end

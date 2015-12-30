@@ -60,7 +60,11 @@ local function show(obj)
   elseif type(obj) ~= 'string' then
     obj = tostring(obj)
   else
-    obj = '"' .. obj:gsub('"', '\\"'):gsub("\n", "\\n") .. '"'
+    obj = '"' .. obj
+      :gsub("\\", "\\\\")
+      :gsub('"', '\\"')
+      :gsub("\n", "\\n")
+      ..'"'
   end
   return obj
 end
@@ -71,7 +75,7 @@ local function car(t)
 end
 
 local function cdr(t)
-  -- assert(t)
+  -- assert(type(t) == "table", debug.traceback())
   return t[2]
 end
 
@@ -105,6 +109,14 @@ local function tonext(obj, invariant, state)
   else
     error(("object %s of type \"%s\" is not iterable"):format(obj, type(obj)))
   end
+end
+
+local function tovector(nextvalue, invariant, state)
+  local t = {}
+  for i, value in tonext(nextvalue, invariant, state) do
+    t[i] = value
+  end
+  return t
 end
 
 local pair = function(t)
@@ -144,11 +156,7 @@ list = setmetatable({
     if self == nil then
       return ""
     end
-    local str = tostring(self[1])
-    if self[2] then
-      str = str .. separator .. list.concat(self[2], separator)
-    end
-    return str
+    return table.concat(tovector(self), separator)
   end,
   __len = function(self)
     if not self then
@@ -257,14 +265,6 @@ local function tolist(nextvalue, invariant, state)
       state=state,
       ending=obj}, list)
   end
-end
-
-local function tovector(nextvalue, invariant, state)
-  local t = {}
-  for i, value in tonext(nextvalue, invariant, state) do
-    t[i] = value
-  end
-  return t
 end
 
 local function foreach(f, nextvalue, invariant, state)
@@ -629,6 +629,8 @@ local function concat(separator, nextvalue, invariant, state)
   end
   return text
 end
+
+local unpack = unpack
 
 local function _unpack(nextvalue, invariant, state)
   if type(nextvalue) == "table" and not getmetatable(nextvalue) then

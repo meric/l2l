@@ -131,22 +131,30 @@ Exception = setmetatable({
   __tostring = function(self)
     return ("%s(%s)"):format(self.name, self.message)
   end,
+  formatarguments = function(parameters)
+    return itertools.unpack(
+      map(function(value)
+          local Class = getmetatable(value)
+          if Class and getmetatable(Class) == Exception then
+            return Class.formatted(value)
+          end
+          return value
+        end, parameters))
+  end,
   __call = function(self, environment, bytes, ...)
-    local parameters = tolist(map(function(value)
-      local Class = getmetatable(value)
-      if Class and getmetatable(Class) == Exception then
-        return Class.formatted(value)
-      end
-      return value
-    end, {...}))
-    local message = self.message:format(list.unpack(parameters))
+    local parameters = {...}
     return setmetatable({
         environment=environment, 
         bytes=bytes,
         arguments={...},
         name=self.name,
-        traceback=debug.traceback(("%s: %s"):format(self.name, message), 2),
-        message=message},
+        traceback=function()
+          local message = self:formattedmessage(parameters)
+          return debug.traceback(("%s: %s"):format(self.name, message), 2)
+        end,
+        message=function()
+          return self:formattedmessage(parameters)
+        end},
       self)
   end
 }, {__call = function(_, name, message)
@@ -155,17 +163,20 @@ Exception = setmetatable({
       message = message or "",
       __tostring = function(self)
         local lines = formatsource(
-          self.environment._META.source, self.message,
+          self.environment._META.source, self.message(),
           #self.environment._META.source  - #list.concat(self.bytes))
         return ("%s: %s\n%s"):format(
           self.name,
           table.concat(lines, "\n"),
-          self.traceback)
+          self.traceback())
+      end,
+      formattedmessage = function(self, parameters)
+        return self.message:format(Exception.formatarguments(parameters))
       end,
       formatted = function(self)
         return ("%s: %s"):format(
           self.name,
-          self.message)
+          self.message())
       end}, Exception)
 end})
 

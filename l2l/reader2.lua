@@ -478,45 +478,13 @@ function default_R()
 end
 
 if debug.getinfo(3) == nil then
-  local bytes = tolist([[
-        (let
-          (z 8)
-          (print \ (x y z)
-             local x = 1;
-                   y = x + \(+ 2 3);
-                   z = y * 2;)
-          (print \ 1 * 2, 1 * 2; * 1))]])
+  local bytes = tolist([[\ () return nil]])
   local values, rest = read(environ(bytes), bytes)
 
   --(lua-binop)??
   --(lua-block ?)
   -- print(values[1][2][1][2][2][1][1]:representation())
   print(values, rest)
-  -- print(car(read(environ(bytes), bytes))[2][2][1][1]:representation())
-  -- local lua = require("l2l.lua")
-  -- local bytes = tolist("a[d](e)")
-  -- local values, rest = lua.read_stat(environ(bytes), bytes)
-  -- print(show(values), rest)
-
-  -- print(show(car(values):representation()))
-  -- -- (print ($ ))
-  -- --[[
-  -- (print ($ 
-  --   local $x = 1;
-  --   local $y =1;
-  --   local $z={f=1}
-  --   return x y z.f)
-  -- ]]--
-  -- local values, rest = read(nil, tolist([[
-  --   (print
-  --     ($ return a(b)(c))
-  --   )]]))
-  -- -- ($ while(nil)do return(nil),nil end)
-  -- for i, value in ipairs(cdr(car(values))) do
-  --   -- print(value:is_valid())
-  --   print(show(value))
-  --   print(show(value:representation()))
-  -- end
 end
 
 -- (. mario x y)
