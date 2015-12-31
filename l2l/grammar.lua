@@ -7,7 +7,7 @@ local cdr = itertools.cdr
 local cons = itertools.cons
 local id = itertools.id
 local list = itertools.list
-local show = itertools.show
+-- local show = itertools.show
 local slice = itertools.slice
 local concat = itertools.concat
 local tovector = itertools.tovector
@@ -245,7 +245,7 @@ associate.__index = associate
 
 any = setmetatable({
   __call = function(self, environment, bytes, stack)
-    assert(bytes[1], self)
+    -- assert(bytes[1], self)
     for _, read in ipairs(self) do
       if read ~= nil then
         local ok, values, rest = pcall(execute, read, environment, bytes,
@@ -560,7 +560,7 @@ factor = function(nonterminal, factory, instantiate)
   local left, is_annotated, read_take_terminals = {}
   local paths = setmetatable({}, {__mode='k'})
   local cache = setmetatable({}, {__mode='k'})
-  local spans
+  -- local spans
 
   return associate(nonterminal, function(environment, bytes, stack)
     if not bytes then
@@ -612,16 +612,17 @@ factor = function(nonterminal, factory, instantiate)
           factory, nonterminal)
 
         -- Non-left recursion paths for this nonterminal.
-        spans = factor_without_left_nonterminal(
-          factor_expand_left_nonterminal(factory(function() end),
-            nonterminal))
+        -- spans = factor_without_left_nonterminal(
+        --   factor_expand_left_nonterminal(factory(function() end),
+        --     nonterminal))
+
         -- We have all the Left recursions in `left`, and prefixes in
         -- `read_take_terminals`. We need to refactor the Left's into a flat
         -- shape and project it onto `bytes`. Then figure out which step which
         -- left is called on each iteration. This is done next, and saved in 
         -- paths[bytes].
-      else
-        spans = factor_without_left_nonterminal(factory(function() end))
+      -- else
+        -- spans = factor_without_left_nonterminal(factory(function() end))
       end
     end
 
@@ -679,24 +680,30 @@ factor = function(nonterminal, factory, instantiate)
           paths[bytes] = list.push(paths[bytes], nil)
         end
 
+        -- This operation is slow. Try figure a way to optimise it.
+        local prefix, rest = read_take_terminals(environment, bytes)
+
         -- Left recursing paths that can have no suffix, can be "independent".
         -- E.g. a = any("a", all("(", exp, ")")
         --      t = any(exp, a)
         --    Assume `exp` left recurses back to `t`.
         -- The `a` non-left-recursion choice makes `t` "independent".
-        local independent = itertools.search(
-            function(info)
-              return #info.spans > 0 and info.spans(environment, bytes)
-            end, left)
-        if independent then
-          paths[bytes] = list.push(paths[bytes], independent.index)
-        elseif #spans > 0 and spans(environment, bytes) then
-          paths[bytes] = list.push(paths[bytes], nil)
+        if prefix then
+          local independent = itertools.search(
+              function(info)
+                return #info.spans > 0 and info.spans(environment, bytes)
+              end, left)
+          if independent then
+            paths[bytes] = list.push(paths[bytes], independent.index)
+          else --if #spans > 0 and spans(environment, bytes) then
+            -- Somehow the above check isn't needed.
+            -- Consider restoring if there are problems.
+            paths[bytes] = list.push(paths[bytes], nil)
+          end
         end
-        local prefix, rest = read_take_terminals(environment, bytes)
         -- If no prefix match, and no independent match, it means this doesn't
         -- match.
-        if not prefix and not independent then
+        if not prefix --[[and not independent]] then
           memoize[nonterminal] = {
             values=nil,
             rest=bytes,
@@ -770,7 +777,7 @@ factor = function(nonterminal, factory, instantiate)
       -- Memoize
       memoize[nonterminal] = {
         exception = ExpectedNonTerminalException(environment, bytes, origin,
-          show(list.concat(bytes))),
+          bytes),
         stack=stack
       }
       raise(memoize[nonterminal].exception)

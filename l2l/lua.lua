@@ -21,8 +21,6 @@ local factor = grammar.factor
 
 local raise = exception.raise
 
-local cdr = itertools.cdr
-
 local ExpectedSymbolException =
   exception.Exception("ExpectedSymbolException", "Expected Lisp symbol.")
 
@@ -302,8 +300,8 @@ end)
 local lispname = factor("lispname", function() return
   span("\\", function(environment, bytes) return
     reader.with_R(environment, false, reader.default_R(), function()
-        local values, rest = reader.read_symbol(environment, bytes)
-        if not values then
+        local values, rest, read = reader.read(environment, bytes)
+        if read ~= reader.read_symbol or not values then
           raise(ExpectedSymbolException(environment, bytes))
         end
         return values, rest

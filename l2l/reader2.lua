@@ -9,7 +9,7 @@ local cons = itertools.cons
 local id = itertools.id
 local list = itertools.list
 local pack = itertools.pack
-local tolist =  itertools.tolist
+-- local tolist =  itertools.tolist
 
 local raise = exception.raise
 
@@ -29,15 +29,21 @@ local EOFException =
 local UnmatchedReadMacroException =
   exception.Exception("UnmatchedReadMacroException",
     "Cannot find matching read macro for byte '%s'.")
-local UnmatchedLeftParenException =
-  exception.Exception("UnmatchedLeftParenException",
-    "Unmatched left parenthesis. Possibly missing ')'.")
+-- local UnmatchedLeftParenException =
+--   exception.Exception("UnmatchedLeftParenException",
+--     "Unmatched left parenthesis. Possibly missing ')'.")
 local UnmatchedDoubleQuoteException =
   exception.Exception("UnmatchedDoubleQuoteException",
     "Unmatched double quote. Possibly missing '\"'.")
-local SemicolonException = 
-  exception.Exception("SemicolonException",
+local LuaSemicolonException =
+  exception.Exception("LuaSemicolonException",
     "Expected semicolon ';' to conclude lua expression.")
+local LuaBlockException =
+  exception.Exception("LuaBlockException",
+    "Expected lua block after `in`.")
+local LuaException =
+  exception.Exception("LuaException",
+    "Expected lua expression or block after `\\`.")
 
 -- Create a new type `symbol`.
 local symbol = setmetatable({
@@ -199,6 +205,13 @@ local function read(environment, bytes)
   raise(UnmatchedReadMacroException(environment, bytes, byte))
 end
 
+local function read_keyword(_, bytes, transform, keyword)
+  local first, rest = itertools.span(#keyword, bytes)
+  if table.concat(first, "") == keyword then
+    return list((transform or id)(keyword)), rest
+  end
+  return nil, bytes
+end
 
 local function read_predicate(_, bytes, transform, predicate)
   local token = ""
@@ -315,7 +328,9 @@ local function read_list(environment, bytes)
       ok, values, rest = pcall(read, environment, rest)
       if ok then
         last[2] = values
-        last = last[2] or last
+        while last[2] do
+          last = last[2] or last
+        end
       elseif getmetatable(values) == UnmatchedRightParenException then
         return cons(origin[2]), cdr(values.bytes)
       else
@@ -393,54 +408,97 @@ local function read_quasiquote_eval(environment, bytes)
   return list(cons(symbol('quasiquote-eval'), values)), rest
 end
 
+local function try_explist(environment, bytes)
+  local lua = require("l2l.lua")
+
+  local ok, values, rest = with_R(environment, false, lua.explist_R(),
+    function()
+      return pcall(skip_whitespace, environment, bytes)
+    end)
+
+  if ok then
+    return values, rest
+  end
+
+  return nil, bytes, values
+end
+
+local function try_block(environment, bytes)
+  local lua = require("l2l.lua")
+
+  local ok, values, rest = with_R(environment, false, lua.block_R(),
+    function()
+      return pcall(skip_whitespace, environment, bytes)
+    end)
+
+  if ok then
+    return values, rest
+  end
+
+  return nil, bytes, values
+end
 
 local function read_lua(environment, bytes)
   -- Syntax.
   -- ```
   -- (let
   --   (z 8)
-  --   (print (<- (x y z)
+  --   (print \ x, y, z;
   --     local x = 1;
   --     y = x + 1;
-  --     z = y * 2;)))
-  --   (print (<- 1 + 2)
+  --     z = y * 2;))
+  --   (print \ 1 + 2; )
   -- ```
-  local lua = require("l2l.lua")
-  local ok, values, reader, arguments, semicolon
+  local values, returns, semicolon, keyword, explisterr, blockerr, ok
   local rest = cdr(bytes)
   local origin = rest
 
+  -- Either
+  --   1. `\ <explist> in <block>` or 
+  --   2. `\ <explist>; or
+  --   3. \ <block>` is valid.
 
-  ok, values, rest, reader = pcall(skip_whitespace, environment, cdr(bytes))
-
-  -- Either 1. `\ (a b) <block>` or 2. `\ <exp>;` is valid.
-
-  -- If first item is a list, then it's case 1., otherwise case 2..
-  if ok and values and reader == read_list then
-    -- Using 1., continue reading block.
-    arguments = car(values)
-    values, rest = with_R(environment, false, lua.block_R(),
-      function()
-        return skip_whitespace(environment, rest)
-      end)
-  else
-    -- Using 2., go back to `origin` and read again.
-    arguments = nil
-    values, rest = with_R(environment, false, lua.explist_R(),
-      function()
-        return read(environment, origin)
-      end)
-
-    origin = rest
-
-    -- Consume ending semicolon.
-    semicolon, rest = read_predicate(environment, rest, id, match("^[;]$"))
-    if not semicolon then
-      raise(SemicolonException(environment, origin))
+  returns, rest, explisterr = try_explist(environment, origin)
+  if returns == nil then
+    rest = cdr(bytes)
+    values, rest, blockerr = try_block(environment, rest)
+    if values then
+      return list(list(symbol("\\"), nil, car(values))), rest
     end
+    if explisterr then
+      raise(explisterr)
+    end
+    if blockerr then
+      raise(blockerr)
+    end
+    raise(LuaException(environment, origin))
   end
 
-  return values, rest
+  origin = rest
+  ok, keyword, rest = with_R(environment, false, {list(
+    function(_environment, _bytes)
+      return read_keyword(_environment, _bytes, id, "in")
+    end)},
+    function() return
+      pcall(skip_whitespace, environment, rest)
+    end)
+
+  if ok and keyword then
+    values, rest, blockerr = try_block(environment, rest)
+    if values then
+      return list(list(symbol("\\"), car(returns), car(values))), rest
+    end
+    if blockerr then
+      raise(blockerr)
+    end
+    raise(LuaBlockException(environment, rest))
+  else
+    semicolon, rest = read_keyword(environment, origin, id, ";")
+    if not semicolon then
+      raise(LuaSemicolonException(environment, origin))
+    end
+    return list(cons(symbol("\\"), returns)), rest
+  end
 end
 
 --- Return the default _R table.
@@ -478,13 +536,21 @@ function default_R()
 end
 
 if debug.getinfo(3) == nil then
-  local bytes = tolist([[\ (x y z) local x=1 local \x=2 local z=\3]])
-  local values, rest = read(environ(bytes), bytes)
+  -- local profile = require("l2l.profile")
+  -- local bytes = itertools.finalize(tolist([[(+ \id(1); (f) (g))]]))
+  -- -- local bytes = tolist([[(print (\ a, b + 2 in local a = 1 + 1;) 1)]])
 
-  --(lua-binop)??
-  --(lua-block ?)
-  -- print(values[1][2][1][2][2][1][1]:representation())
-  print(values, rest)
+  -- -- profile.profile(function()
+  -- local values, rest = read(environ(bytes), bytes)
+  -- -- end)
+  -- print(values, rest)
+
+  -- itertools.finalize(tolist(itertools.take(1000000, itertools.repeated(2))))
+
+  -- print(unpack(t))
+  print(itertools.tovector(itertools.take(10000000, itertools.repeated(2))))
+  -- print(itertools.fold(operator["+"], 0,
+  --   itertools.map(function(x) return x end, itertools.range(1000000))))
 end
 
 -- (. mario x y)

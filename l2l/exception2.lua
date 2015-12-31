@@ -1,7 +1,6 @@
 local itertools = require("l2l.itertools")
 local list = itertools.list
 local map = itertools.map
-local tolist = itertools.tolist
 
 --- Return a the line, and its start and end indices in a string at a position.
 -- @param src The string.
@@ -137,6 +136,9 @@ Exception = setmetatable({
           local Class = getmetatable(value)
           if Class and getmetatable(Class) == Exception then
             return Class.formatted(value)
+          end
+          if Class == list then
+            return itertools.show(itertools.concat("", value))
           end
           return value
         end, parameters))

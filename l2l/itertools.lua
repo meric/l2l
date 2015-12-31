@@ -247,8 +247,9 @@ local function tolist(nextvalue, invariant, state)
   -- tolist({1, 2, 3}, 1) -- make improper list.
   -- tolist(map(f, {1, 2, 3}))
   local obj
-  if getmetatable(nextvalue) == list then
-    if not invariant and not state then
+  local mt = getmetatable(nextvalue)
+  if mt == list or mt == nil then
+    if mt and not invariant and not state then
       return nextvalue
     end
     if invariant and not state then
@@ -417,9 +418,9 @@ end
 
 --- Returns array inclusive of start and finish indices.
 -- 1 is first position. 0 is last position. -1 is second last position.
--- @objs iterable to slice.
--- @start first index.
--- @finish second index
+-- @param objs iterable to slice.
+-- @param start first index.
+-- @param finish second index
 local function slice(start, finish, nextvalue, invariant, state)
   nextvalue, invariant, state = tonext(nextvalue, invariant, state)
 
@@ -456,6 +457,8 @@ local function finalized(nextvalue, invariant, state)
   return mt == list and not list.nextvalue
 end
 
+-- Force evaluation of the iterable by iterating through it. Relies on the
+-- iterable's implementation to cached calculated values.
 local function finalize(nextvalue, invariant, state)
   if not finalized(nextvalue, invariant, state)
       or getmetatable(nextvalue) == list then
@@ -466,6 +469,13 @@ local function finalize(nextvalue, invariant, state)
   return nextvalue, invariant, state
 end
 
+-- Returns an identity function that, for the same `list` instance, returns
+-- the same reference, rather than a new reference if it's wrapped in a
+-- `tonext`. For non-`list`s, returns the same arguments. Optionally provide
+-- `f` to be applied to each value. Used for `drop` and `span`, so that:
+-- `rawtostring(drop(1, l))` == `rawtostring(cdr(l))`.
+-- @param target The object to identify.
+-- @param f The function to apply to each value of `target`.
 local function identify(target, _, _, f)
   local islist = getmetatable(target) == list
   return function(nextvalue, invariant, index)
@@ -531,7 +541,7 @@ local function take(n, nextvalue, invariant, state)
   return function(_, index)
     local value
     index, value = nextvalue(invariant, index)
-    if index and (t and state <= n or not t and n(value, index)) then
+    if index and (t and index <= n or not t and n(value, index)) then
       return index, value
     end
   end, invariant, state
@@ -650,11 +660,55 @@ local function rawtostring(obj)
   return text
 end
 
+-- Returns a next, invariant, state triple for a coroutine function that
+-- `yield`s values one by one. The function will be given an `index` argument,
+--  which represents the number of values already calculated plus 1, as well as
+-- a `yield` argument which the function must call for each value it generates.
+-- @param f A function that givens an index and `yield`, calls each value with
+--    `yield`.
+local function generator(f)
+  local routine = coroutine.create(f)
+  return function(_, index)
+    local ok, value = coroutine.resume(routine, index, coroutine.yield)
+    if not ok then
+      error(value)
+    end
+    if value ~= nil then
+      return index + 1, value
+    end
+  end, f, 0
+end
+
+-- Returns a next, invariant, state triple for an iterator function that
+-- `return`s values one by one. The function will be given a single `index`
+-- argument, which represents the number of values already calculated plus 1.
+-- @param f A function that givens an index, returns a value.
+local function iterator(f)
+  return function(_, index)
+    local value = f(index)
+    if value ~= nil then
+      return index + 1, value
+    end
+  end, f, 0
+end
+
+-- Returns a next, invariant, state triple that represents infinitely repeated
+-- `value`s.
+local function repeated(value)
+  return iterator(function() return value end)
+end
+
+-- Return the calling of `f` with the given arguments.
+-- @param f Function to call.
+-- @param ... The arguments to call with.
 local function apply(f, ...)
   return f(...)
 end
 
 return {
+  repeated=repeated,
+  iterator=iterator,
+  generator=generator,
   apply=apply,
   vector=vector,
   dict=dict,
