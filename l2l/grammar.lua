@@ -926,6 +926,11 @@ factor = function(nonterminal, factory, instantiate)
               if infix then
                 local values, rest = infix(environment, bytes)
                 if values or rest ~= bytes then
+                  memoize[nonterminal] = {
+                    values=values,
+                    rest=rest,
+                    stack=stack
+                  }
                   return values, rest
                 end
               end
