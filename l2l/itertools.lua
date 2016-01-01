@@ -70,7 +70,7 @@ local function show(obj)
 end
 
 local function car(t)
-  -- assert(t, "car: `t` missing.")
+  -- assert(t, "car: `t` missing."..debug.traceback())
   return t[1]
 end
 
@@ -131,6 +131,18 @@ list = setmetatable({
       end
       return self[1], list.unpack(self[2])
     end
+  end,
+  reverse = function(self)
+    if not self then
+      return
+    end
+    if not self[2] then
+      return self
+    end
+    local first = list.reverse(self[2])
+    self[2][2]=self
+    self[2]=nil
+    return first
   end,
   push = function(self, obj, ...)
     if not ... then

@@ -9,6 +9,7 @@ local car = itertools.car
 local match = reader.match
 local read_predicate = reader.read_predicate
 local skip_whitespace = reader.skip_whitespace
+local symbol = reader.symbol
 
 local associate = grammar.associate
 local span = grammar.span
@@ -204,22 +205,26 @@ end, invariant, index
 (print (quote (LuaExp (LuaFunctionCall (LuaName "print") Terminal("(") ))))....
 
 LuaName
+LuaNameList
 LuaLabel
-LuaFunctionName
+LuaFunctionCall
 LuaVariableList
 LuaExpression
+LuaExpressionList
 LuaStatement
 LuaBlock
 LuaReturnStatement
 LuaWhitespace
 LuaGoto
 LuaWhile
+LuaDo
+LuaIf
 LuaPrefixExpression
 LuaExpressionList
 LuaUnaryOperation
-LuaLabel
 LuaNumber
 LuaVariable
+
 --?>
 local unop = factor(unop,
   -- unop ::= ‘-’ | not | ‘#’ | ‘~’
@@ -277,7 +282,11 @@ local space = factor("space",
 local __ = mark(space, skip, option)
 
 local LiteralString = factor("LiteralString", function() return
-    span(mark(any('"', "'")), reader.read_string)
+    span(mark(any('"', "'"), skip), function(environment, bytes)      
+        return reader.read_string(environment, bytes)
+      end)
+  end, function(nonterminal, ...)
+    return list(symbol("LuaString"), ...)
   end)
 
 local luaname
@@ -287,13 +296,13 @@ luaname = associate("luaname", function(environment, bytes)
   -- reserved word. Identifiers are used to name variables, table fields, and
   -- labels.
   local values, rest = read_predicate(environment, bytes,
-    luaname.nonterminal, function(token, byte)
+    itertools.id, function(token, byte)
       return (token..byte):match("^[%w_][%w%d_]*$")
     end)
-  if values and car(values) and keywords[tostring(car(values))] then
+  if not values or values and car(values) and keywords[tostring(car(values))] then
     return nil, bytes
   end
-  return values, rest
+  return list(symbol(car(values))), rest
 end)
 
 
@@ -311,6 +320,8 @@ local lispname = factor("lispname", function() return
 
 local Name = factor("Name", function() return
     any(luaname, lispname)
+  end, function(_, ...)
+    return list(symbol("LuaName"), ...)
   end)
 
 local unop = factor("unop", function() return
@@ -330,6 +341,8 @@ local binop = factor("binop", function() return
     --      and | or
     any("+", "-", "*", "/", "//", "^", "%", "&", "~", "|", ">>", "<<", "..",
         "<", "<=", ">", ">=", "==", "~=")
+  end, function(nonterminal, ...)
+    return ...
   end)
 
 local exp
@@ -344,6 +357,8 @@ local args = factor("args", function() return
     any(span("(", __, mark(explist, option), __, ")"), LiteralString)
   end)
 
+-- maybe terminal should be strings.
+
 local functioncall = factor("functioncall", function() return
   -- functioncall ::=  prefixexp args | prefixexp ‘:’ Name args 
     any(
@@ -352,10 +367,6 @@ local functioncall = factor("functioncall", function() return
           return ...
         end,
       span(prefixexp, __, ":", __, Name, __, args))
-  end, function(nonterminal, ...)
-    -- do something interesting here.
-    -- print(">", select("#", ...), ...)
-    return nonterminal(...)
   end)
 
 local lispexp = factor("lispexp", function() return
@@ -370,12 +381,22 @@ exp = factor("exp", function(left) return
   -- exp ::=  nil | false | true | Numeral | LiteralString | ‘...’ |  
   --      functiondef | prefixexp | tableconstructor | exp binop exp | unop exp 
     any(
-      left(span(exp, __, binop, __, exp)),
-      span(any("nil", "false", "true", number, "..."), space),
+      -- left(span(exp, __, "+", __, exp) % function(a, b, c)
+      --   return list(symbol(b), a, c)
+      -- end),
+      -- left(span(exp, __, "*", __, exp) % function(a, b, c)
+      --   return list(symbol(b), a, c)
+      -- end),
+      left(span(exp, __, binop, __, exp) % function(a, b, c)
+        return list(symbol(b), a, c)
+      end),
+      span(any("nil", "false", "true", number, "..."), __),
       LiteralString,
       lispexp,
       prefixexp,
       span(unop, exp))
+  end, function(_, ...)
+    return ...
   end)
 
 prefixexp = factor("prefixexp", function(left) return
@@ -403,6 +424,7 @@ local varlist = factor("varlist", function() return
     span(var, mark(span(__, ",", __, var), repeating))
   end)
 
+-- Operator Precedence
 local stat = factor("stat", function() return
   -- stat ::=  ‘;’ | 
   --      varlist ‘=’ explist | 

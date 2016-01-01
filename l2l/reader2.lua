@@ -386,16 +386,16 @@ local function read_string(environment, bytes)
       if escaped and byte == "n" then
         byte = "\n"
       end
-      text = text..byte  
+      text = text..byte
       escaped = false
     end
-    bytes = cdr(bytes)
     byte = bytes and car(bytes) or nil
+    bytes = cdr(bytes)
   until not byte or (byte == '"' and not escaped)
   if not byte then
     raise(UnmatchedDoubleQuoteException(environment, bytes))
   end
-  return list(text), cdr(bytes)
+  return list(text), bytes
 end
 
 local function read_quasiquote(environment, bytes)
@@ -535,20 +535,33 @@ function default_R()
   }
 end
 
+
+--[[
+  -- l2l compiler
+  -- convert to "LuaX lisp", which only has binary operators and function calls
+  -- and LuaX statements.
+  -- which is compiled into lua.
+  list(LuaBlock
+    xx,
+    yy)
+
+]]--
+
 if debug.getinfo(3) == nil then
   -- local profile = require("l2l.profile")
   -- local bytes = itertools.finalize(tolist([[(+ \id(1); (f) (g))]]))
-  -- -- local bytes = tolist([[(print (\ a, b + 2 in local a = 1 + 1;) 1)]])
+  local bytes = itertools.tolist([[\1 * 2 + 3 * 4;]])
 
   -- -- profile.profile(function()
-  -- local values, rest = read(environ(bytes), bytes)
+  local values, rest = read(environ(bytes), bytes)
   -- -- end)
-  -- print(values, rest)
+  print(values, rest)
+  -- print(car(cdr(car(values))[2]), rest)
 
   -- itertools.finalize(tolist(itertools.take(1000000, itertools.repeated(2))))
 
   -- print(unpack(t))
-  print(itertools.tovector(itertools.take(10000000, itertools.repeated(2))))
+  -- print(itertools.tovector(itertools.take(10000000, itertools.repeated(2))))
   -- print(itertools.fold(operator["+"], 0,
   --   itertools.map(function(x) return x end, itertools.range(1000000))))
 end

@@ -122,7 +122,7 @@ local function factor_terminal(terminal)
         values=list(terminal),
         rest=rest
       }
-      return list(terminal), rest
+      return list(value), rest
     end
     if bytes then
       cache[bytes] = {
@@ -403,41 +403,55 @@ local function factor_spans(rule)
       end, rule)))
 end
 
---- Given a rule, keep expanding each span's first nonterminal until it is
--- that span's first nonterminal is `nonterminal`.
--- @param rule The rule to expand.
--- @param nonterminal The nonterminal to stop expanding at.
-local function factor_expand_left_nonterminal(rule, nonterminal)
+-- Return an expanded version of `child` if `child[index]` is `nonterminal`,
+-- where the corresponding `child[index]` in the expanded version is 
+-- the rule of `nonterminal` instead of `nonterminal` itself.
+-- Return nil otherwise.
+local function expand_nonterminal_at_index(child, nonterminal, index)
+  if #child > 0 and isgrammar(child[index])
+      and child[index].nonterminal ~= nonterminal
+      and child[index].factory then
+      continue = true
+    local nonterminalspan = false
+    local expanded = span(child[index].factory(function(grandchild)
+        if isgrammar(grandchild, span)
+            and grandchild[index]
+            and grandchild[index].nonterminal == nonterminal then
+
+            nonterminalspan = span(unpack(grandchild))
+            for i=1, #child do
+              if i ~= index then
+                table.insert(nonterminalspan, child[i])
+              end
+            end
+          return
+        end
+      end),
+      itertools.unpack(itertools.filter(
+        function(_, i) return i~= index end, child)))
+    if not nonterminalspan then
+      return expanded
+    end
+    return nonterminalspan
+  end
+end
+
+-- Replace all instances of `nonterminal` in `rule`, using `f`.
+local function factor_replace_nonterminal(rule, nonterminal, f)
   local continue = true
   rule = factor_spans(rule)
   while continue do
     continue = false
     rule = factor_spans(any(itertools.unpack(itertools.map(
       function(child)
+        if isgrammar(child) and child.factory then
+          return factor_replace_nonterminal(child.factory(id), nonterminal, f)
+        end
         if not isgrammar(child, span) then
           return child
         end
-        if #child > 0 and child[1].nonterminal ~= nonterminal
-            and child[1].factory then
-            continue = true
-          local nonterminalspan = false
-          local expanded = span(child[1].factory(function(grandchild)
-              if isgrammar(grandchild, span)
-                  and grandchild[1]
-                  and grandchild[1].nonterminal == nonterminal then
-
-                  nonterminalspan = span(unpack(grandchild))
-                  for i=2, #child do
-                    table.insert(nonterminalspan, child[i])
-                  end
-                return
-              end
-            end),
-            itertools.unpack(slice(2, 0, child)))
-          if not nonterminalspan then
-            return expanded
-          end
-          return nonterminalspan
+        if f(child) then
+          return f(child)
         end
         return child
       end, rule))))
@@ -447,6 +461,26 @@ local function factor_expand_left_nonterminal(rule, nonterminal)
     rule = rule[1]
   end
   return rule
+end
+
+--- Given a rule, keep expanding each span's first nonterminal until it is
+-- that span's first nonterminal is `nonterminal`.
+-- @param rule The rule to expand.
+-- @param nonterminal The nonterminal to stop expanding at.
+local function factor_expand_left_nonterminal(rule, nonterminal)
+  return factor_replace_nonterminal(rule, nonterminalspan, function(child)
+    return expand_nonterminal_at_index(child, nonterminal, 1)
+  end)
+end
+
+--- Given a rule, keep expanding each span's last nonterminal until it is
+-- that span's last nonterminal is `nonterminal`.
+-- @param rule The rule to expand.
+-- @param nonterminal The nonterminal to stop expanding at.
+local function factor_expand_right_nonterminal(rule, nonterminal)
+  return factor_replace_nonterminal(rule, nonterminalspan, function(child)
+    return expand_nonterminal_at_index(child, nonterminal, #child)
+  end)
 end
 
 --- Given a rule, return a set of rules that return the possible
@@ -489,12 +523,10 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
   return patterns
 end
 
---- Factor `rule` by removing spans involving left recursion of `nonterminal`.
--- A span is any part of the rule that is an span or have no span ancestor,
--- that is not an any.
--- @param rule The rule to remove  `nonterminal` from.
--- @param nonterminal The nonterminal to remove.
-local function factor_without_left_nonterminal(rule, nonterminal)
+-- Return a rule where `nonterminal` is removed from `rule` whenever it is a 
+-- node or f(node) within `rule` that forms an entire span.
+-- See `factor_without_left_nonterminal`, `factor_without_right_nonterminal`.
+local function factor_without_nonterminal_at(rule, nonterminal, f)
   return any(itertools.unpack(itertools.filter(function(child)
     if ismark(child, skip) then
       return false
@@ -505,7 +537,9 @@ local function factor_without_left_nonterminal(rule, nonterminal)
     if not isgrammar(child, span) then
       return true
     end
-    if nonterminal and (child[1].nonterminal == nonterminal
+    local grandchild = f(child)
+    if nonterminal and isgrammar(grandchild) and
+      (grandchild.nonterminal == nonterminal
         or child.nonterminal == nonterminal) then
       return false
     end
@@ -513,15 +547,44 @@ local function factor_without_left_nonterminal(rule, nonterminal)
   end, factor_spans(rule))))
 end
 
+--- Factor `rule` by removing spans involving left recursion of `nonterminal`.
+-- A span is any part of the rule that is an span or have no span ancestor,
+-- that is not an any.
+-- @param rule The rule to remove  `nonterminal` from.
+-- @param nonterminal The nonterminal to remove.
+local function factor_without_left_nonterminal(rule, nonterminal)
+  return factor_without_nonterminal_at(rule, nonterminal, function(child)
+      return child[1]
+    end)
+end
+
+--- Factor `rule` by removing spans involving right recursion of `nonterminal`.
+-- A span is any part of the rule that is an span or have no span ancestor,
+-- that is not an any.
+-- @param rule The rule to remove  `nonterminal` from.
+-- @param nonterminal The nonterminal to remove.
+local function factor_without_right_nonterminal(rule, nonterminal)
+  return factor_without_nonterminal_at(rule, nonterminal, function(child)
+      return child[#child]
+    end)
+end
+
 --- Factor `rule` into suffixes of spans involving left recursion of
 -- `nonterminal`.
 -- A span is any part of the rule that is an span or have no span ancestor,
 -- that is not an any.
 -- @param nonterminal The nonterminal to remove.
-local function factor_left_suffix(rule, nonterminal)
+local function factor_left_suffix(rule, nonterminal, factory)
   local contents = tovector(itertools.map(
     function(child)
-      return span(unpack(tovector(slice(2, 0, child))))
+      -- Remove right recursion to keep left associativity.
+      local suffix = span(unpack(tovector(slice(2, 0, child))))
+      if isgrammar(suffix) and suffix.factory == factory then
+        suffix = factor_without_right_nonterminal(
+          factor_expand_right_nonterminal(
+            factory(id), nonterminal), nonterminal)
+      end
+      return suffix
     end, itertools.filter(function(child)
         if ismark(child, skip) then
           return false
@@ -558,8 +621,10 @@ factor = function(nonterminal, factory, instantiate)
   end
 
   local left, is_annotated, read_take_terminals = {}
+  local prunes = setmetatable({}, {__mode='v'})
   local paths = setmetatable({}, {__mode='k'})
   local cache = setmetatable({}, {__mode='k'})
+  local computed = setmetatable({}, {__mode='k'})
   -- local spans
 
   return associate(nonterminal, function(environment, bytes, stack)
@@ -569,7 +634,6 @@ factor = function(nonterminal, factory, instantiate)
     cache[bytes] = cache[bytes] or {}
     local memoize = cache[bytes]
     local history = environment._META[bytes]
-
     -- If memoized, then perform result from cache.
     if memoize[nonterminal] then
       if memoize[nonterminal].stack == stack then
@@ -596,7 +660,7 @@ factor = function(nonterminal, factory, instantiate)
             nonterminal = read.factory and read.nonterminal or nil,
 
             -- See `factor_left_suffix`.
-            suffixes = factor_left_suffix(rule, nonterminal),
+            suffixes = factor_left_suffix(rule, nonterminal, factory),
 
             -- Paths for this child rule that doesn't left-recurse back to 
             -- `nonterminal`.
@@ -617,10 +681,10 @@ factor = function(nonterminal, factory, instantiate)
         --     nonterminal))
 
         -- We have all the Left recursions in `left`, and prefixes in
-        -- `read_take_terminals`. We need to refactor the Left's into a flat
-        -- shape and project it onto `bytes`. Then figure out which step which
-        -- left is called on each iteration. This is done next, and saved in 
-        -- paths[bytes].
+        -- `read_take_terminals`. We refactored the Left's into a flat
+        -- shape, using `factor_left_suffix`. Now figure out which step which
+        -- left is called on each iteration by projecting the flat grammar onto
+        -- `bytes. This is done next, and saved in paths[bytes].
       -- else
         -- spans = factor_without_left_nonterminal(factory(function() end))
       end
@@ -640,12 +704,16 @@ factor = function(nonterminal, factory, instantiate)
       -- Check `list.count(stack, nonterminal) == 1` because we only want to
       -- calculate the recursion path once, on first recursion at each byte. 
       if list.count(stack, nonterminal) == 1 then
+        -- This operation is slow. Try figure a way to optimise it.
+        local prefix, rest = read_take_terminals(environment, bytes)
+
         -- check if left does not precede nonterminal in stack
         local from = itertools.search(function(caller)
             return itertools.search(function(info) return
                 info.nonterminal == caller end, left)
           end, cdr(stack))
-        if from then
+
+        if from and not computed[rest] then
           -- Called from `from`. E.g.
           -- With the following Grammar:
           --   functioncall = span(prefixexp args)
@@ -680,9 +748,6 @@ factor = function(nonterminal, factory, instantiate)
           paths[bytes] = list.push(paths[bytes], nil)
         end
 
-        -- This operation is slow. Try figure a way to optimise it.
-        local prefix, rest = read_take_terminals(environment, bytes)
-
         -- Left recursing paths that can have no suffix, can be "independent".
         -- E.g. a = any("a", all("(", exp, ")")
         --      t = any(exp, a)
@@ -695,8 +760,8 @@ factor = function(nonterminal, factory, instantiate)
               end, left)
           if independent then
             paths[bytes] = list.push(paths[bytes], independent.index)
-          else --if #spans > 0 and spans(environment, bytes) then
-            -- Somehow the above check isn't needed.
+          elseif not computed[rest] then -- elseif #spans > 0 and spans(environment, bytes) then
+            -- Somehow the above spans check isn't needed.
             -- Consider restoring if there are problems.
             paths[bytes] = list.push(paths[bytes], nil)
           end
@@ -724,39 +789,55 @@ factor = function(nonterminal, factory, instantiate)
         --
         -- See https://theantlrguy.atlassian.net/wiki/display/ANTLR3/Left-Recursion+Removal
         -- 
-        local matching, values = prefix
-        while matching and rest do
-          matching = nil
-          for _, info in ipairs(left) do
-            ok, values, rest = pcall(info.suffixes, environment, rest)
-            if ok and values ~= nil and rest ~= bytes then
-              matching = true
-              paths[bytes] = list.push(paths[bytes], info.index)
-              break
+        if not computed[rest] or paths[bytes] then
+          -- `not computed[rest]` => if the path was computed in a previous
+          -- byte, then don't do it again.
+          local matching, values = prefix
+          while matching and rest do
+            matching = nil
+            for _, info in ipairs(left) do
+              local from = rest
+              ok, values, rest = pcall(info.suffixes, environment, rest)
+              if ok and values ~= nil and rest ~= bytes then
+                computed[from] = true
+                matching = true
+                paths[bytes] = list.push(paths[bytes], info.index)
+                break
+              end
             end
           end
-        end
-        if from then
-          paths[bytes] = cdr(paths[bytes])
+          if from then
+            paths[bytes] = cdr(paths[bytes])
+          end
         end
       end
       local index, path = 0
       local ordering = paths[bytes]
       path, paths[bytes] = unpack(ordering or {})
-      ok, origin = pcall(factory, function(read)
-        -- Whether to show `read` on this iteration.
-        index = index + 1
-        if index == path then
-          return read
+
+      -- Cache in `prune`, rather than calling factory again for same index.
+      local prune = tostring(path)
+      if prunes[prune] then
+        origin = prunes[prune]
+      else
+        ok, origin = pcall(factory, function(read)
+          -- Whether to show `read` on this iteration.
+          index = index + 1
+          if index == path then
+            return read
+          end
+        end)
+        if not ok then
+          local err = origin
+          raise(GrammarException(environment, bytes, nonterminal, err))
         end
-      end)
-      if not ok then
-        local err = origin
-        raise(GrammarException(environment, bytes, nonterminal, err))
+        prunes[prune] = origin
       end
     end
     local values, rest
+    local original = origin
     ok, values, rest = pcall(execute, origin, environment, bytes, stack)
+
     if not ok then
       local err = values
       if getmetatable(values) == ExpectedNonTerminalException then
