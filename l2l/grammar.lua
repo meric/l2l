@@ -371,7 +371,7 @@ local function filter(f, parent, ...)
   local origin = list(nil)
   local last = origin
   for _, child in ipairs(parent) do
-    if type(child) == "table" then
+    if isgrammar(child) then
       if f(child, parent, ...) then
         last[2] = cons(child)
         last = last[2]
@@ -390,8 +390,6 @@ end
 local factor
 
 --- Return a list of all spans inside a rule wrapped in an any.
--- A span is any part of the rule that is an all or have no all ancestor.
--- that can satisfy a rule.
 -- @param rule The rule to search for span's.
 local function factor_spans(rule)
   while isgrammar(rule, any) and #rule == 1 do
@@ -418,7 +416,7 @@ local function expand_nonterminal_at_index(child, nonterminal, index)
       and child[index].nonterminal ~= nonterminal
       and child[index].factory then
       continue = true
-    local nonterminalspan = false
+    local nonterminalspan
     local expanded = span(child[index].factory(
       function(grandchild)
         if isgrammar(grandchild, span)
@@ -443,8 +441,9 @@ local function expand_nonterminal_at_index(child, nonterminal, index)
   end
 end
 
--- Replace all instances of `nonterminal` in `rule`, using `f`.
-local function factor_replace_nonterminal(rule, nonterminal, f)
+-- Replace all spans in `rule`, using `f` if `f` returns nil, the original span
+-- is kept.
+local function map(f, rule)
   local continue = true
   rule = factor_spans(rule)
   while continue do
@@ -452,14 +451,14 @@ local function factor_replace_nonterminal(rule, nonterminal, f)
     rule = factor_spans(any(itertools.unpack(itertools.map(
       function(child)
         if isgrammar(child) and child.factory then
-          return factor_replace_nonterminal(
-            child.factory(id), nonterminal, f)
+          return map(f, child.factory(id))
         end
         if not isgrammar(child, span) then
           return child
         end
-        if f(child) then
-          return f(child)
+        local replacement = f(child)
+        if replacement then
+          return replacement
         end
         return child
       end, rule))))
@@ -475,32 +474,34 @@ end
 -- that span's first nonterminal is `nonterminal`.
 -- @param rule The rule to expand.
 -- @param nonterminal The nonterminal to stop expanding at.
-local function factor_expand_left_nonterminal(rule, nonterminal)
-  return factor_replace_nonterminal(rule, nonterminalspan, function(child)
+local function factor_expand_first_nonterminal(rule, nonterminal)
+  return map(function(child)
     return expand_nonterminal_at_index(child, nonterminal, 1)
-  end)
+  end, rule)
 end
 
 --- Given a rule, keep expanding each span's last nonterminal until it is
 -- that span's last nonterminal is `nonterminal`.
 -- @param rule The rule to expand.
 -- @param nonterminal The nonterminal to stop expanding at.
-local function factor_expand_right_nonterminal(rule, nonterminal)
-  return factor_replace_nonterminal(rule, nonterminalspan, function(child)
+local function factor_expand_last_nonterminal(rule, nonterminal)
+  return map(function(child)
     return expand_nonterminal_at_index(child, nonterminal, #child)
-  end)
+  end, rule)
 end
 
 --- Given a rule, return a set of rules that return the possible
 -- terminals that could occur before it recurses into `nonterminal`.
+-- If the nonterminal does not left-recur back into itself, it will return
+-- the nonterminal itself, wrapped in an `any`.
 -- @param factory The factory to generate the rule to extract the possible 
 --                prefix terminals rule from.
 -- @param nonterminal The nonterminal to find prefix of.
-local function factor_prefix_left_nonterminal(factory, nonterminal)
+local function factor_prefix_of_nonterminal(factory, nonterminal)
   local rules = {}
   table.insert(rules, factory(function(child)
     table.insert(rules,
-      factor_expand_left_nonterminal(
+      factor_expand_first_nonterminal(
         child.factory and child.factory(empty) or child,
         nonterminal))
   end))
@@ -594,7 +595,7 @@ local function factor_left_suffix(rule, nonterminal, factory)
       local suffix = span(unpack(tovector(slice(2, 0, child))))
       if isgrammar(suffix) and suffix.factory == factory then
         suffix = factor_without_right_nonterminal(
-          factor_expand_right_nonterminal(
+          factor_expand_last_nonterminal(
             factory(id), nonterminal), nonterminal)
       end
       return suffix
@@ -628,9 +629,17 @@ end
 --              wrapping an `any`.
 -- @param factory The factory for the nonterminal containing the `read` rule.
 local function precedent(read, infix, factory)
-  local separator = span(itertools.unpack(slice(2, -1, read)))
   local prefix = span(itertools.unpack(slice(2, infix-1, read)))
   local suffix = span(itertools.unpack(slice(infix+1, -1, read)))
+
+  -- For example:
+  -- In the following infix recurring rule:
+  -- `span(exp, __, binop, __, exp)`
+  --            ^          ^
+  --        `prefix`    `suffix`
+  -- `prefix` and `suffix` are the terms between the recurring nonterminal
+  -- on each side and the infix operator in between.
+
   local infixop = read[infix]
   local origin = factory(empty)
   local lbp = {}
@@ -638,10 +647,11 @@ local function precedent(read, infix, factory)
   -- Expand `read[infix]` into an `any(terminal...)`, and record precedence
   -- according to the index of each `terminal`, from low to high priority:
 
-  -- 1. Expand `read[infix]`
   local operator = read[infix]
+
+  -- 1. Expand `read[infix]`
   if isgrammar(operator) and operator.factory then
-    operator = factor_expand_left_nonterminal(operator, operator.nonterminal)
+    operator = factor_expand_first_nonterminal(operator, operator.nonterminal)
   end
   -- 2. Record precedence.
   for i, value in ipairs(operator) do
@@ -659,14 +669,6 @@ local function precedent(read, infix, factory)
       end
 
       previous = token
-
-      -- For example:
-      -- In the following infix recurring rule:
-      -- `span(exp, __, binop, __, exp)`
-      --            ^          ^
-      --        `prefix`    `suffix`
-      -- `prefix` and `suffix` are the terms between the recurring nonterminal
-      -- on each side and the infix operator in between.
       _, rest = prefix(environment, rest)
 
       -- Use `infixop` instead of `operator` to do the actual parsing, to use
@@ -773,7 +775,7 @@ factor = function(nonterminal, factory, instantiate)
             end
             local operator = read[infix]
             if isgrammar(operator) and operator.factory then
-              operator = factor_expand_left_nonterminal(
+              operator = factor_expand_first_nonterminal(
                 operator, operator.nonterminal)
             end
             if not isgrammar(operator, any) then
@@ -787,7 +789,7 @@ factor = function(nonterminal, factory, instantiate)
             end
             infix = precedent(read, infix, factory)
           end
-          local rule = factor_expand_left_nonterminal(
+          local rule = factor_expand_first_nonterminal(
             read.factory and read.factory(id) or read,
             nonterminal)
           table.insert(left, {
@@ -810,12 +812,12 @@ factor = function(nonterminal, factory, instantiate)
       is_annotated = #left > 0
       if is_annotated then
         -- `read_take_terminals` is a function for left recursion.
-        read_take_terminals = factor_prefix_left_nonterminal(
+        read_take_terminals = factor_prefix_of_nonterminal(
           factory, nonterminal)
 
         -- Non-left recursion paths for this nonterminal.
         -- spans = factor_without_left_nonterminal(
-        --   factor_expand_left_nonterminal(factory(function() end),
+        --   factor_expand_first_nonterminal(factory(function() end),
         --     nonterminal))
 
         -- We have all the Left recursions in `left`, and prefixes in
@@ -863,14 +865,14 @@ factor = function(nonterminal, factory, instantiate)
           -- At this line in the code with the above scenario,
           --   `stack` is (prefixexp functioncall)
           --   `nonterminal` is `prefixexp`.
-          --   `from` is `read_functioncall`, is the parent call that's
+          --   `from` is `functioncall`, is the parent call that's
           --          executed the current `read_prefixexp`.
           -- 
           -- When deriving `prefixexp` we want to drop the last call to
           -- `functioncall`, and leave stuff for the parent `functioncall`
           -- call to parse.
           --
-          -- Otherise `args` in `read_functioncall` will be missing.
+          -- Otherise `args` in `functioncall` will be missing.
           --
           -- Also see the following block later on:
           -- ```

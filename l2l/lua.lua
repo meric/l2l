@@ -357,8 +357,6 @@ local args = factor("args", function() return
     any(span("(", __, mark(explist, option), __, ")"), LiteralString)
   end)
 
--- maybe terminal should be strings.
-
 local functioncall = factor("functioncall", function() return
   -- functioncall ::=  prefixexp args | prefixexp ‘:’ Name args 
     any(
@@ -381,15 +379,9 @@ exp = factor("exp", function(left) return
   -- exp ::=  nil | false | true | Numeral | LiteralString | ‘...’ |  
   --      functiondef | prefixexp | tableconstructor | exp binop exp | unop exp 
     any(
-      -- left(span(exp, __, "+", __, exp) % function(a, b, c)
-      --   return list(symbol(b), a, c)
-      -- end),
-      -- left(span(exp, __, "*", __, exp) % function(a, b, c)
-      --   return list(symbol(b), a, c)
-      -- end),
       left(span(exp, __, binop, __, exp) % function(...)
         return list(...)
-      end, 3),
+      end, 3), -- 3 => binop is an infix operator with precedence.
       span(any("nil", "false", "true", number, "..."), __),
       LiteralString,
       lispexp,
