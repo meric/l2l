@@ -620,7 +620,7 @@ end
 -- Returns a function that takes `environment, bytes` and returns a parser
 -- for the given infix recursion grammar rule. The parser is implemented using
 -- the "Top-Down Operator Precedence" parsing algorithm by Vaughan Pratt.
--- See the following URL for an explaination of how the algorithm works:
+-- See the following URL for an explanation of how the algorithm works:
 -- http://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
 -- @param read The infix recursion grammar rule.
 -- @param infix The index of the term in `read` where operator precedence 
