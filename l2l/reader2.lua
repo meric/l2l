@@ -550,7 +550,7 @@ end
 if debug.getinfo(3) == nil then
   -- local profile = require("l2l.profile")
   -- local bytes = itertools.finalize(tolist([[(+ \id(1); (f) (g))]]))
-  local bytes = itertools.tolist([[\1 * 2 + 3 * 4;]])
+  local bytes = itertools.tolist([[\1 * (2 + 3) * 4 + 5 * 6;]])
 
   -- -- profile.profile(function()
   local values, rest = read(environ(bytes), bytes)

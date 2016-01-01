@@ -1,4 +1,8 @@
-local function id(...)
+local function id(a)
+  return a
+end
+
+local function identity(...)
   return ...
 end
 
@@ -718,6 +722,8 @@ local function apply(f, ...)
 end
 
 return {
+  identity = identity,
+  empty=nextnil,
   repeated=repeated,
   iterator=iterator,
   generator=generator,

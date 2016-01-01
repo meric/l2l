@@ -387,9 +387,9 @@ exp = factor("exp", function(left) return
       -- left(span(exp, __, "*", __, exp) % function(a, b, c)
       --   return list(symbol(b), a, c)
       -- end),
-      left(span(exp, __, binop, __, exp) % function(a, b, c)
-        return list(symbol(b), a, c)
-      end),
+      left(span(exp, __, binop, __, exp) % function(...)
+        return list(...)
+      end, 3),
       span(any("nil", "false", "true", number, "..."), __),
       LiteralString,
       lispexp,

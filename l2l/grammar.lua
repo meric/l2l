@@ -7,11 +7,13 @@ local cdr = itertools.cdr
 local cons = itertools.cons
 local id = itertools.id
 local list = itertools.list
+local tolist = itertools.tolist
 -- local show = itertools.show
 local slice = itertools.slice
 local concat = itertools.concat
 local tovector = itertools.tovector
 local tolist = itertools.tolist
+local empty = itertools.empty
 
 local raise = exception.raise
 local execute = reader.execute
@@ -24,7 +26,7 @@ local ParseException =
     "An exception occurred while parsing `%s`:\n  %s")
 local GrammarException =
   exception.Exception("GrammarException",
-    "An exception occurred while generating `%s`:\n  %s")
+    "An exception occurred while generating grammar for `%s`:\n  %s")
 
 local NonTerminal
 
@@ -87,6 +89,8 @@ local Terminal = setmetatable({
     return setmetatable({
       value,
       is_terminal=true}, Terminal)
+  end, __tostring = function() return
+    "Terminal"
   end})
 
 Terminal.__index = Terminal
@@ -228,8 +232,9 @@ associate = setmetatable({
   end
 }, {
   __call = function(_, nonterminal, read, factory)
-    if getmetatable(nonterminal) ~= NonTerminal then
-      nonterminal = NonTerminal(
+    if getmetatable(nonterminal) ~= NonTerminal
+      and getmetatable(nonterminal) ~= Terminal then
+      nonterminal = Terminal(
         tostring(nonterminal ~= nil and nonterminal or factory))
     end
     local self = setmetatable({read,
@@ -298,15 +303,13 @@ span = setmetatable({
       if read ~= nil then
         local prev = rest 
         local prev_meta = environment._META[rest]
-
         values, rest = execute(read, environment, rest, stack)
-
         if not values 
             and not ismark(read, option)
-            and not ismark(read, repeating) then
+            and not ismark(read, repeating)
+            and rest == bytes then
           return nil, bytes
         end
-
         if ismark(read, peek) then
           -- Restore any metadata at this point
           -- We don't want a peek operation to affect state.
@@ -322,7 +325,12 @@ span = setmetatable({
         end
       end
     end
-    return list(self.apply(unpack(all))), rest
+    if self.apply then
+      values = list(self.apply(unpack(all)))
+    else
+      values = tolist(all)
+    end
+    return values, rest
   end,
   __tostring = function(self)
     local repr = {"span("}
@@ -345,8 +353,6 @@ span = setmetatable({
         return value
       end,
       itertools.filter(id, list(...)))), span)
-
-    self.apply = id
 
     return self
   end,
@@ -413,7 +419,8 @@ local function expand_nonterminal_at_index(child, nonterminal, index)
       and child[index].factory then
       continue = true
     local nonterminalspan = false
-    local expanded = span(child[index].factory(function(grandchild)
+    local expanded = span(child[index].factory(
+      function(grandchild)
         if isgrammar(grandchild, span)
             and grandchild[index]
             and grandchild[index].nonterminal == nonterminal then
@@ -445,7 +452,8 @@ local function factor_replace_nonterminal(rule, nonterminal, f)
     rule = factor_spans(any(itertools.unpack(itertools.map(
       function(child)
         if isgrammar(child) and child.factory then
-          return factor_replace_nonterminal(child.factory(id), nonterminal, f)
+          return factor_replace_nonterminal(
+            child.factory(id), nonterminal, f)
         end
         if not isgrammar(child, span) then
           return child
@@ -493,7 +501,7 @@ local function factor_prefix_left_nonterminal(factory, nonterminal)
   table.insert(rules, factory(function(child)
     table.insert(rules,
       factor_expand_left_nonterminal(
-        child.factory and child.factory(function() end) or child,
+        child.factory and child.factory(empty) or child,
         nonterminal))
   end))
   local patterns = any()
@@ -569,6 +577,11 @@ local function factor_without_right_nonterminal(rule, nonterminal)
     end)
 end
 
+local function is_left_and_right_recursive(rule, nonterminal)
+  return isgrammar(rule[1]) and rule[1].nonterminal == nonterminal and
+         isgrammar(rule[#rule]) and rule[#rule].nonterminal == nonterminal
+end
+
 --- Factor `rule` into suffixes of spans involving left recursion of
 -- `nonterminal`.
 -- A span is any part of the rule that is an span or have no span ancestor,
@@ -602,6 +615,99 @@ local function factor_left_suffix(rule, nonterminal, factory)
     return contents[1]
   end
   return any(unpack(contents))
+end
+
+-- Returns a function that takes `environment, bytes` and returns a parser
+-- for the given infix recursion grammar rule. The parser is implemented using
+-- the "Top-Down Operator Precedence" parsing algorithm by Vaughan Pratt.
+-- See the following URL for an explaination of how the algorithm works:
+-- http://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
+-- @param read The infix recursion grammar rule.
+-- @param infix The index of the term in `read` where operator precedence 
+--              applies. It must be an `any(..)` or a nonterminal `associate`
+--              wrapping an `any`.
+-- @param factory The factory for the nonterminal containing the `read` rule.
+local function precedent(read, infix, factory)
+  local separator = span(itertools.unpack(slice(2, -1, read)))
+  local prefix = span(itertools.unpack(slice(2, infix-1, read)))
+  local suffix = span(itertools.unpack(slice(infix+1, -1, read)))
+  local infixop = read[infix]
+  local origin = factory(empty)
+  local lbp = {}
+
+  -- Expand `read[infix]` into an `any(terminal...)`, and record precedence
+  -- according to the index of each `terminal`, from low to high priority:
+
+  -- 1. Expand `read[infix]`
+  local operator = read[infix]
+  if isgrammar(operator) and operator.factory then
+    operator = factor_expand_left_nonterminal(operator, operator.nonterminal)
+  end
+  -- 2. Record precedence.
+  for i, value in ipairs(operator) do
+    assert(getmetatable(value.nonterminal) == Terminal)
+    lbp[tostring(value)] = i
+  end
+
+  -- This function returns a parser.
+  return function(environment, bytes)
+    local rest = bytes
+    local previous, tokens, token, ok, _
+    local function expression(rbp)
+      if not rest then
+        return nil
+      end
+
+      previous = token
+
+      -- For example:
+      -- In the following infix recurring rule:
+      -- `span(exp, __, binop, __, exp)`
+      --            ^          ^
+      --        `prefix`    `suffix`
+      -- `prefix` and `suffix` are the terms between the recurring nonterminal
+      -- on each side and the infix operator in between.
+      _, rest = prefix(environment, rest)
+
+      -- Use `infixop` instead of `operator` to do the actual parsing, to use
+      -- any apply method attached to `infixop`, which it may have if it is an
+      -- `associate`.
+      ok, tokens, rest = pcall(infixop, environment, rest)
+      if not ok or not tokens or not rest then
+        return origin
+      end
+      token = car(tokens)
+      _, rest = suffix(environment, rest)
+      if not rest then
+        return nil
+      end
+      local left = span(origin)
+      while rest and rbp < lbp[tostring(token)] do
+        previous = token
+        tokens, rest = origin(environment, rest)
+        if not tokens then
+          return nil
+        end
+        token = car(tokens)
+
+        if #left == #read then
+          left = span(left) % read.apply
+        end
+        table.insert(left, prefix)
+        table.insert(left, span(mark(tostring(previous), peek), infixop))
+        table.insert(left, suffix)
+        left = left % read.apply
+        table.insert(left, span(expression(lbp[tostring(previous)])))
+      end
+      return left
+    end
+    tokens, rest = origin(environment, rest)
+    if not tokens then
+      return nil
+    end
+    token = car(tokens)
+    return expression(0)
+  end
 end
 
 factor = function(nonterminal, factory, instantiate)
@@ -650,7 +756,37 @@ factor = function(nonterminal, factory, instantiate)
       -- Generate the rule, also grab any annotated left recursions 
       -- if available.
       origin = factory(
-        function(read)
+        function(read, infix)
+          if infix then
+            if not isgrammar(read, span) then
+              raise(GrammarException(environment, bytes, nonterminal,
+                "Only `span`s can have an infix operator with precedence."))
+            end
+            if read[1].nonterminal ~= nonterminal
+              or read[#read].nonterminal ~= nonterminal then
+              raise(GrammarException(environment, bytes, nonterminal,
+                "The `infix` argument for the `left` function supports "..
+                "only direct, one level, infix recursion.\n  The first and "..
+                "terms must be the nonterminal itself.\n  In `"..
+                tostring(read).."`, `"..tostring(read[1]).."` is expected to"..
+                " be `"..tostring(nonterminal).."`"))
+            end
+            local operator = read[infix]
+            if isgrammar(operator) and operator.factory then
+              operator = factor_expand_left_nonterminal(
+                operator, operator.nonterminal)
+            end
+            if not isgrammar(operator, any) then
+              raise(GrammarException(environment, bytes, nonterminal,
+                "The infix operator with precedence must be an `any` and is "..
+                "an `nonterminal` that is defined as an `any`"))
+            elseif not is_left_and_right_recursive(read, nonterminal) then
+              raise(GrammarException(environment, bytes, nonterminal,
+                "Only `span`s that are both left and right recursive can "..
+                "have infix operator with precedence"))
+            end
+            infix = precedent(read, infix, factory)
+          end
           local rule = factor_expand_left_nonterminal(
             read.factory and read.factory(id) or read,
             nonterminal)
@@ -664,8 +800,10 @@ factor = function(nonterminal, factory, instantiate)
 
             -- Paths for this child rule that doesn't left-recurse back to 
             -- `nonterminal`.
-            spans = factor_without_left_nonterminal(rule, nonterminal)
+            spans = factor_without_left_nonterminal(rule, nonterminal),
+            infix = infix
           })
+          -- print(left[#left].infix, rule)
           return read
         end)
       -- If we could grab a rule, it means it has been annotated.
@@ -776,6 +914,23 @@ factor = function(nonterminal, factory, instantiate)
           }
           return nil, bytes
         end
+
+        if prefix then
+          -- Check if infix operator precedent recursion grammar applies. If so
+          -- use the TDOP parser and return the results instead.
+          for _, info in ipairs(left) do
+            if info.infix then
+              local infix = info.infix(environment, bytes)
+              if infix then
+                local values, rest = infix(environment, bytes)
+                if values or rest ~= bytes then
+                  return values, rest
+                end
+              end
+            end
+          end
+        end
+
         -- Try each suffix, while we can find a matching iteration, keep going
         -- and build a path for the recursion later. We don't return results
         -- of what we have here because we're factoring the grammar into a
