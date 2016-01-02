@@ -164,9 +164,10 @@ Exception = setmetatable({
       name = name,
       message = message or "",
       __tostring = function(self)
+        local length = #self.environment._META.source
         local lines = formatsource(
           self.environment._META.source, self.message(),
-          #self.environment._META.source  - #list.concat(self.bytes) + 1)
+          math.min(length  - #list.concat(self.bytes) + 1, length))
         return ("%s: %s\n%s"):format(
           self.name,
           table.concat(lines, "\n"),

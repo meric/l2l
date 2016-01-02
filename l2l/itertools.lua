@@ -131,6 +131,71 @@ local pair = function(t)
   return setmetatable(t, list)
 end
 
+local function tolist(nextvalue, invariant, state)
+  -- tolist({1, 2, 3, 4})
+  -- tolist({1, 2, 3}, 1) -- make improper list.
+  -- tolist(map(f, {1, 2, 3}))
+  local obj
+  local mt = getmetatable(nextvalue)
+  if mt == list or mt == nil then
+    if mt and not invariant and not state then
+      return nextvalue
+    end
+    if invariant and not state then
+      obj = invariant
+    end
+  end
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
+  local value
+  state, value = nextvalue(invariant, state)
+  if state then
+    return setmetatable({value,
+      nextvalue=nextvalue,
+      invariant=invariant,
+      state=state,
+      ending=obj}, list)
+  end
+end
+
+
+-- Returns a next, invariant, state triple for a coroutine function that
+-- `yield`s values one by one. The function will be given an `index` argument,
+--  which represents the number of values already calculated plus 1, as well as
+-- a `yield` argument which the function must call for each value it generates.
+-- @param f A function that givens an index and `yield`, calls each value with
+--    `yield`.
+local function generate(f)
+  local routine = coroutine.create(f)
+  return function(_, index)
+    local ok, value = coroutine.resume(routine, coroutine.yield, index)
+    if not ok then
+      error(value)
+    end
+    if value ~= nil then
+      return index + 1, value
+    end
+  end, f, 0
+end
+
+-- Returns a next, invariant, state triple for an iterate function that
+-- `return`s values one by one. The function will be given a single `index`
+-- argument, which represents the number of values already calculated plus 1.
+-- @param f A function that givens an index, returns a value.
+local function iterate(f)
+  return function(_, index)
+    local value = f(index)
+    if value ~= nil then
+      return index + 1, value
+    end
+  end, f, 0
+end
+
+-- Returns a next, invariant, state triple that represents infinitely repeated
+-- `value`s.
+local function repeated(value)
+  return iterate(function() return value end)
+end
+
 list = setmetatable({
   unpack = function(self)
     if self then
@@ -139,6 +204,9 @@ list = setmetatable({
       end
       return self[1], list.unpack(self[2])
     end
+  end,
+  generate = function(f)
+    return tolist(generate(f))
   end,
   reverse = function(self)
     if not self then
@@ -261,32 +329,6 @@ list = setmetatable({
     end
     return origin[2]
   end})
-
-local function tolist(nextvalue, invariant, state)
-  -- tolist({1, 2, 3, 4})
-  -- tolist({1, 2, 3}, 1) -- make improper list.
-  -- tolist(map(f, {1, 2, 3}))
-  local obj
-  local mt = getmetatable(nextvalue)
-  if mt == list or mt == nil then
-    if mt and not invariant and not state then
-      return nextvalue
-    end
-    if invariant and not state then
-      obj = invariant
-    end
-  end
-  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
-  local value
-  state, value = nextvalue(invariant, state)
-  if state then
-    return setmetatable({value,
-      nextvalue=nextvalue,
-      invariant=invariant,
-      state=state,
-      ending=obj}, list)
-  end
-end
 
 local function foreach(f, nextvalue, invariant, state)
   local t = {}
@@ -694,44 +736,6 @@ local function rawtostring(obj)
   return text
 end
 
--- Returns a next, invariant, state triple for a coroutine function that
--- `yield`s values one by one. The function will be given an `index` argument,
---  which represents the number of values already calculated plus 1, as well as
--- a `yield` argument which the function must call for each value it generates.
--- @param f A function that givens an index and `yield`, calls each value with
---    `yield`.
-local function generator(f)
-  local routine = coroutine.create(f)
-  return function(_, index)
-    local ok, value = coroutine.resume(routine, index, coroutine.yield)
-    if not ok then
-      error(value)
-    end
-    if value ~= nil then
-      return index + 1, value
-    end
-  end, f, 0
-end
-
--- Returns a next, invariant, state triple for an iterator function that
--- `return`s values one by one. The function will be given a single `index`
--- argument, which represents the number of values already calculated plus 1.
--- @param f A function that givens an index, returns a value.
-local function iterator(f)
-  return function(_, index)
-    local value = f(index)
-    if value ~= nil then
-      return index + 1, value
-    end
-  end, f, 0
-end
-
--- Returns a next, invariant, state triple that represents infinitely repeated
--- `value`s.
-local function repeated(value)
-  return iterator(function() return value end)
-end
-
 -- Return the calling of `f` with the given arguments.
 -- @param f Function to call.
 -- @param ... The arguments to call with.
@@ -739,13 +743,34 @@ local function apply(f, ...)
   return f(...)
 end
 
+local function later(f, argument)
+  return tolist(function(argument, index)
+      if index == 0 then
+        return 1, nil
+      elseif index == 1 then
+        return 2, f(argument)
+      end
+    end, argument, 0)
+end
+
+local function now(value)
+  return cadr(value)
+end
+
+local function isinstance(value, mt)
+  return getmetatable(value) == mt
+end
+
 return {
+  isinstance=isinstance,
+  later=later,
+  now=now,
+  tonext = tonext,
   identity = identity,
   cadr = cadr,
   empty=nextnil,
   repeated=repeated,
-  iterator=iterator,
-  generator=generator,
+  iterate=iterate,
   apply=apply,
   vector=vector,
   dict=dict,

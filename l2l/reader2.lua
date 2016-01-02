@@ -9,7 +9,15 @@ local cons = itertools.cons
 local id = itertools.id
 local list = itertools.list
 local pack = itertools.pack
--- local tolist =  itertools.tolist
+local iterate = itertools.iterate
+local finalize = itertools.finalize
+local tonext = itertools.tonext
+local identity = itertools.identity
+local cadr = itertools.cadr
+local foreach = itertools.foreach
+local isinstance = itertools.isinstance
+local later = itertools.later
+local now = itertools.now
 
 local raise = exception.raise
 
@@ -337,29 +345,36 @@ local function skip_whitespace(environment, bytes)
   return read(environment, rest)
 end
 
-local function read_list(environment, bytes)
-  local origin = list(nil)
-  local last = origin
-  local rest = bytes[2]
-  return with_R(environment, true, {
-    -- ["."] = cons(read_attribute, environment._R["."]),
-    -- [":"] = cons(read_method, environment._R[":"])
-  }, function()
-    local ok, values, _ = true
-    while ok do
-      ok, values, rest = pcall(read, environment, rest)
-      if ok then
-        last[2] = values
-        while last[2] do
-          last = last[2] or last
+local function read_until_exception(environment, bytes, Exception)
+  local value
+  local values = list.generate(
+    function(yield)
+      local ok, rest = true, bytes
+      while ok do
+        ok, value, rest = pcall(read, environment, rest)
+        if ok then
+          foreach(yield, value)
+        elseif isinstance(value, UnmatchedRightParenException) then
+          yield()
+        else
+          raise(value)
         end
-      elseif getmetatable(values) == UnmatchedRightParenException then
-        return cons(origin[2]), cdr(values.bytes)
-      else
-        raise(values)
       end
-    end
-  end)
+    end)
+  return values, later(function()
+      if finalize(values)
+        and isinstance(value, UnmatchedRightParenException) then
+          return cdr(value.bytes)
+      end
+    end)
+end
+
+local function read_list(environment, bytes)
+  local values, rest = read_until_exception(environment, bytes[2],
+    UnmatchedRightParenException)
+  -- local values, rest = read_until_exception(environment, now(bytes)[2],
+  --   UnmatchedRightParenException)
+  return values, now(rest)
 end
 
 local function read_vector(environment, bytes)
@@ -580,10 +595,14 @@ if debug.getinfo(3) == nil then
 
   -- -- profile.profile(function()
   local values, rest = read(environ(bytes), bytes)
+
+  print(values, rest)
+
+
   -- -- end)
 
   -- print(car(values)[2][2][1]:representation())
-  print(values, rest)
+  
   -- print(car(cdr(car(values))[2]), rest)
 
   -- itertools.finalize(tolist(itertools.take(1000000, itertools.repeated(2))))

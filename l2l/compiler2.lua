@@ -60,14 +60,14 @@ local function compile(environment, bytes, forms, positions)
       rest = compile(environment, positions[1], rest, positions)
       table.insert(expressions, list(symbol("LuaCall"), first, rest))
     elseif data == nil then
-      raise(IllegalFunctionCallException(environment, positions[1]))
+      table.insert(expressions, list(symbol("LuaNil")))
     end
     positions = cdr(positions)
   end
   return list(symbol("LuaExpList"), unpack(expressions))
 end
 
-local bytes = itertools.tolist("(print (print 1 2 () 3 5))")
+local bytes = itertools.tolist("(print (print 1 2 3 5))")
 local environment = reader.environ(bytes)
 local values, rest = reader.read(environment, bytes)
 
