@@ -5,6 +5,7 @@ local exception = require("l2l.exception2")
 
 local list = itertools.list
 local car = itertools.car
+local cons = itertools.cons
 
 local match = reader.match
 local read_predicate = reader.read_predicate
@@ -244,13 +245,15 @@ local number = factor("number", function() return reader.read_number end)
 
 local space = factor("space",
   function() return
-    function(environment, bytes)
+    function(environment, bytes, stack)
     -- * Mandatory space after keywords should not be "skip"ed.
     --   Otherwise when output the code could produce like "gotolabel",
     --   which is not valid.
     -- * In "all", space prepend content elements that can have
     --   spaces prepending it.
-      local patterns = {}
+      if not bytes then
+        return list(""), bytes
+      end
       local bounds = {
         ["("]=true,
         [")"]=true,
@@ -259,20 +262,25 @@ local space = factor("space",
         [","]=true,
         [";"]=true,
       }
-
-      if not bytes then
-        return list(""), bytes
-      end
+      local boundary = false
+      local patterns = {}
+      local previous = car(environment._PREV[bytes] or cons(""))
 
       for byte, _ in pairs(bounds) do
         table.insert(patterns, "^%"..byte.."$")
       end
 
+      if match(unpack(patterns))(previous) or match("%s")(previous) then
+        boundary = true
+      end
+
       local values, rest = read_predicate(environment, bytes, tostring,
         match("^%s+$", unpack(patterns)))
 
-      -- Convert boundary characters into zero string tokens.
-      if values and bounds[tostring(car(values))] then
+      if values and bounds[tostring(car(values))]
+          -- Next character is boundary. Don't consume it.
+        or not values and boundary then
+          -- Previous character is a boundary, and we have no space.
         return list(""), bytes
       end
       return values, rest
@@ -382,7 +390,7 @@ exp = factor("exp", function(left) return
       left(span(exp, __, binop, __, exp) % function(...)
         return list(...)
       end, 3), -- 3 => binop is an infix operator with precedence.
-      span(any("nil", "false", "true", number, "..."), __),
+      span(any("nil", "false", "true", number, "...")),
       LiteralString,
       lispexp,
       prefixexp,
@@ -400,7 +408,7 @@ prefixexp = factor("prefixexp", function(left) return
   --  1. the span clause argument, e.g. left(span(prefixexp, ...))
   --  2. the nonterminal standing alone
   -- left recursions back to this nonterminal.
-   any(left(functioncall), left(var), span("(", __, exp, __, ")", __))
+   any(left(functioncall), left(var), span("(", __, exp, __, ")"))
   end)
 
 var = factor("var", function() return 
@@ -441,7 +449,8 @@ local stat = factor("stat", function() return
     "break",
     span("goto", space, Name),
     span("do", block, "end"),
-    span("while", space, exp, "do", space, mark(block, option), "end", space),
+    -- look previous byte
+    span("while", space, exp, space, "do", space, mark(block, option), space, "end", space),
     span("repeat", block, "until", exp),
     span("local", space, namelist, __, mark(span("=", __, explist), option)))
     -- if

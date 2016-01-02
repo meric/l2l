@@ -19,10 +19,10 @@
     `(,true "\\while nil do return nil end")
     `(,true "\\while nil do return false,(nil) end")
     `(,true "\\while true do return false end")
-    `(,true "\\while nil do return 123 end")
+    `(,true "\\while nil do return 123 end;")
     `(,true "\\while 124 do return -123 end")
     `(,true "\\while nil do return -1.23 end")
-    `(,true "\\while nil do return 1.23, true end")
+    `(,true "\\while nil do return 1.23, true end;")
     `(,true "\\while nil do return not 1.23, not true end;")
     `(,true "\\while nil do return not 1.23, not true end; 
                 while nil do return not 1.23, not true end; 

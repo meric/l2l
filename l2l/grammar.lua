@@ -301,13 +301,12 @@ span = setmetatable({
     local rest, all, values = bytes, {}
     for _, read in ipairs(self) do
       if read ~= nil then
-        local prev = rest 
+        local prev = rest
         local prev_meta = environment._META[rest]
         values, rest = execute(read, environment, rest, stack)
-        if not values 
+        if not values
             and not ismark(read, option)
-            and not ismark(read, repeating)
-            and rest == bytes then
+            and not ismark(read, repeating) then
           return nil, bytes
         end
         if ismark(read, peek) then
@@ -663,6 +662,7 @@ local function precedent(read, infix, factory)
   return function(environment, bytes)
     local rest = bytes
     local previous, tokens, token, ok, _
+    local has_infixop = false
     local function expression(rbp)
       if not rest then
         return nil
@@ -676,6 +676,9 @@ local function precedent(read, infix, factory)
       -- `associate`.
       ok, tokens, rest = pcall(infixop, environment, rest)
       if not ok or not tokens or not rest then
+        if not has_infixop then
+          return nil
+        end
         return origin
       end
       token = car(tokens)
@@ -700,6 +703,8 @@ local function precedent(read, infix, factory)
         table.insert(left, suffix)
         left = left % read.apply
         table.insert(left, span(expression(lbp[tostring(previous)])))
+
+        has_infixop = true
       end
       return left
     end
@@ -805,7 +810,6 @@ factor = function(nonterminal, factory, instantiate)
             spans = factor_without_left_nonterminal(rule, nonterminal),
             infix = infix
           })
-          -- print(left[#left].infix, rule)
           return read
         end)
       -- If we could grab a rule, it means it has been annotated.

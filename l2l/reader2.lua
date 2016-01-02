@@ -146,12 +146,30 @@ end
 local default_R
 
 local function environ(bytes)
+  local rest, previous = bytes
+  PREV = setmetatable({}, {__index=function(t, location)
+    while rest do
+      if rest == location then
+        t[rest] = previous
+        return previous
+      end
+      previous = rest
+      rest = cdr(rest)
+    end
+    if not location then
+      return previous
+    end
+    t[location] = false
+    return false
+  end})
+  
   return {
     _R=default_R(),
     _META={
       origin=bytes,
       source=list.concat(bytes, "")
-    }
+    },
+    _PREV=PREV
   }
 end
 
@@ -465,15 +483,14 @@ local function read_lua(environment, bytes)
     if values then
       return list(list(symbol("\\"), nil, car(values))), rest
     end
-    if explisterr then
-      raise(explisterr)
-    end
     if blockerr then
       raise(blockerr)
     end
+    if explisterr then
+      raise(explisterr)
+    end
     raise(LuaException(environment, origin))
   end
-
   origin = rest
   ok, keyword, rest = with_R(environment, false, {list(
     function(_environment, _bytes)
@@ -482,7 +499,6 @@ local function read_lua(environment, bytes)
     function() return
       pcall(skip_whitespace, environment, rest)
     end)
-
   if ok and keyword then
     values, rest, blockerr = try_block(environment, rest)
     if values then
@@ -550,11 +566,13 @@ end
 if debug.getinfo(3) == nil then
   -- local profile = require("l2l.profile")
   -- local bytes = itertools.finalize(tolist([[(+ \id(1); (f) (g))]]))
-  local bytes = itertools.tolist([[\1 * (2 + 3) * 4 + 5 * 6;]])
+  local bytes = itertools.tolist([[\while nil do return false, nil end]])
 
   -- -- profile.profile(function()
   local values, rest = read(environ(bytes), bytes)
   -- -- end)
+
+  -- print(car(values)[2][2][1]:representation())
   print(values, rest)
   -- print(car(cdr(car(values))[2]), rest)
 
