@@ -326,10 +326,15 @@ local function cons(a, b)
 end
 
 local function mapcar(f, l)
-  if l == nil then
-    return nil
-  end
-  return cons(f(l), mapcar(f, cdr(l)))
+  f = f or id
+  return function(invariant, index)
+    local state = invariant[index]
+    if not state then
+      return nil
+    end
+    invariant[index + 1] = cdr(state)
+    return index + 1, f(state)
+  end, {[0]=l}, 0
 end
 
 local function arguments(...)
