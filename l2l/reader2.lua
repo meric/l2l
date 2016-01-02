@@ -176,12 +176,16 @@ end
 local function execute(reader, environment, bytes, ...)
   environment = environment or environ(bytes)
   local values, rest = reader(environment, bytes, ...)
-  if bytes and values and rest ~= bytes then
-    environment._META[bytes] = {
-      read=reader,
-      values=values,
-      rest=rest
-    }
+  if environment._R[reader] ~= false then
+    if bytes and values and rest ~= bytes then
+      -- print("?", values, bytes)
+      environment._META[bytes] = {
+        read=reader,
+        values=values,
+        position=bytes,
+        rest=rest
+      }
+    end
   end
   return values, rest
 end
@@ -329,7 +333,7 @@ end
 -- @param environment The environment.
 -- @param bytes List of bytes to read from.
 local function skip_whitespace(environment, bytes)
-  local _, rest = execute(read_whitespace, environment, bytes)
+  local _, rest = read_whitespace(environment, bytes)
   return read(environment, rest)
 end
 
@@ -395,8 +399,12 @@ local function read_table(environment, bytes)
 end
 
 local function read_string(environment, bytes)
+  if not bytes then
+    return nil, bytes
+  end
   local text, byte = "", ""
   local escaped = false
+  bytes = cdr(bytes)
   repeat
     if not escaped and byte == '\\' then
       escaped = true
@@ -542,6 +550,8 @@ function default_R()
     ["\n"]=list(skip_whitespace),
     ["\r"]=list(skip_whitespace),
     ["\r\n"]=list(skip_whitespace),
+
+    [skip_whitespace] = false,
 
     -- Pattern indices should not overlap.
     ["[0-9]"]=list(read_number),
