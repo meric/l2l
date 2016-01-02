@@ -569,6 +569,7 @@ local function drop(n, nextvalue, invariant, state)
             break
           end
         until not n(value, index)
+        n = 0
         index = previous
       end
       return invariant, index
