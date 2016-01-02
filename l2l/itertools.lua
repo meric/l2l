@@ -73,6 +73,10 @@ local function show(obj)
   return obj
 end
 
+local function cadr(t)
+  return t[2][1]
+end
+
 local function car(t)
   -- assert(t, "car: `t` missing."..debug.traceback())
   return t[1]
@@ -723,6 +727,7 @@ end
 
 return {
   identity = identity,
+  cadr = cadr,
   empty=nextnil,
   repeated=repeated,
   iterator=iterator,
