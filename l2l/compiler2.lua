@@ -35,12 +35,11 @@ local IllegalFunctionCallException =
 local FunctionArgumentException =
   exception.Exception("Argument is not a %s")
 
-local made = false
 local function compile(environment, bytes, forms, positions)
   local rest = environment._META[bytes].rest
   local expressions = {}
-  if not made then
-    made = true
+
+  if not positions and bytes then
     positions = tolist(
       map(function(meta) return meta.position end,
         filter(id,
