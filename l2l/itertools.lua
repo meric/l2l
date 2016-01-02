@@ -150,7 +150,7 @@ local function tolist(nextvalue, invariant, state)
   state, value = nextvalue(invariant, state)
   if state then
     return setmetatable({value,
-      nextvalue=nextvalue,
+      next=nextvalue,
       invariant=invariant,
       state=state,
       ending=obj}, list)
@@ -164,12 +164,18 @@ end
 -- a `yield` argument which the function must call for each value it generates.
 -- @param f A function that givens an index and `yield`, calls each value with
 --    `yield`.
-local function generate(f)
+local function generate(f, yield)
   local routine = coroutine.create(f)
   return function(_, index)
     local ok, value = coroutine.resume(routine, coroutine.yield, index)
     if not ok then
       error(value)
+    end
+    if coroutine.status(routine) == "dead" then
+      if yield then
+        yield(value)
+      end
+      return
     end
     if value ~= nil then
       return index + 1, value
@@ -196,6 +202,46 @@ local function repeated(value)
   return iterate(function() return value end)
 end
 
+local function later(f, argument)
+  return tolist(function(argument, index)
+      if index == 0 then
+        return 1, nil
+      elseif index == 1 then
+        return 2, f(argument)
+      end
+    end, argument, 0)
+end
+
+local now = cadr
+
+-- Return whether the arguments do not contain values that have yet to be
+-- calculated.
+local function finalized(nextvalue, invariant, state)
+  if type(nextvalue) == "function" or invariant or state then
+    return false
+  end
+  if type(nextvalue) == "string" then
+    return true
+  end
+  local mt = getmetatable(nextvalue)
+  if not mt then
+    return true
+  end
+  return mt == list and not list.nextvalue
+end
+
+-- Force evaluation of the iterable by iterating through it. Relies on the
+-- iterable's implementation to cached calculated values.
+local function finalize(nextvalue, invariant, state)
+  if not finalized(nextvalue, invariant, state)
+      or getmetatable(nextvalue) == list then
+    for _, _ in tonext(nextvalue, invariant, state) do
+      -- Do nothing.
+    end
+  end
+  return nextvalue, invariant, state
+end
+
 list = setmetatable({
   unpack = function(self)
     if self then
@@ -206,7 +252,19 @@ list = setmetatable({
     end
   end,
   generate = function(f)
-    return tolist(generate(f))
+    local ended, rest
+    local values = tolist(generate(f,
+      function(value)
+        ended = true
+        rest = value
+      end))
+    return values,
+           later(function()
+              if not ended then
+                finalize(values)
+              end
+              return rest
+            end)
   end,
   reverse = function(self)
     if not self then
@@ -300,7 +358,7 @@ list = setmetatable({
     return list.next, {[0]=self}, 0
   end,
   __index = function(self, i)
-    local nextvalue = rawget(self, "nextvalue")
+    local nextvalue = rawget(self, "next")
     if i == 2 and nextvalue then
       self.next = nil
       local invariant = self.invariant
@@ -310,7 +368,7 @@ list = setmetatable({
         return self.ending
       end
       local rest = setmetatable({value,
-        nextvalue=nextvalue,
+        next=nextvalue,
         invariant=invariant,
         state=state,
         ending=self.ending}, list)
@@ -481,34 +539,6 @@ local function flip(f) return
   function(b, a, ...) return
     f(a, b, ...)
   end
-end
-
--- Return whether the arguments do not contain values that have yet to be
--- calculated.
-local function finalized(nextvalue, invariant, state)
-  if type(nextvalue) == "function" or invariant or state then
-    return false
-  end
-  if type(nextvalue) == "string" then
-    return true
-  end
-  local mt = getmetatable(nextvalue)
-  if not mt then
-    return true
-  end
-  return mt == list and not list.nextvalue
-end
-
--- Force evaluation of the iterable by iterating through it. Relies on the
--- iterable's implementation to cached calculated values.
-local function finalize(nextvalue, invariant, state)
-  if not finalized(nextvalue, invariant, state)
-      or getmetatable(nextvalue) == list then
-    for _, _ in tonext(nextvalue, invariant, state) do
-      -- Do nothing.
-    end
-  end
-  return nextvalue, invariant, state
 end
 
 -- Returns an identity function that, for the same `list` instance, returns
@@ -743,20 +773,6 @@ local function apply(f, ...)
   return f(...)
 end
 
-local function later(f, argument)
-  return tolist(function(argument, index)
-      if index == 0 then
-        return 1, nil
-      elseif index == 1 then
-        return 2, f(argument)
-      end
-    end, argument, 0)
-end
-
-local function now(value)
-  return cadr(value)
-end
-
 local function isinstance(value, mt)
   return getmetatable(value) == mt
 end
@@ -765,6 +781,7 @@ return {
   isinstance=isinstance,
   later=later,
   now=now,
+  unlift=unlift,
   tonext = tonext,
   identity = identity,
   cadr = cadr,

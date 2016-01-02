@@ -61,6 +61,7 @@
     `(,true "\\return f:x():t()[d]   ")
     `(,true "\\return 1, \\(+ 1 2)   ")
     `(,true "(+ \\a in local a = \\(+ 1 2 \\b in local b = 3;); 1 2)")
+    `(,true "[1 2]")
   ]
   reader (require "l2l.reader2"))
 
