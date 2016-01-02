@@ -441,31 +441,6 @@ local function flip(f) return
   end
 end
 
---- Returns array inclusive of start and finish indices.
--- 1 is first position. 0 is last position. -1 is second last position.
--- @param objs iterable to slice.
--- @param start first index.
--- @param finish second index
-local function slice(start, finish, nextvalue, invariant, state)
-  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
-
-  if finish and finish <= 0 then
-    finish = #tovector(nextvalue, invariant, state) + finish
-  end
-
-  return function(cache, index)
-    local value
-    state, value = nextvalue(invariant, cache[index])
-    while state and state < start and (not finish or state <= finish) do
-      state, value = nextvalue(invariant, state)
-    end
-    if state and state >= start and (not finish or state <= finish) then
-      cache[index + 1] = state
-      return index + 1, value
-    end
-  end, {[0] = state}, 0
-end
-
 -- Return whether the arguments do not contain values that have yet to be
 -- calculated.
 local function finalized(nextvalue, invariant, state)
@@ -614,6 +589,39 @@ local function scan(f, initial, nextvalue, invariant, state)
   end, invariant, state
 end
 
+
+local function slicecar(start, finish, l) return
+  take(function(node) return node ~= finish end,
+    drop(function(node) return node ~= start end,
+      mapcar(id, l)))
+end
+
+--- Returns array inclusive of start and finish indices.
+-- 1 is first position. 0 is last position. -1 is second last position.
+-- @param objs iterable to slice.
+-- @param start first index.
+-- @param finish second index
+local function slice(start, finish, nextvalue, invariant, state)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
+
+  if finish and finish <= 0 then
+    finish = #tovector(nextvalue, invariant, state) + finish
+  end
+
+  return function(cache, index)
+    local value
+    state, value = nextvalue(invariant, cache[index])
+    while state and state < start and (not finish or state <= finish) do
+      state, value = nextvalue(invariant, state)
+    end
+    if state and state >= start and (not finish or state <= finish) then
+      cache[index + 1] = state
+      return index + 1, value
+    end
+  end, {[0] = state}, 0
+end
+
+
 local function zip(...)
   local invariants = {}
   local nextvalues = {}
@@ -755,6 +763,7 @@ return {
   bind=bind,
   contains=contains,
   slice=slice,
+  slicecar=slicecar,
   each=each,
   tolist=tolist,
   tovector=tovector,
