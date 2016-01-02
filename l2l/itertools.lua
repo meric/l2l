@@ -435,9 +435,9 @@ local function last(nextvalue, invariant, state)
   return obj
 end
 
-local function flip(f)
-  return function(b, a, ...)
-    return f(a, b, ...)
+local function flip(f) return
+  function(b, a, ...) return
+    f(a, b, ...)
   end
 end
 
