@@ -19,6 +19,8 @@ local isinstance = itertools.isinstance
 local later = itertools.later
 local now = itertools.now
 local map = itertools.map
+local join = itertools.join
+local tolist = itertools.tolist
 
 local raise = exception.raise
 
@@ -346,32 +348,31 @@ local function skip_whitespace(environment, bytes)
   return read(environment, rest)
 end
 
-local function read_until_exception(environment, bytes, Exception)
-  local ok, values, rest
-  local all = list.iterate(function(index)
-      if ok and values then
-        local value = values[1]
-        values = values[2]
-        return value
-      end
-      ok, values, bytes = pcall(read, environment, bytes)
-      if ok then
-        if values then
-          local value = values[1]
-          if values then
-            values = values[2]
-          end
-          return value
-        end
-      elseif not isinstance(values, Exception) then
-        raise(values)
-      end
-    end)
-  return all, later(function()
-    if not values then
-      finalize(all)
+local function nextread(raise)
+  return function(environment, bytes)
+    local ok, values, rest = pcall(read, environment, bytes)
+    if ok then
+      return rest, values
+    else
+      raise(values)
     end
-    return cdr(values.bytes) end)
+  end
+end
+
+local function read_until_exception(environment, bytes, Exception)
+  local values, rest
+  values = tolist(join(nextread(function(except)
+      if not isinstance(except, Exception) then
+        raise(except)
+      else
+        rest = except.bytes
+      end
+    end), environment, bytes))
+  return values, later(function()
+    if not rest then
+      finalize(values)
+    end
+    return cdr(rest) end)
 end
 
 local function read_list(environment, bytes)

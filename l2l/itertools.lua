@@ -150,6 +150,7 @@ local function tolist(nextvalue, invariant, state)
   state, value = nextvalue(invariant, state)
   if state then
     return setmetatable({value,
+      proper=true,
       next=nextvalue,
       invariant=invariant,
       state=state,
@@ -203,16 +204,14 @@ local function repeated(value)
 end
 
 local function later(f, argument)
-  return tolist(function(argument, index)
-      if index == 0 then
-        return 1, nil
-      elseif index == 1 then
-        return 2, f(argument)
-      end
-    end, argument, 0)
+  return setmetatable({nil,
+    proper=false,
+    next=function(_, index) if index == 0 then return 1, f(argument) end end,
+    invariant=nil,
+    state=0}, list)
 end
 
-local now = cadr
+local now = cdr
 
 -- Return whether the arguments do not contain values that have yet to be
 -- calculated.
@@ -370,11 +369,17 @@ list = setmetatable({
         self[2] = self.ending
         return self.ending
       end
-      local rest = setmetatable({value,
-        next=nextvalue,
-        invariant=invariant,
-        state=state,
-        ending=self.ending}, list)
+      local rest
+      if rawget(self, "proper") then
+        rest = setmetatable({value,
+          proper=true,
+          next=nextvalue,
+          invariant=invariant,
+          state=state,
+          ending=self.ending}, list)
+      else
+        rest = value
+      end
       self[2] = rest
       return rest
     end
@@ -481,6 +486,30 @@ local function fold(f, initial, nextvalue, invariant, state)
     end
   until state == nil
   return initial
+end
+
+
+-- Returns aa concatenation of each sequence returned by 
+-- `nextvalue, invariant, state`.
+local function join(nextvalue, invariant, state)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
+  local collection
+  state, collection = nextvalue(invariant, state)
+  return function(current, index)
+    local value
+    current[3], value = current[1](current[2], current[3])
+
+    if not current[3] then
+      local collection
+      current.state, collection = nextvalue(invariant, current.state)
+      current[1], current[2], current[3] = tonext(collection)
+      current[3], value = current[1](current[2], current[3])
+    end
+
+    if current[3] then
+      return index + 1, value
+    end
+  end, {state=state, tonext(collection)}, 0
 end
 
 local function filter(f, nextvalue, invariant, state)
@@ -782,6 +811,7 @@ end
 
 return {
   isinstance=isinstance,
+  join=join,
   later=later,
   now=now,
   unlift=unlift,
