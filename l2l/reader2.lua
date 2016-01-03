@@ -346,7 +346,7 @@ local function skip_whitespace(environment, bytes)
   return read(environment, rest)
 end
 
-local function nextread(Exception)
+local function nextreadexception(Exception)
   return function(environment, bytes)
     local ok, values, rest = pcall(read, environment, bytes)
     if ok then
@@ -357,12 +357,16 @@ local function nextread(Exception)
   end
 end
 
+local nextreadlist = nextreadexception(UnmatchedRightParenException)
+local nextreadvector = nextreadexception(UnmatchedRightBracketException)
+local nextreaddict = nextreadexception(UnmatchedRightBraceException)
+
 local function read_list(environment, bytes)
   return unpack(list.traverse(
       function(values) return
         list(tolist(join(values)))
       end,
-      nextread(UnmatchedRightParenException),
+      nextreadlist,
       environment, cdr(bytes)), 1, 2)
 end
 
@@ -371,7 +375,7 @@ local function read_vector(environment, bytes)
       function(values) return
         list(cons(symbol("vector"), tolist(join(values))))
       end,
-      nextread(UnmatchedRightBracketException),
+      nextreadvector,
       environment, cdr(bytes)), 1, 2)
 end
 
@@ -380,7 +384,7 @@ local function read_table(environment, bytes)
       function(values) return
         list(cons(symbol("dict"), tolist(join(values))))
       end,
-      nextread(UnmatchedRightBraceException),
+      nextreaddict,
       environment, cdr(bytes)), 1, 2)
 end
 
