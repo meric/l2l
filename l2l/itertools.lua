@@ -158,7 +158,6 @@ local function tolist(nextvalue, invariant, state)
   end
 end
 
-
 -- Returns a next, invariant, state triple for a coroutine function that
 -- `yield`s values one by one. The function will be given an `index` argument,
 --  which represents the number of values already calculated plus 1, as well as
@@ -381,6 +380,21 @@ list = setmetatable({
     end
     return origin[2]
   end})
+
+local function call(funcs, ...)
+  if not funcs then
+    return ...
+  end
+  local func, rest = car(funcs), cdr(funcs)
+  return func(call(rest, ...))
+end
+
+local function compose(...)
+  local funcs = {...}
+  return function(...)
+    return call(tolist(funcs), ...)
+  end
+end
 
 local function foreach(f, nextvalue, invariant, state)
   local t = {}
@@ -801,6 +815,7 @@ end
 
 return {
   uncons=uncons,
+  compose=compose,
   traverse=traverse,
   isinstance=isinstance,
   join=join,

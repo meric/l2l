@@ -70,7 +70,7 @@ end
 local bytes = itertools.tolist("(print (print 1 2 3 5))")
 local environment = reader.environ(bytes)
 local values, rest = reader.read(environment, bytes)
-
+print(values, rest)
 values, rest = compile(environment, bytes, values)
 
 print(values)

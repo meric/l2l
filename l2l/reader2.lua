@@ -363,6 +363,12 @@ local nextreadlist = nextreadexception(UnmatchedRightParenException)
 local nextreadvector = nextreadexception(UnmatchedRightBracketException)
 local nextreaddict = nextreadexception(UnmatchedRightBraceException)
 
+local function structure(name)
+  return function(rest)
+    return cons(symbol(name, rest))
+  end
+end
+
 local function read_list(environment, bytes)
   return uncons(list.traverse(
     compose(list, tolist, join),
@@ -371,17 +377,13 @@ end
 
 local function read_vector(environment, bytes)
   return uncons(list.traverse(
-      function(values) return
-        list(cons(symbol("vector"), tolist(join(values))))
-      end,
+      compose(list, structure("vector"), tolist, join),
       nextreadvector, environment, cdr(bytes)))
 end
 
 local function read_table(environment, bytes)
   return uncons(list.traverse(
-      function(values) return
-        list(cons(symbol("dict"), tolist(join(values))))
-      end,
+      compose(list, structure("dict"), tolist, join),
       nextreaddict, environment, cdr(bytes)))
 end
 
