@@ -251,6 +251,9 @@ list = setmetatable({
       return self[1], list.unpack(self[2])
     end
   end,
+  iterate = function(f)
+    return tolist(iterate(f))
+  end,
   generate = function(f)
     local ended, rest
     local values = tolist(generate(f,

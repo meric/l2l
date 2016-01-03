@@ -347,19 +347,31 @@ local function skip_whitespace(environment, bytes)
 end
 
 local function read_until_exception(environment, bytes, Exception)
-  return list.generate(function(yield)
-    local ok, value = true
-    while ok do
-      ok, value, bytes = pcall(read, environment, bytes)
-      if ok then
-        foreach(yield, value)
-      elseif isinstance(value, Exception) then
-        return cdr(value.bytes)
-      else
-        raise(value)
+  local ok, values, rest
+  local all = list.iterate(function(index)
+      if ok and values then
+        local value = values[1]
+        values = values[2]
+        return value
       end
+      ok, values, bytes = pcall(read, environment, bytes)
+      if ok then
+        if values then
+          local value = values[1]
+          if values then
+            values = values[2]
+          end
+          return value
+        end
+      elseif not isinstance(values, Exception) then
+        raise(values)
+      end
+    end)
+  return all, later(function()
+    if not values then
+      finalize(all)
     end
-  end)
+    return cdr(values.bytes) end)
 end
 
 local function read_list(environment, bytes)
