@@ -359,9 +359,9 @@ local function nextreadexception(Exception)
   end
 end
 
-local nextreadlist = nextreadexception(UnmatchedRightParenException)
-local nextreadvector = nextreadexception(UnmatchedRightBracketException)
-local nextreaddict = nextreadexception(UnmatchedRightBraceException)
+local nextinlist = nextreadexception(UnmatchedRightParenException)
+local nextinvector = nextreadexception(UnmatchedRightBracketException)
+local nextindict = nextreadexception(UnmatchedRightBraceException)
 
 local function structure(name)
   return function(rest)
@@ -369,22 +369,19 @@ local function structure(name)
   end
 end
 
+local joinlist = compose(list, tolist, join)
 local function read_list(environment, bytes)
-  return uncons(list.traverse(
-    compose(list, tolist, join),
-    nextreadlist, environment, cdr(bytes)))
+  return uncons(list.traverse(joinlist, nextinlist, environment, bytes[2]))
 end
 
+local joinvector = compose(list, structure"vector", tolist, join)
 local function read_vector(environment, bytes)
-  return uncons(list.traverse(
-      compose(list, structure("vector"), tolist, join),
-      nextreadvector, environment, cdr(bytes)))
+  return uncons(list.traverse(joinvector, nextinvector, environment, bytes[2]))
 end
 
+local joindict = compose(list, structure"dict", tolist, join)
 local function read_table(environment, bytes)
-  return uncons(list.traverse(
-      compose(list, structure("dict"), tolist, join),
-      nextreaddict, environment, cdr(bytes)))
+  return uncons(list.traverse(joindict, nextindict, environment, bytes[2]))
 end
 
 local function read_string(environment, bytes)
