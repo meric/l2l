@@ -6,6 +6,7 @@ local bind = itertools.bind
 local car = itertools.car
 local cdr = itertools.cdr
 local cons = itertools.cons
+local uncons = itertools.uncons
 local id = itertools.id
 local list = itertools.list
 local pack = itertools.pack
@@ -19,6 +20,7 @@ local isinstance = itertools.isinstance
 local map = itertools.map
 local join = itertools.join
 local tolist = itertools.tolist
+local compose = itertools.compose
 
 local raise = exception.raise
 
@@ -362,30 +364,25 @@ local nextreadvector = nextreadexception(UnmatchedRightBracketException)
 local nextreaddict = nextreadexception(UnmatchedRightBraceException)
 
 local function read_list(environment, bytes)
-  return unpack(list.traverse(
-      function(values) return
-        list(tolist(join(values)))
-      end,
-      nextreadlist,
-      environment, cdr(bytes)), 1, 2)
+  return uncons(list.traverse(
+    compose(list, tolist, join),
+    nextreadlist, environment, cdr(bytes)))
 end
 
 local function read_vector(environment, bytes)
-  return unpack(list.traverse(
+  return uncons(list.traverse(
       function(values) return
         list(cons(symbol("vector"), tolist(join(values))))
       end,
-      nextreadvector,
-      environment, cdr(bytes)), 1, 2)
+      nextreadvector, environment, cdr(bytes)))
 end
 
 local function read_table(environment, bytes)
-  return unpack(list.traverse(
+  return uncons(list.traverse(
       function(values) return
         list(cons(symbol("dict"), tolist(join(values))))
       end,
-      nextreaddict,
-      environment, cdr(bytes)), 1, 2)
+      nextreaddict, environment, cdr(bytes)))
 end
 
 local function read_string(environment, bytes)

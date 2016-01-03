@@ -419,6 +419,10 @@ local function cons(a, b)
   return pair({a, b})
 end
 
+local function uncons(a)
+  return car(a), cdr(a)
+end
+
 local function mapcar(f, l)
   f = f or id
   return function(invariant, index)
@@ -796,6 +800,7 @@ local function isinstance(value, mt)
 end
 
 return {
+  uncons=uncons,
   traverse=traverse,
   isinstance=isinstance,
   join=join,
