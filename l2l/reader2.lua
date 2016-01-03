@@ -387,21 +387,9 @@ local function read_vector(environment, bytes)
 end
 
 local function read_table(environment, bytes)
-  local origin = list(nil)
-  local last = origin
-  local rest = bytes[2]
-  local ok, values, _ = true
-  while ok do
-    ok, values, rest = pcall(read, environment, rest)
-    if ok then
-      last[2] = values
-      last = last[2] or last
-    elseif getmetatable(values) == UnmatchedRightBraceException then
-      return list(cons(symbol("dict"), origin[2])), cdr(values.bytes)
-    else
-      raise(values)
-    end
-  end
+  local values, rest = read_until_exception(environment, bytes[2],
+    UnmatchedRightBraceException)
+  return list(cons(symbol("dict"), values)), now(rest)
 end
 
 local function read_string(environment, bytes)
