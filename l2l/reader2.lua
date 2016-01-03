@@ -16,8 +16,6 @@ local identity = itertools.identity
 local cadr = itertools.cadr
 local foreach = itertools.foreach
 local isinstance = itertools.isinstance
-local later = itertools.later
-local now = itertools.now
 local map = itertools.map
 local join = itertools.join
 local tolist = itertools.tolist
@@ -348,49 +346,42 @@ local function skip_whitespace(environment, bytes)
   return read(environment, rest)
 end
 
-local function nextread(raise)
+local function nextread(Exception)
   return function(environment, bytes)
     local ok, values, rest = pcall(read, environment, bytes)
     if ok then
       return rest, values
-    else
+    elseif not isinstance(values, Exception) then
       raise(values)
     end
   end
 end
 
-local function read_until_exception(environment, bytes, Exception)
-  local values, rest
-  values = tolist(join(nextread(function(except)
-      if not isinstance(except, Exception) then
-        raise(except)
-      else
-        rest = except.bytes
-      end
-    end), environment, bytes))
-  return values, later(function()
-    if not rest then
-      finalize(values)
-    end
-    return cdr(rest) end)
-end
-
 local function read_list(environment, bytes)
-  local values, rest = read_until_exception(environment, bytes[2],
-    UnmatchedRightParenException)
-  return list(values), now(rest)
+  return unpack(list.traverse(
+      function(values) return
+        list(tolist(join(values)))
+      end,
+      nextread(UnmatchedRightParenException),
+      environment, cdr(bytes)), 1, 2)
 end
 
 local function read_vector(environment, bytes)
-  local values, rest = read_until_exception(environment, bytes[2],
-    UnmatchedRightBracketException)
-  return list(cons(symbol("vector"), values)), now(rest)
+  return unpack(list.traverse(
+      function(values) return
+        list(cons(symbol("vector"), tolist(join(values))))
+      end,
+      nextread(UnmatchedRightBracketException),
+      environment, cdr(bytes)), 1, 2)
 end
 
 local function read_table(environment, bytes)
-  local values, rest = read_until_exception(environment, bytes[2],
-    UnmatchedRightBraceException)
-  return list(cons(symbol("dict"), values)), now(rest)
+  return unpack(list.traverse(
+      function(values) return
+        list(cons(symbol("dict"), tolist(join(values))))
+      end,
+      nextread(UnmatchedRightBraceException),
+      environment, cdr(bytes)), 1, 2)
 end
 
 local function read_string(environment, bytes)

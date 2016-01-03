@@ -151,7 +151,7 @@ local function tolist(nextvalue, invariant, state)
   if state then
     return setmetatable({value,
       proper=true,
-      next=nextvalue,
+      nextvalue=nextvalue,
       invariant=invariant,
       state=state,
       ending=obj}, list)
@@ -165,18 +165,12 @@ end
 -- a `yield` argument which the function must call for each value it generates.
 -- @param f A function that givens an index and `yield`, calls each value with
 --    `yield`.
-local function generate(f, yield)
+local function generate(f)
   local routine = coroutine.create(f)
   return function(_, index)
     local ok, value = coroutine.resume(routine, coroutine.yield, index)
     if not ok then
       error(value)
-    end
-    if coroutine.status(routine) == "dead" then
-      if yield then
-        yield(value)
-      end
-      return
     end
     if value ~= nil then
       return index + 1, value
@@ -202,16 +196,6 @@ end
 local function repeated(value)
   return iterate(function() return value end)
 end
-
-local function later(f, argument)
-  return setmetatable({nil,
-    proper=false,
-    next=function(_, index) if index == 0 then return 1, f(argument) end end,
-    invariant=nil,
-    state=0}, list)
-end
-
-local now = cdr
 
 -- Return whether the arguments do not contain values that have yet to be
 -- calculated.
@@ -253,20 +237,22 @@ list = setmetatable({
   iterate = function(f)
     return tolist(iterate(f))
   end,
+  traverse = function(f, nextvalue, invariant, state)
+    local values = tolist(nextvalue, invariant, state)
+    return setmetatable({f(values),
+        proper=false,
+        nextvalue=function(cache, index)
+          if index == 0 then
+            for i in list.next, cache, 0 do end
+            return 1, cache[#cache].state
+          end
+        end,
+        invariant={[0]=values},
+        state=0},
+      list)
+  end,
   generate = function(f)
-    local ended, rest
-    local values = tolist(generate(f,
-      function(value)
-        ended = true
-        rest = value
-      end))
-    return values,
-           later(function()
-              if not ended then
-                finalize(values)
-              end
-              return rest
-            end)
+    return tolist(generate(f))
   end,
   reverse = function(self)
     if not self then
@@ -360,9 +346,9 @@ list = setmetatable({
     return list.next, {[0]=self}, 0
   end,
   __index = function(self, i)
-    local nextvalue = rawget(self, "next")
+    local nextvalue = rawget(self, "nextvalue")
     if i == 2 and nextvalue then
-      self.next = nil
+      self.nextvalue = nil
       local invariant = self.invariant
       local state, value = nextvalue(invariant, self.state)
       if state == nil then
@@ -373,7 +359,7 @@ list = setmetatable({
       if rawget(self, "proper") then
         rest = setmetatable({value,
           proper=true,
-          next=nextvalue,
+          nextvalue=nextvalue,
           invariant=invariant,
           state=state,
           ending=self.ending}, list)
@@ -489,7 +475,7 @@ local function fold(f, initial, nextvalue, invariant, state)
 end
 
 
--- Returns aa concatenation of each sequence returned by 
+-- Returns a concatenation of each sequence returned by 
 -- `nextvalue, invariant, state`.
 local function join(nextvalue, invariant, state)
   nextvalue, invariant, state = tonext(nextvalue, invariant, state)
@@ -501,7 +487,7 @@ local function join(nextvalue, invariant, state)
 
     if not current[3] then
       local collection
-      current.state, collection = nextvalue(invariant, current.state)
+      current[0], collection = nextvalue(invariant, current[0])
       current[1], current[2], current[3] = tonext(collection)
       current[3], value = current[1](current[2], current[3])
     end
@@ -509,7 +495,7 @@ local function join(nextvalue, invariant, state)
     if current[3] then
       return index + 1, value
     end
-  end, {state=state, tonext(collection)}, 0
+  end, {[0]=state, tonext(collection)}, 0
 end
 
 local function filter(f, nextvalue, invariant, state)
@@ -810,10 +796,9 @@ local function isinstance(value, mt)
 end
 
 return {
+  traverse=traverse,
   isinstance=isinstance,
   join=join,
-  later=later,
-  now=now,
   unlift=unlift,
   tonext = tonext,
   identity = identity,
