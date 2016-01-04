@@ -224,6 +224,14 @@ local function finalize(nextvalue, invariant, state)
   return nextvalue, invariant, state
 end
 
+local function copy(obj)
+  local t =  {}
+  for k, value in pairs(obj) do
+    t[k] = value
+  end
+  return setmetatable(t, getmetatable(obj))
+end
+
 list = setmetatable({
   unpack = function(self)
     if self then
@@ -235,20 +243,6 @@ list = setmetatable({
   end,
   iterate = function(f)
     return tolist(iterate(f))
-  end,
-  traverse = function(f, nextvalue, invariant, state)
-    local values = tolist(nextvalue, invariant, state)
-    return setmetatable({f(values),
-        proper=false,
-        nextvalue=function(cache, index)
-          if index == 0 then
-            for i in list.next, cache, 0 do end
-            return 1, cache[#cache].state
-          end
-        end,
-        invariant={[0]=values},
-        state=0},
-      list)
   end,
   generate = function(f)
     return tolist(generate(f))
@@ -381,6 +375,28 @@ list = setmetatable({
     return origin[2]
   end})
 
+-- Returns a `cons`, of which the `car` is the arguments cast as a list,
+-- and the `cdr` is the state of the iterator after it has returned the last
+-- value.  
+local function traverse(nextvalue, invariant, state)
+  nextvalue, invariant, state = tonext(nextvalue, invariant, state)
+  local origin = list(nil)
+  local last = origin
+  local index = 0
+  local rest
+  while true do
+    index = index + 1
+    state, value = nextvalue(invariant, state)
+    if state == nil then
+      break
+    end
+    last[2] = list(value)
+    last = last[2]
+    rest = state
+  end
+  return origin[2], rest
+end
+
 local function call(funcs, ...)
   if not funcs then
     return ...
@@ -431,10 +447,6 @@ end
 
 local function cons(a, b)
   return pair({a, b})
-end
-
-local function uncons(a)
-  return car(a), cdr(a)
 end
 
 local function mapcar(f, l)
@@ -814,7 +826,7 @@ local function isinstance(value, mt)
 end
 
 return {
-  uncons=uncons,
+  copy=copy,
   compose=compose,
   traverse=traverse,
   isinstance=isinstance,

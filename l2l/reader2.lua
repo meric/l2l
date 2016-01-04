@@ -21,6 +21,8 @@ local map = itertools.map
 local join = itertools.join
 local tolist = itertools.tolist
 local compose = itertools.compose
+local traverse = itertools.traverse
+local helm = itertools.helm
 
 local raise = exception.raise
 
@@ -359,29 +361,31 @@ local function nextreadexception(Exception)
   end
 end
 
-local nextinlist = nextreadexception(UnmatchedRightParenException)
-local nextinvector = nextreadexception(UnmatchedRightBracketException)
-local nextindict = nextreadexception(UnmatchedRightBraceException)
-
 local function structure(name)
   return function(rest)
     return cons(symbol(name, rest))
   end
 end
 
+local nextinlist = nextreadexception(UnmatchedRightParenException)
 local joinlist = compose(list, tolist, join)
 local function read_list(environment, bytes)
-  return uncons(list.traverse(joinlist, nextinlist, environment, bytes[2]))
+  local values, rest = traverse(nextinlist, environment, bytes[2])
+  return joinlist(values), rest
 end
 
+local nextinvector = nextreadexception(UnmatchedRightBracketException)
 local joinvector = compose(list, structure"vector", tolist, join)
 local function read_vector(environment, bytes)
-  return uncons(list.traverse(joinvector, nextinvector, environment, bytes[2]))
+  local values, rest = traverse(nextinvector, environment, bytes[2])
+  return joinvector(values), rest
 end
 
+local nextindict = nextreadexception(UnmatchedRightBraceException)
 local joindict = compose(list, structure"dict", tolist, join)
 local function read_table(environment, bytes)
-  return uncons(list.traverse(joindict, nextindict, environment, bytes[2]))
+  local values, rest = traverse(nextindict, environment, bytes[2])
+  return joindict(value), rest
 end
 
 local function read_string(environment, bytes)

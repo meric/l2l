@@ -36,6 +36,7 @@ local FunctionArgumentException =
   exception.Exception("Argument is not a %s")
 
 local function compile(environment, bytes, forms, positions)
+  -- return a lua block and an expression ?
   local rest = environment._META[bytes].rest
   local expressions = {}
 
@@ -70,7 +71,7 @@ end
 local bytes = itertools.tolist("(print (print 1 2 3 5))")
 local environment = reader.environ(bytes)
 local values, rest = reader.read(environment, bytes)
-print(values, rest)
+-- print(values, rest)
 values, rest = compile(environment, bytes, values)
 
 print(values)
