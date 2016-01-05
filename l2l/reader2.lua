@@ -155,6 +155,7 @@ local function with_R(environment, inherit, R, f, ...)
 end
 
 local default_R
+local default_C
 
 local function environ(bytes)
   local rest, previous = bytes
@@ -175,6 +176,7 @@ local function environ(bytes)
   end})
   
   return {
+    _C=require("l2l.compiler2").default_C(),
     _R=default_R(),
     _META={
       origin=bytes,
@@ -376,7 +378,7 @@ local nextinlist = nextreadexception(UnmatchedRightParenException)
 local joinlist = compose(tolist, join)
 local function read_list(environment, bytes)
   local values, rest = traverse(nextinlist, environment, bytes[2])
-  return list(joinlist(values)), cdr(rest)
+  return list(joinlist(values) or nil), cdr(rest)
 end
 
 local nextinvector = nextreadexception(UnmatchedRightBracketException)

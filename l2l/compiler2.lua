@@ -28,6 +28,7 @@ local drop = itertools.drop
 local id = itertools.id
 local slicecar = itertools.slicecar
 local join = itertools.join
+local rawtostring = itertools.rawtostring
 
 local IllegalFunctionCallException =
   exception.Exception("Illegal function call")
@@ -36,8 +37,18 @@ local IllegalFunctionCallException =
 local FunctionArgumentException =
   exception.Exception("Argument is not a %s")
 
-local function compile(environment, bytes, forms, metadata)
-  -- return a lua block and an expression ?
+local function default_C()
+  return {
+    vector = function(environment, bytes, values, stats, metadata)
+      -- iterate values, advance metadata?
+      return list(cons(symbol("LuaVector"), values)), stats
+    end
+  }
+end
+
+local function compile(environment, bytes, values, stats, metadata)
+  -- return a lua block and an expression list?
+  stats = stats or {}
   local expressions = {}
 
   if not metadata and bytes then
@@ -47,30 +58,50 @@ local function compile(environment, bytes, forms, metadata)
           slicecar(bytes, car(environment._META[bytes]).rest, bytes)))))
   end
 
-  for i, data in ipairs(forms) do
-    if type(data) == "number" or type(data) == "string" then
-      table.insert(expressions, data)
-    elseif getmetatable(data) == symbol then
-      table.insert(expressions, list(symbol("LuaName"), data))
-    elseif getmetatable(data) == list then
-      local first, rest = car(data), cdr(data)
-      metadata = cdr(metadata)
-      first = cadr(compile(environment, metadata[1].position, list(first), metadata))
-      metadata = cdr(metadata)
-      rest = compile(environment, metadata[1].position, rest, metadata)
-      table.insert(expressions, list(symbol("LuaCall"), first, rest))
-    elseif data == nil then
-      table.insert(expressions, list(symbol("LuaNil")))
+  for i, value in ipairs(values) do
+    local mt = getmetatable(value)
+    if type(value) == "number" or type(value) == "string" then
+      table.insert(expressions, list(symbol("LuaValue"), rawtostring(bytes), value))
+    elseif mt == symbol then
+      table.insert(expressions, list(symbol("LuaName"), rawtostring(bytes), value))
+    elseif mt == list then
+      local first, rest = car(value), cdr(value)
+      if getmetatable(first) == symbol and environment._C[tostring(first)] then
+        metadata = cdr(metadata)
+        values = environment._C[tostring(first)](environment, metadata[1].position, rest, stats, metadata)
+        for i, value in ipairs(values or {}) do
+          table.insert(expressions, value)
+        end
+      else
+        metadata = cdr(metadata)
+        first = compile(environment, metadata[1].position, list(first), stats, metadata)
+        if rest ~= nil then
+          metadata = cdr(metadata)
+          rest = compile(environment, metadata[1].position, rest, stats, metadata)
+          table.insert(expressions,
+            list(symbol("LuaCall"), rawtostring(bytes), car(first), rest))
+        else
+          table.insert(expressions,
+            list(symbol("LuaCall"), rawtostring(bytes), car(first)))
+        end
+      end
+    elseif value == nil then
+      table.insert(expressions, list(symbol("LuaNil"), rawtostring(bytes)))
     end
     metadata = cdr(metadata)
   end
-  return list(symbol("LuaExpList"), unpack(expressions))
+  return tolist(expressions), stats
 end
 
-local bytes = itertools.tolist("(print (print 1 2 3 [4 5 6]))")
-local environment = reader.environ(bytes)
-local values, rest = reader.read(environment, bytes)
-print(values, rest)
-values, rest = compile(environment, bytes, values)
+if debug.getinfo(3) == nil then
+  local bytes = itertools.tolist("(print [1 2 3 nil])")
+  local environment = reader.environ(bytes)
+  local values, rest = reader.read(environment, bytes)
+  -- print(values, rest)
+  local exprs, stats = compile(environment, bytes, values)
+  print(exprs)
+end
 
-print(values)
+return {
+  default_C = default_C
+}

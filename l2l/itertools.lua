@@ -233,7 +233,7 @@ local function traverse(nextvalue, invariant, state)
   local origin = list(nil)
   local last = origin
   local index = 0
-  local rest
+  local rest = state
   while true do
     index = index + 1
     state, value = nextvalue(invariant, state)
@@ -523,7 +523,6 @@ local function join(nextvalue, invariant, state)
       current[1], current[2], current[3] = tonext(collection)
       current[3], value = current[1](current[2], current[3])
     end
-
     if current[3] then
       return index + 1, value
     end
