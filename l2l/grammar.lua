@@ -8,7 +8,6 @@ local cons = itertools.cons
 local id = itertools.id
 local list = itertools.list
 local tolist = itertools.tolist
--- local show = itertools.show
 local slice = itertools.slice
 local concat = itertools.concat
 local tovector = itertools.tovector
@@ -156,12 +155,15 @@ mark = setmetatable({
     -- assert(self[1])
     local read, all, rest = self[1], {}, bytes
     local ok, values, prev
+    local is_repeating = self[repeating]
+    local is_option = self[option]
+    local is_skip  = self[skip]
     while true do
       prev = rest
       ok, values, rest = pcall(read, environment, rest, stack)      
       if not ok then
         rest = prev -- restore to previous point.
-        if (ismark(self, repeating) or ismark(self, option))
+        if (is_repeating or is_option)
             and getmetatable(values) == ExpectedNonTerminalException then
           break
         else
@@ -172,14 +174,12 @@ mark = setmetatable({
         table.insert(all, value)
       end
       if not values then
-        if not ismark(self, repeating) then
-          if not ismark(self, option) then
-            return nil, bytes
-          end
+        if not is_repeating and not is_option then
+          return nil, bytes
         end
         break
       end
-      if not ismark(self, repeating) then
+      if not is_repeating then
         break
       end
     end
@@ -305,8 +305,8 @@ span = setmetatable({
         local prev_meta = environment._META[rest]
         values, rest = execute(read, environment, rest, stack)
         if not values
-            and not ismark(read, option)
-            and not ismark(read, repeating) then
+            and not read[option]
+            and not read[repeating] then
           return nil, bytes
         end
         if ismark(read, peek) then
@@ -421,13 +421,12 @@ local function expand_nonterminal_at_index(child, nonterminal, index)
         if isgrammar(grandchild, span)
             and grandchild[index]
             and grandchild[index].nonterminal == nonterminal then
-
-            nonterminalspan = span(unpack(grandchild))
-            for i=1, #child do
-              if i ~= index then
-                table.insert(nonterminalspan, child[i])
-              end
+          nonterminalspan = span(unpack(grandchild))
+          for i=1, #child do
+            if i ~= index then
+              table.insert(nonterminalspan, child[i])
             end
+          end
           return
         end
       end),
@@ -527,6 +526,11 @@ local function factor_prefix_of_nonterminal(factory, nonterminal)
         table.insert(patterns, pattern)
       end
     end
+  end
+  -- Refactor away span(any(span(any(....)))) wrapping.
+  while (isgrammar(patterns, any) or isgrammar(patterns, span))
+      and #patterns == 1 do
+    patterns = patterns[1]
   end
   return patterns
 end
@@ -835,13 +839,12 @@ factor = function(nonterminal, factory, instantiate)
     end
 
     if is_annotated then
-      if history and history.values and paths[bytes]
-        and not cdr(paths[bytes]) then
+      if history and paths[bytes] and not cdr(paths[bytes]) then
         -- We have executed all we want to execute and at a point where we
         -- already have a value collected, but left recursion has taken us
         -- back here. Return the collected value.
         if car(paths[bytes]) then
-          return history.values, history.rest
+          return car(history).values, car(history).rest
         end
       end
 
@@ -941,7 +944,6 @@ factor = function(nonterminal, factory, instantiate)
             end
           end
         end
-
         -- Try each suffix, while we can find a matching iteration, keep going
         -- and build a path for the recursion later. We don't return results
         -- of what we have here because we're factoring the grammar into a
@@ -982,7 +984,7 @@ factor = function(nonterminal, factory, instantiate)
       path, paths[bytes] = unpack(ordering or {})
 
       -- Cache in `prune`, rather than calling factory again for same index.
-      local prune = tostring(path)
+      local prune = path or tostring(path)
       if prunes[prune] then
         origin = prunes[prune]
       else

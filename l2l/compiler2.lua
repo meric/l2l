@@ -35,17 +35,15 @@ local IllegalFunctionCallException =
 local FunctionArgumentException =
   exception.Exception("Argument is not a %s")
 
-local function compile(environment, bytes, forms, positions)
+local function compile(environment, bytes, forms, metadata)
   -- return a lua block and an expression ?
-  local rest = environment._META[bytes].rest
   local expressions = {}
 
-  if not positions and bytes then
-    positions = tolist(
-      map(function(meta) return meta.position end,
-        filter(id,
-          map(function(position) return environment._META[position] end,
-            slicecar(bytes, rest, bytes)))))
+  if not metadata and bytes then
+    metadata = tolist(join(
+      filter(id,
+        map(function(position) return environment._META[position] end,
+          slicecar(bytes, car(environment._META[bytes]).rest, bytes)))))
   end
 
   for i, data in ipairs(forms) do
@@ -55,23 +53,23 @@ local function compile(environment, bytes, forms, positions)
       table.insert(expressions, list(symbol("LuaName"), data))
     elseif getmetatable(data) == list then
       local first, rest = car(data), cdr(data)
-      positions = cdr(positions)
-      first = cadr(compile(environment, positions[1], list(first), positions))
-      positions = cdr(positions)
-      rest = compile(environment, positions[1], rest, positions)
+      metadata = cdr(metadata)
+      first = cadr(compile(environment, metadata[1].position, list(first), metadata))
+      metadata = cdr(metadata)
+      rest = compile(environment, metadata[1].position, rest, metadata)
       table.insert(expressions, list(symbol("LuaCall"), first, rest))
     elseif data == nil then
       table.insert(expressions, list(symbol("LuaNil")))
     end
-    positions = cdr(positions)
+    metadata = cdr(metadata)
   end
   return list(symbol("LuaExpList"), unpack(expressions))
 end
 
-local bytes = itertools.tolist("(print (print 1 2 3 5))")
+local bytes = itertools.tolist("(print (print 1 2 3 [4 5 6]))")
 local environment = reader.environ(bytes)
 local values, rest = reader.read(environment, bytes)
--- print(values, rest)
+print(values, rest)
 values, rest = compile(environment, bytes, values)
 
 print(values)

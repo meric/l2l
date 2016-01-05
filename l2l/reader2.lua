@@ -11,7 +11,6 @@ local id = itertools.id
 local list = itertools.list
 local pack = itertools.pack
 local iterate = itertools.iterate
-local finalize = itertools.finalize
 local tonext = itertools.tonext
 local identity = itertools.identity
 local cadr = itertools.cadr
@@ -22,7 +21,6 @@ local join = itertools.join
 local tolist = itertools.tolist
 local compose = itertools.compose
 local traverse = itertools.traverse
-local helm = itertools.helm
 
 local raise = exception.raise
 
@@ -190,14 +188,14 @@ local function execute(reader, environment, bytes, ...)
   environment = environment or environ(bytes)
   local values, rest = reader(environment, bytes, ...)
   if environment._R[reader] ~= false then
-    if bytes and values and rest ~= bytes then
+    if bytes and values or rest ~= bytes then
       -- print("?", values, bytes)
-      environment._META[bytes] = {
+      environment._META[bytes] = list.push(environment._META[bytes], {
         read=reader,
         values=values,
         position=bytes,
         rest=rest
-      }
+      })
     end
   end
   return values, rest
@@ -361,31 +359,38 @@ local function nextreadexception(Exception)
   end
 end
 
-local function structure(name)
-  return function(rest)
-    return cons(symbol(name, rest))
-  end
+-- Returns `...`, record `...` as having been read from `bytes`.
+-- Use this function whenever we insert a value into the abstract syntax tree
+-- which was not directly returned by another read macro. This is important,
+-- so the data structure containing the locations of each read value matches
+-- the structure of the abstract syntax tree, so if we move ahead one item
+-- in each, the location corresponds to the value in the tree.
+-- See `compile.compile` for how this happens.
+local function id_read(environment, bytes, ...)
+  local values = list(...)
+  execute(function(_, bytes) return values, bytes end, environment, bytes)
+  return ...
 end
 
 local nextinlist = nextreadexception(UnmatchedRightParenException)
-local joinlist = compose(list, tolist, join)
+local joinlist = compose(tolist, join)
 local function read_list(environment, bytes)
   local values, rest = traverse(nextinlist, environment, bytes[2])
-  return joinlist(values), rest
+  return list(joinlist(values)), cdr(rest)
 end
 
 local nextinvector = nextreadexception(UnmatchedRightBracketException)
-local joinvector = compose(list, structure"vector", tolist, join)
 local function read_vector(environment, bytes)
   local values, rest = traverse(nextinvector, environment, bytes[2])
-  return joinvector(values), rest
+  local first = id_read(environment, bytes, symbol("vector"))
+  return list(cons(first, joinlist(values))), cdr(rest)
 end
 
 local nextindict = nextreadexception(UnmatchedRightBraceException)
-local joindict = compose(list, structure"dict", tolist, join)
 local function read_table(environment, bytes)
   local values, rest = traverse(nextindict, environment, bytes[2])
-  return joindict(value), rest
+  local first = id_read(environment, bytes, symbol("dict"))
+  return list(cons(first, joinlist(values))), cdr(rest)
 end
 
 local function read_string(environment, bytes)
@@ -438,11 +443,11 @@ local function try_explist(environment, bytes)
 
   return nil, bytes, values
 end
-
+local block_R
 local function try_block(environment, bytes)
-  local lua = require("l2l.lua")
+  block_R = block_R or require("l2l.lua").block_R()
 
-  local ok, values, rest = with_R(environment, false, lua.block_R(),
+  local ok, values, rest = with_R(environment, false, block_R,
     function()
       return pcall(skip_whitespace, environment, bytes)
     end)
@@ -565,7 +570,6 @@ end
 
 if debug.getinfo(3) == nil then
   -- local profile = require("l2l.profile")
-  -- local bytes = itertools.finalize(tolist([[(+ \id(1); (f) (g))]]))
   local bytes = itertools.tolist([[\while nil do return false, nil end]])
 
   -- -- profile.profile(function()
@@ -580,7 +584,6 @@ if debug.getinfo(3) == nil then
   
   -- print(car(cdr(car(values))[2]), rest)
 
-  -- itertools.finalize(tolist(itertools.take(1000000, itertools.repeated(2))))
 
   -- print(unpack(t))
   -- print(itertools.tovector(itertools.take(10000000, itertools.repeated(2))))
