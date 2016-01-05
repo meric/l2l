@@ -27,6 +27,7 @@ local take = itertools.take
 local drop = itertools.drop
 local id = itertools.id
 local slicecar = itertools.slicecar
+local join = itertools.join
 
 local IllegalFunctionCallException =
   exception.Exception("Illegal function call")
