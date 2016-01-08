@@ -11,6 +11,7 @@ local match = reader.match
 local read_predicate = reader.read_predicate
 local skip_whitespace = reader.skip_whitespace
 local symbol = reader.symbol
+local id_read = reader.id_read
 
 local associate = grammar.associate
 local span = grammar.span
@@ -22,6 +23,7 @@ local repeating = grammar.repeating
 local factor = grammar.factor
 
 local raise = exception.raise
+
 
 local ExpectedSymbolException =
   exception.Exception("ExpectedSymbolException", "Expected Lisp symbol.")
@@ -328,8 +330,8 @@ local lispname = factor("lispname", function() return
 
 local Name = factor("Name", function() return
     any(luaname, lispname)
-  end, function(_, ...)
-    return list(symbol("LuaName"), ...)
+  end, function(environment, bytes, ...)
+    return list(id_read(environment, bytes, symbol("LuaName")), ...)
   end)
 
 local unop = factor("unop", function() return
@@ -395,7 +397,7 @@ exp = factor("exp", function(left) return
       lispexp,
       prefixexp,
       span(unop, exp))
-  end, function(_, ...)
+  end, function(environment, bytes, ...)
     return ...
   end)
 
@@ -409,6 +411,8 @@ prefixexp = factor("prefixexp", function(left) return
   --  2. the nonterminal standing alone
   -- left recursions back to this nonterminal.
    any(left(functioncall), left(var), span("(", __, exp, __, ")"))
+  end, function(environment, bytes, value)
+    return value
   end)
 
 var = factor("var", function() return 
@@ -417,6 +421,8 @@ var = factor("var", function() return
       span(prefixexp, __, "[", __, exp, __, "]", __),
       span(prefixexp, __, ".", __, Name),
       Name)
+  end, function(environment, bytes, value)
+    return value
   end)
 
 local varlist = factor("varlist", function() return
@@ -463,6 +469,8 @@ local stat = factor("stat", function() return
 explist = factor("explist", function() return
     -- explist ::= exp {‘,’ exp}
     span(exp, __, mark(span(",", __, exp), repeating))
+  end, function(environment, bytes, ...)
+    return list(id_read(environment, bytes, symbol("LuaExprList")), ...)
   end)
 
 namelist = factor("namelist", function() return

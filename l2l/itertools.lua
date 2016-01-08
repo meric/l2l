@@ -1,9 +1,11 @@
-local function id(a)
-  return a
+local function id(...)
+  return ...
 end
 
-local function identity(...)
-  return ...
+local function index(t)
+  return function(value)
+    return t[value]
+  end
 end
 
 local function resolve(str, t)
@@ -79,7 +81,7 @@ end
 
 local function car(t)
   -- assert(t, "car: `t` missing."..debug.traceback())
-  return t[1]
+  return t[1], t[2]
 end
 
 local function cdr(t)
@@ -256,6 +258,18 @@ local function copy(obj)
 end
 
 list = setmetatable({
+  -- Static
+  prepend = function(a, ...)
+    return pair({a, tolist(...)})
+  end,
+  -- Static
+  iterate = function(f)
+    return tolist(iterate(f))
+  end,
+  -- Static
+  generate = function(f)
+    return tolist(generate(f))
+  end,
   unpack = function(self)
     if self then
       if getmetatable(self) ~= list then
@@ -264,11 +278,16 @@ list = setmetatable({
       return self[1], list.unpack(self[2])
     end
   end,
-  iterate = function(f)
-    return tolist(iterate(f))
+  -- Static
+  next = function(cache, index)
+    local self = cache[index]
+    if self ~= nil then
+      cache[index + 1] = self[2]
+      return index + 1, self[1]
+    end
   end,
-  generate = function(f)
-    return tolist(generate(f))
+  __ipairs = function(self)
+    return list.next, {[0]=self}, 0
   end,
   reverse = function(self)
     if not self then
@@ -282,6 +301,7 @@ list = setmetatable({
     self[2]=nil
     return first
   end,
+  -- Like Clojure's `conj`.
   push = function(self, obj, ...)
     if not ... then
       return pair({obj, self})
@@ -351,16 +371,6 @@ list = setmetatable({
     until not self
     return str .. ")"
   end,
-  next = function(cache, index)
-    local self = cache[index]
-    if self ~= nil then
-      cache[index + 1] = self[2]
-      return index + 1, self[1]
-    end
-  end,
-  __ipairs = function(self)
-    return list.next, {[0]=self}, 0
-  end,
   __index = function(self, i)
     local nextvalue = rawget(self, "nextvalue")
     if i == 2 and nextvalue then
@@ -396,7 +406,29 @@ list = setmetatable({
       last = last[2]
     end
     return origin[2]
+  end,
+  __tostring = function()
+    return "list"
   end})
+
+-- t = {aasdahkjsdga=5, 1, 2, 3, 4, z=1}
+
+-- function nextdict(invariant, index)
+--     local state = invariant[index]
+--     local value
+--     invariant[index + 1], value = next(t, state)
+--     if not invariant[index + 1] then
+--       return
+--     end
+--     return index + 1, value, invariant[index + 1]
+-- end
+
+
+-- for i, k, v in nextdict, {}, 0 do
+--   print(i, k, v)
+-- end
+
+-- os.exit()
 
 
 local function call(funcs, ...)
@@ -514,6 +546,9 @@ local function join(nextvalue, invariant, state)
   local collection
   state, collection = nextvalue(invariant, state)
   return function(current, index)
+    if not current[0] then
+      return
+    end
     local value
     current[3], value = current[1](current[2], current[3])
 
@@ -533,6 +568,7 @@ local function filter(f, nextvalue, invariant, state)
   f = f or id
   nextvalue, invariant, state = tonext(nextvalue, invariant, state)
   return function(cache, index)
+    assert(index)
     if cache[index * 2 + 2] then
       return cache[index * 2 + 2], cache[index * 2 + 3]
     end
@@ -550,9 +586,9 @@ local function filter(f, nextvalue, invariant, state)
 end
 
 local function search(f, nextvalue, invariant, state)
-  for _, v in tonext(nextvalue, invariant, state) do
+  for i, v in tonext(nextvalue, invariant, state) do
     if f(v) then
-      return v
+      return v, i
     end
   end
 end
@@ -828,6 +864,7 @@ end
 
 return {
   apply=apply,
+  index=index,
   bind=bind,
   cadr = cadr,
   car=car,
@@ -849,7 +886,6 @@ return {
   foreach=foreach,
   foreacharg=foreacharg,
   id=id,
-  identity = identity,
   isinstance=isinstance,
   iterate=iterate,
   join=join,

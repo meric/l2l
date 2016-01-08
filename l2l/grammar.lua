@@ -253,7 +253,7 @@ any = setmetatable({
     -- assert(bytes[1], self)
     for _, read in ipairs(self) do
       if read ~= nil then
-        local ok, values, rest = pcall(execute, read, environment, bytes,
+        local ok, values, rest = pcall(read, environment, bytes,
           stack)
         if ok and values and rest ~= bytes then
           return values, rest
@@ -303,7 +303,7 @@ span = setmetatable({
       if read ~= nil then
         local prev = rest
         local prev_meta = environment._META[rest]
-        values, rest = execute(read, environment, rest, stack)
+        values, rest = read(environment, rest, stack)
         if not values
             and not read[option]
             and not read[repeating] then
@@ -1033,7 +1033,8 @@ factor = function(nonterminal, factory, instantiate)
     end
 
     if instantiate then
-      values = list(instantiate(nonterminal, unpack(values)))
+      -- environment, bytes?
+      values = list(instantiate(environment, bytes, unpack(values)))
     else
       values = list(nonterminal(unpack(values)))
     end

@@ -158,6 +158,10 @@ local default_R
 local default_C
 
 local function environ(bytes)
+  if type(bytes) == "string" then
+    bytes = tolist(bytes)
+  end
+
   local rest, previous = bytes
   PREV = setmetatable({}, {__index=function(t, location)
     while rest do
@@ -182,23 +186,45 @@ local function environ(bytes)
       origin=bytes,
       source=list.concat(bytes, "")
     },
-    _PREV=PREV
-  }
+    _PREV=PREV,
+  }, bytes
 end
 
 local function execute(reader, environment, bytes, ...)
   environment = environment or environ(bytes)
-  local values, rest = reader(environment, bytes, ...)
+  local parents = environment._META.parents
+  local parent = parents and parents[1] or nil
+  local metadata = {
+    bytes = bytes,
+    read = reader,
+
+    -- Keep a count of the number of child values.
+    children = 0
+  }
+  environment._META.parents = list.push(parents, metadata)
+  local ok, values, rest = pcall(reader, environment, bytes, ...)
+  environment._META.parents = cdr(environment._META.parents)
+  if not ok then
+    raise(values)
+  end
   if environment._R[reader] ~= false then
     if bytes and values or rest ~= bytes then
-      -- print("?", values, bytes)
-      environment._META[bytes] = list.push(environment._META[bytes], {
-        read=reader,
-        values=values,
-        position=bytes,
-        rest=rest
-      })
+      metadata.values = values
+      metadata.rest = rest
+      if not ... or #(...) == 1 then
+        if ... then
+
+        end
+        environment._META[bytes] = list.push(environment._META[bytes], metadata)
+        if parent then
+          parent.children = parent.children + 1
+        end
+      end
     end
+  elseif parent then
+    -- Skipped, e.g. skip_whitespace
+    -- Forward the number of children to parents.
+    parent.children = parent.children + metadata.children
   end
   return values, rest
 end
@@ -378,7 +404,7 @@ local nextinlist = nextreadexception(UnmatchedRightParenException)
 local joinlist = compose(tolist, join)
 local function read_list(environment, bytes)
   local values, rest = traverse(nextinlist, environment, bytes[2])
-  return list(joinlist(values) or nil), cdr(rest)
+  return list(joinlist(values) or symbol("nil")), cdr(rest)
 end
 
 local nextinvector = nextreadexception(UnmatchedRightBracketException)
@@ -482,11 +508,12 @@ local function read_lua(environment, bytes)
   --   3. \ <block>` is valid.
 
   returns, rest, explisterr = try_explist(environment, origin)
+  local first = id_read(environment, bytes, symbol("\\"))
   if returns == nil then
     rest = cdr(bytes)
     values, rest, blockerr = try_block(environment, rest)
     if values then
-      return list(list(symbol("\\"), nil, car(values))), rest
+      return list(list(first, nil, car(values))), rest
     end
     if blockerr then
       raise(blockerr)
@@ -507,7 +534,7 @@ local function read_lua(environment, bytes)
   if ok and keyword then
     values, rest, blockerr = try_block(environment, rest)
     if values then
-      return list(list(symbol("\\"), car(returns), car(values))), rest
+      return list(list(first, car(returns), car(values))), rest
     end
     if blockerr then
       raise(blockerr)
@@ -518,7 +545,7 @@ local function read_lua(environment, bytes)
     if not semicolon then
       raise(LuaSemicolonException(environment, origin))
     end
-    return list(cons(symbol("\\"), returns)), rest
+    return list(cons(first, returns)), rest
   end
 end
 
@@ -593,6 +620,7 @@ if debug.getinfo(3) == nil then
   --   itertools.map(function(x) return x end, itertools.range(1000000))))
 end
 
+-- rest, values, meta
 -- (. mario x y)
 -- print(value, rest)
 
@@ -613,6 +641,7 @@ return {
   read_right_paren = read_right_paren,
   read_symbol = read_symbol,
   match=match,
-  environ=environ
+  environ=environ,
+  id_read=id_read
 }
 
