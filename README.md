@@ -9,7 +9,7 @@ performance.
 
 Status
 ------
-This project is currently very unstable. Every commit is more likely than not to break compatibility with its previous commit. If you find a commit that works for you, stick to it. Right now I'm working on rewriting large parts of it to improve parsing performance, as well as adding a parser generator that will be used to parse Lua inside Lisp code.
+This project is currently very unstable. Every commit is more likely than not to break compatibility with its previous commit. If you find a commit that works for you, stick to it. Right now I'm working on rewriting large parts of it to improve parsing performance, as well as adding a parser generator that will be used to parse Lua inside Lisp code, and adding meta information to compiled expressions so it'll be possible to intercept Lua runtime errors and translate them back into a Lisp traceback.
 
 
 Features
