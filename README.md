@@ -7,6 +7,10 @@ A Lisp to Lua compiler, compatible with LuaJIT or Lua5.1+. Lua 5.2+ or
 LuaJIT (built with -DLUAJIT_ENABLE_LUA52COMPAT) recommended for higher
 performance.
 
+Status
+------
+This project is currently very unstable. Every commit is more likely than not to break compatibility with its previous commit. If you find a commit that works for you, stick to it. Right now I'm working on rewriting large parts of it to improve parsing performance, as well as adding a parser generator that will be used to parse Lua inside Lisp code.
+
 
 Features
 -----------
