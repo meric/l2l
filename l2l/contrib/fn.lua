@@ -24,22 +24,22 @@ local lua_local = lua.lua_local
 
 local function stat_lua_function(invariant, output, name, parameters, body)
   return lua_local_function.new(
-      lua_name(name:hash()),
-      lua_funcbody.new(
-        lua_namelist(vector.cast(parameters, function(value)
-            return lua_name(value:hash())
-          end)),
-        lua_block(vector.cast(body, function(value, i)
-          return compiler.statize(invariant, value, output, i == #body) end))))
+    lua_name(name:hash()),
+    lua_funcbody.new(
+      lua_namelist(vector.cast(parameters, function(value)
+          return lua_name(value:hash())
+        end)),
+      lua_block(vector.cast(body, function(value, i)
+        return compiler.statize(invariant, value, output, i == #body) end))))
 end
 
 local function exp_lua_lambda_function(invariant, output, parameters, body)
   return lua_lambda_function.new(lua_funcbody.new(
-        lua_namelist(vector.cast(parameters, function(value)
-            return lua_name(value:hash())
-          end)),
-        lua_block(vector.cast(body, function(value, i)
-          return compiler.statize(invariant, value, output, i == #body) end))))
+    lua_namelist(vector.cast(parameters, function(value)
+        return lua_name(value:hash())
+      end)),
+    lua_block(vector.cast(body, function(value, i)
+      return compiler.statize(invariant, value, output, i == #body) end))))
 end
 
 local function validate_function(cadr)
