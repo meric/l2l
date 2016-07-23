@@ -28,6 +28,11 @@ local invariant = reader.environ([=[
 
 -- Use Lua expressions in Lisp S-Expressions with backslash.
 (print \function(x) print(x, \'(1 2 3 (a 1) \b(1))) end)
+
+(print \{a=1, b=2, 3, 4} \function()
+    for i=1, 3 do print(i) end return 9
+end)
+
 ]=])
 
 -- print(1)
