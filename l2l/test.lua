@@ -53,7 +53,12 @@ end)
 -- print("hello world")
 -- print(list(1, 2, 3))
 -- print(list(1, list(1), print(1,2)))
--- print(function(x) print(x,list(1, 2, 3)) end)
+-- print(function(x)print(x,list(1, 2, 3, list(symbol("a"), 1), b(1))) end)
+-- print({a=1,b=2,3,4},function()for i=1,3 do print(i) end;return 9 end)
+-- print(1 + 1 * 2,4)
+-- print(0 + x * y,4)
+-- local function add(a,b)local _var0 = a + b;return 2 end
+-- print(function()print(1);return 2 end)
 
 local output = {}
 
