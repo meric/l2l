@@ -97,21 +97,21 @@ end
 function list.cast(t, f)
   -- Cast an ipairs-enumerable object into a list.
   local self = setmetatable({position = data.n + 1}, list)
-  local count = #t
-  if count == 0 then
+  if not t or #t == 0 then
     return
   end
-  local index = self.position
+  local n = data.n
+  data.n = data.n + #t * 2
   for i, v in ipairs(t) do
-    local car, cdr = data.n + 1, data.n + 2
-    data.n = cdr
+    n = n + 1
     if f then
-      data[car] = f(v)
+      data[n] = f(v)
     else
-      data[car] = v
+      data[n] = v
     end
-    if i < count then
-      data[cdr] = data.n + 1
+    n = n + 1
+    if i < #t then
+      data[n] = n + 1
     end
   end
   return self

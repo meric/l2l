@@ -17,6 +17,9 @@ function vector:__tostring()
 end
 
 function vector.cast(t, f)
+  if not t then
+    return setmetatable({n=0}, vector)
+  end
   local u = setmetatable({n=#t}, vector)
   local n = 0
   for i, v in ipairs(t) do
