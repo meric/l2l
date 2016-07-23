@@ -24,8 +24,6 @@ local lua_keyword = {
   ["while"] = true
 }
 
-
-
 local lua_none = setmetatable({}, {__tostring = function()
   return "lua_none"
 end})

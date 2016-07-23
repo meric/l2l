@@ -23,9 +23,6 @@ local function read_quasiquote_eval(invariant, position)
 end
 
 local function quasiquote_eval(invariant, car, output)
-  invariant._quasiquote_eval = invariant._quasiquote_eval or function(value)
-    return quasiquote_eval(invariant, value, output)
-  end
   if utils.hasmetatable(car, list) then
     if car:car() == symbol("quasiquote-eval") then
       local cdr = car:cdr()
@@ -33,7 +30,9 @@ local function quasiquote_eval(invariant, car, output)
         "quasiquote_eval only accepts one parameter.")
       return compiler.compile_exp(invariant, cdr:car(), compile)
     end
-    return list.cast(car, invariant._quasiquote_eval)
+    return list.cast(car, function(value)
+      return quasiquote_eval(invariant, value, output)
+    end)
   end
   return car
 end
