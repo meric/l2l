@@ -1,11 +1,13 @@
 local reader = require("l2l.reader")
 local compiler = require("l2l.compiler")
+local list = require("l2l.list")
 
 local invariant = reader.environ([=[
 -- Install quote and quasiquote read macro and special forms.
 
 (-# LANGUAGE l2l.contrib.quote #-)
 (-# LANGUAGE l2l.contrib.quasiquote #-)
+(-# LANGUAGE l2l.contrib.fn #-)
 
 -- Semicolons have no effect.
 ;;;
@@ -33,6 +35,16 @@ local invariant = reader.environ([=[
     for i=1, 3 do print(i) end return 9
 end)
 
+-- Infix maths when starting with a number.
+(print 1 + 1 * 2; 4)
+(print 0 + x * y; 4)
+
+-- Function definition
+(fn add (a b)  \a + b 2)
+
+-- (print (fn (a b) (print 1) \a + b))
+(print (fn () (print 1) 2))
+
 ]=])
 
 -- print(1)
@@ -47,9 +59,9 @@ local output = {}
 
 for rest, values in reader.read, invariant do
   for i, value in ipairs(values) do
-    local ref = compiler.compile(invariant, value, compile)
-    if ref then
-      table.insert(output, ref)
+    local stat = compiler.compile_stat(invariant, value, compile)
+    if stat then
+      table.insert(output, stat)
     end
   end
 end

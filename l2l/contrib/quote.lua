@@ -19,5 +19,5 @@ end
 
 return function(invariant)
   reader.register_R(invariant, "'", read_quote)
-  compiler.register_L(invariant, "quote", compile_quote)
+  compiler.register_L(invariant, "quote", compile_quote, compile_quote)
 end

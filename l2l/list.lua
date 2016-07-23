@@ -14,7 +14,7 @@ garbage collected, it stores a value pointing to the next cell.
 
 local utils = require("leftry").utils
 
-local data = setmetatable({n=0}, { __mode = 'v' })
+local data = setmetatable({n=0, free=0}, {})
 
 local list = utils.prototype("list", function(list, ...)
   local self = setmetatable({position = data.n + 1}, list)
@@ -31,6 +31,15 @@ local list = utils.prototype("list", function(list, ...)
   end
   return self
 end)
+
+function list:__gc()
+  data[self.position] = nil
+  data[self.position + 1] = nil
+  data.free = data.free + 1
+  if data.free == data.n then
+    data = setmetatable({n=0}, {})
+  end
+end
 
 function list:__tostring()
   local text = {}
@@ -96,16 +105,16 @@ end
 
 function list.cast(t, f)
   -- Cast an ipairs-enumerable object into a list.
-  local self = setmetatable({position = data.n + 1}, list)
   if not t or #t == 0 then
-    return
+    return nil
   end
+  local self = setmetatable({position = data.n + 1}, list)
   local n = data.n
   data.n = data.n + #t * 2
   for i, v in ipairs(t) do
     n = n + 1
     if f then
-      data[n] = f(v)
+      data[n] = f(v, i)
     else
       data[n] = v
     end

@@ -1,8 +1,24 @@
 local utils = require("leftry").utils
 
-local vector = utils.prototype("vector", function()
-  error("use cast to create vector")
+local vector = utils.prototype("vector", function(vector, ...)
+  return setmetatable({n=select("#", ...), ...}, vector)
 end)
+
+function vector:insert(value)
+  self.n = self.n + 1
+  self[self.n] = value
+  return self
+end
+
+function vector:next(i)
+  if i < self.n then
+    return i + 1, self[i + 1]
+  end
+end
+
+function vector:__ipairs()
+  return vector.next, self, 0
+end
 
 function vector:__tostring()
   local text = {}
@@ -25,7 +41,7 @@ function vector.cast(t, f)
   for i, v in ipairs(t) do
     n = n + 1
     if f then
-      u[i] = f(v)
+      u[i] = f(v, i)
     else
       u[i] = v
     end

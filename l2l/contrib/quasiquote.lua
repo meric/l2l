@@ -9,9 +9,6 @@ local vector = require("l2l.vector")
 local function read_quasiquote(invariant, position)
   local rest, values = read(invariant, position + 1)
   if rest then
-    if not values[1] then
-      error('nothing to quasiquote')
-    end
     values[1] = list(symbol("quasiquote"), values[1])
     return rest, values
   end
@@ -20,9 +17,6 @@ end
 local function read_quasiquote_eval(invariant, position)
   local rest, values = read(invariant, position + 1)
   if rest then
-    if not values[1] then
-      error('nothing to quasiquote-eval')
-    end
     values[1] = list(symbol("quasiquote-eval"), values[1])
     return rest, values
   end
@@ -37,7 +31,7 @@ local function quasiquote_eval(invariant, car, output)
       local cdr = car:cdr()
       assert(list.__len(cdr) == 1,
         "quasiquote_eval only accepts one parameter.")
-      return compiler.compile(invariant, cdr:car(), compile)
+      return compiler.compile_exp(invariant, cdr:car(), compile)
     end
     return list.cast(car, invariant._quasiquote_eval)
   end
@@ -52,5 +46,6 @@ end
 return function(invariant)
   reader.register_R(invariant, ",", read_quasiquote_eval)
   reader.register_R(invariant, "`", read_quasiquote)
-  compiler.register_L(invariant, "quasiquote", compile_quasiquote)
+  compiler.register_L(invariant, "quasiquote", compile_quasiquote,
+    compile_quasiquote)
 end

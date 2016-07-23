@@ -12,49 +12,9 @@ local lua_explist = lua.lua_explist
 local lua_number = lua.lua_number
 local lua_name = lua.lua_name
 local lua_ast = lua.lua_ast
-
-local lua_keyword = {
-  ["and"] = true, 
-  ["break"] = true, 
-  ["do"] = true, 
-  ["else"] = true, 
-  ["elseif"] = true, 
-  ["end"] = true,
-  ["for"] = true, 
-  ["function"] = true, 
-  ["if"] = true, 
-  ["in"] = true, 
-  ["local"] = true, 
-  ["not"] = true, 
-  ["or"] = true, 
-  ["repeat"] = true, 
-  ["return"] = true, 
-  ["then"] = true, 
-  ["until"] = true, 
-  ["while"] = true
-}
-
-local function hash(text)
-  local prefix = ""
-  if text == "..." then
-    return "..."
-  end
-  if lua_keyword[text] then
-    pattern = "(.)"
-    prefix = text
-  else
-    pattern = "[^_a-zA-Z0-9.%[%]]"
-  end
-  return prefix..text:gsub(pattern, function(char)
-    if char == "-" then
-      return "_"
-    elseif char == "!" then
-      return "_bang"
-    else
-      return "_"..char:byte()
-    end
-  end)
-end
+local lua_local = lua.lua_local
+local lua_namelist = lua.lua_namelist
+local lua_retstat = lua.lua_retstat
 
 local function expand(data)
   return data
@@ -69,22 +29,21 @@ local function validate_functioncall(car)
     "only expressions and symbols can be called.")
 end
 
-local function luaize(invariant, data, output)
-  invariant._luaize = invariant._luaize or function(value)
-    return luaize(invariant, value)
-  end
+local function expize(invariant, data, output)
   if utils.hasmetatable(data, list) then
     local car = data:car()
     if utils.hasmetatable(car, symbol) and invariant.L[car[1]] then
-      return invariant.L[car[1]](invariant, data:cdr(), output)
+      return invariant.L[car[1]].expize(invariant, data:cdr(), output)
     end
-    local cdr = vector.cast(data:cdr(), invariant._luaize)
+    local cdr = vector.cast(data:cdr(), function(value)
+      return expize(invariant, value, output)
+    end)
     validate_functioncall(car)
     return lua_functioncall.new(
-      luaize(invariant, car),
+      expize(invariant, car),
       lua.lua_args.new(lua_explist(cdr)))
   elseif utils.hasmetatable(data, symbol) then
-    return hash(tostring(data[1]))
+    return data:hash()
   elseif lua_ast[getmetatable(data)] then
     return data
   elseif data == nil then
@@ -92,19 +51,59 @@ local function luaize(invariant, data, output)
   elseif data == reader.lua_none then
     return
   end
-  error("cannot not luaize.."..tostring(data))
+  error("cannot not expize.."..tostring(data))
 end
 
 
-local function compile(invariant, data, output)
-  return luaize(invariant, expand(reader.transform(invariant, data)), output)
+local function to_stat(exp, name)
+  -- convert exp to stat
+  local name = name or lua_name:unique("_var")
+  assert(exp)
+  return lua_local.new(lua_namelist({name}), lua_explist({exp}))
 end
 
-local function register_L(invariant, name, f)
+
+local function statize(invariant, data, output, last)
+  if last then
+    return lua_retstat.new(lua_explist({expize(invariant, data, output)}))
+  end
+  if utils.hasmetatable(data, list) then
+    local car = data:car()
+    if utils.hasmetatable(car, symbol) and invariant.L[car[1]] then
+      return invariant.L[car[1]].statize(invariant, data:cdr(), output)
+    end
+    local cdr = vector.cast(data:cdr(), function(value)
+      return expize(invariant, value, output)
+    end)
+    validate_functioncall(car)
+    return lua_functioncall.new(
+      expize(invariant, car),
+      lua.lua_args.new(lua_explist(cdr)))
+  elseif lua_ast[getmetatable(data)] then
+    if not utils.hasmetatable(data, lua_functioncall) then
+      return to_stat(data)
+    end
+    return data
+  elseif data == reader.lua_none then
+    return
+  end
+  error("cannot not statize.."..tostring(data))
+end
+
+
+local function compile_stat(invariant, data, output)
+  return statize(invariant, expand(reader.transform(invariant, data)), output)
+end
+
+local function compile_exp(invariant, data, output)
+  return expize(invariant, expand(reader.transform(invariant, data)), output)
+end
+
+local function register_L(invariant, name, exp, stat)
   local L = invariant.L
   assert(not L[name], "L function has already been registered.."
     ..tostring(name))
-  L[name] = f
+  L[name] = {expize=exp, statize=stat}
 end
 
 
@@ -113,8 +112,14 @@ end
 -- end
 
 return {
-  compile = compile,
-  luaize = luaize,
+  hash = reader.hash,
+  statize = statize,
+  expize = expize,
+  hash = hash,
+  compile_stat = compile_stat,
+  compile_exp = compile_exp,
+  to_stat = to_stat,
+  -- to_exp = to_exp,
   expand = expand,
   register_L = register_L
 }

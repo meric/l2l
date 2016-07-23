@@ -109,6 +109,14 @@ local lua_vararg = ast.const("lua_vararg", "...")
 local lua_semicolon = ast.const("lua_semicolon", ";")
 
 local lua_name = ast.id("lua_name")
+
+function lua_name:unique(prefix)
+  self.n = self.n or 0
+  prefix = prefix..self.n
+  self.n = self.n + 1
+  return self(prefix)
+end
+
 local lua_number = ast.id("lua_number")
 local lua_string = ast.id("lua_string", "value", function(self)
   return utils.escape(self.value)
@@ -319,7 +327,7 @@ ToggExp = function(invariant, position, peek)
     return rest
   end
   local output = {}
-  local expr = compiler.compile(invariant, values[1], output)
+  local expr = compiler.compile_exp(invariant, values[1], output)
   if #output == 0 then
     return rest, expr
   else

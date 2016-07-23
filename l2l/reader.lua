@@ -1,6 +1,29 @@
 local utils = require("leftry").utils
 local lua = require("l2l.lua")
 local list = require("l2l.list")
+local vector = require("l2l.vector")
+
+local lua_keyword = {
+  ["and"] = true,
+  ["break"] = true,
+  ["do"] = true,
+  ["else"] = true,
+  ["elseif"] = true,
+  ["end"] = true,
+  ["for"] = true,
+  ["function"] = true,
+  ["if"] = true,
+  ["in"] = true,
+  ["local"] = true,
+  ["not"] = true,
+  ["or"] = true,
+  ["repeat"] = true,
+  ["return"] = true,
+  ["then"] = true,
+  ["until"] = true,
+  ["while"] = true
+}
+
 
 
 local lua_none = setmetatable({}, {__tostring = function()
@@ -43,6 +66,33 @@ local symbol = utils.prototype("symbol", function(symbol, name)
   return setmetatable({name}, symbol)
 end)
 
+local function hash(text)
+  if utils.hasmetatable(text, symbol) then
+    text = text[1]
+  end
+  local prefix = ""
+  if text == "..." then
+    return "..."
+  end
+  if lua_keyword[text] then
+    pattern = "(.)"
+    prefix = text
+  else
+    pattern = "[^_a-zA-Z0-9.%[%]]"
+  end
+  return prefix..text:gsub(pattern, function(char)
+    if char == "-" then
+      return "_"
+    elseif char == "!" then
+      return "_bang"
+    else
+      return "_"..char:byte()
+    end
+  end)
+end
+
+symbol.ids = {}
+
 function symbol:__eq(sym)
   return getmetatable(self) == getmetatable(sym) and
     tostring(self) == tostring(sym)
@@ -50,6 +100,10 @@ end
 
 function symbol:__tostring(sym)
   return "symbol("..utils.escape(tostring(self[1]))..")"
+end
+
+function symbol:hash()
+  return hash(self[1])
 end
 
 local function read_symbol(invariant, position)
@@ -92,8 +146,7 @@ end
 local function read_list(invariant, position)
   local source, rest = invariant.source
   local size = #invariant.source
-  local t = {}
-  local n = 0
+  local t = vector()
   local ok, rest, value = true, position + 1
   while ok do
     if rest > size then
@@ -103,13 +156,13 @@ local function read_list(invariant, position)
     ok, rest, values = readifnot(invariant, rest, read_right_paren)
     if ok then
       for i, value in ipairs(values) do
-        n = n + 1
-        t[n] = value
+        t:insert(value)
       end
     end
   end
+
   -- Add 1 for the right_paren.
-  return rest + 1, {list.cast(t)}
+  return rest + 1, vector(list.cast(t))
 end
 
 local whitespace = {
