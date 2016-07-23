@@ -191,7 +191,7 @@ local Chunk, Block, Stat, RetStat, Label, FuncName, VarList, Var, NameList,
       ExpList, Exp, PrefixExp, FunctionCall, Args, FunctionDef, FuncBody,
       ParList, TableConstructor, FieldList, Field, FieldSep, BinOp, UnOp,
       numeral, Numeral, LiteralString, Name, Space, Comment, LongString,
-      ToggExp
+      LispExp
 
 local dquoted, squoted
 
@@ -316,10 +316,10 @@ Exp = factor("Exp", function(Exp) return
   FunctionDef,
   PrefixExp,
   TableConstructor,
-  span("\\", ToggExp) % second,
+  span("\\", LispExp) % second,
   span(Exp, BinOp, Exp) % lua_binop_exp,
   span(UnOp, Exp) % lua_unop_exp end)
-ToggExp = function(invariant, position, peek)
+LispExp = function(invariant, position, peek)
   local reader = require("l2l.reader")
   local compiler = require("l2l.compiler")
   local rest, values = reader.read(invariant, position)
@@ -660,7 +660,7 @@ local exports = {
 }
 
 for k, v in pairs(exports) do
-  if getmetatable(v) == grammar.factor and v ~= ToggExp then
+  if getmetatable(v) == grammar.factor and v ~= LispExp then
     v:setup()
     v:actualize()
   end
