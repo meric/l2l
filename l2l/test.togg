@@ -1,0 +1,3 @@
+(\{a=1, b=2, 3, 4} \function()
+    for i=1, 3 do print(i) end return 9
+  end)
