@@ -6,10 +6,7 @@ The maximum number of cons cells created is the maximum integer that can be
 
 held accurately in a lua number.
 
-It has an inherent memory leak, because the cdr part of a cons cell is never
-
-garbage collected, it stores a value pointing to the next cell.
-
+Likely to have unsolved memory leaks.
 ]]--
 
 local utils = require("leftry").utils
@@ -33,10 +30,14 @@ local list = utils.prototype("list", function(list, ...)
 end)
 
 function list:__gc()
+  -- Create cdr for Lua to gc, to trigger __gc for subsequent cells.
+  local cdr = self:cdr()
+  -- Free this cell.
   data[self.position] = nil
   data[self.position + 1] = nil
   data.free = data.free + 1
   if data.free == data.n then
+    -- Take the opportunity to reset `data`.
     data = setmetatable({n=0}, {})
   end
 end
