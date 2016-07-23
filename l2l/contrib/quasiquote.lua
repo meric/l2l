@@ -53,5 +53,4 @@ return function(invariant)
   reader.register_R(invariant, ",", read_quasiquote_eval)
   reader.register_R(invariant, "`", read_quasiquote)
   compiler.register_L(invariant, "quasiquote", compile_quasiquote)
-  -- compiler.register_L(invariant, "quasiquote-eval", compile_quasiquote_eval)
 end

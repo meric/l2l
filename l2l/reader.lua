@@ -235,8 +235,6 @@ local function environ(source, position)
       [string.byte(";")] = {read_semicolon},
       [string.byte(")")] = {read_right_paren},
       [string.byte('{')] = {read_lua_literal},
-      -- [string.byte('`')] = {read_quasiquote},
-      -- [string.byte(',')] = {read_quasiquote_eval},
       [string.byte('"')] = {read_lua_literal},
       [string.byte("-")] = {read_lua_number, read_lua_comment, read_symbol},
 
