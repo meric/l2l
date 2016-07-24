@@ -98,22 +98,3 @@ end
 -- print(function()print(1);return 2 end)
 
 print(compiler.compile(source))
--- local output = {}
-
--- for rest, values in reader.read, invariant do
---   for i, value in ipairs(values) do
---     local stat = compiler.compile_stat(invariant, value, output)
---     if stat then
---       table.insert(output, stat)
---     end
---   end
--- end
-
--- for i, value in ipairs(output) do
---   print(value)
--- end
-
--- \! Syntax Proposal:
-
---     \{a=1, \(1 2 <- {x = 1} [for i=2, 100 do x = x + 1 end])}
-
