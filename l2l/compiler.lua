@@ -113,7 +113,7 @@ local function compile_lua_block_into_exp(invariant, cdr, output)
   local retstat = cadr[#cadr]
 
   assert(utils.hasmetatable(retstat, lua_retstat),
-    "block must end with return statement.")
+    "block must end with return statement when used as an exp.")
 
   for i=1, #cadr - 1 do
     table.insert(output, cadr[i])

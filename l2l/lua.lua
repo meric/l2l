@@ -29,9 +29,9 @@ local r = each(function(v, k) return
   lua_do = {"do ", block=2, " end"},
   lua_while = {"while ", condition=2, " do ", block=4, " end"},
   lua_repeat = {"repeat ", block=2, " until ", condition=4},
-  lua_if = {" if ", condition=2, " then ", block=4, _elseifs=5, _else=6," end"},
-  lua_elseif = {" elseif ", condition=2, " then ", block=4},
-  lua_else = {" else ", block=2},
+  lua_if = {"if ", condition=2, " then ", block=4, _elseifs=5, _else=6," end"},
+  lua_elseif = {"elseif ", condition=2, " then ", block=4},
+  lua_else = {"else ", block=2},
   lua_elseifs = function(self) return
       table.concat(" ", map(tostring, self))
     end,
@@ -334,8 +334,13 @@ LispExp = function(invariant, position, peek)
   if #output == 0 then
     return rest, expr
   else
-    error('not implemented. wrap in (function()end)()')
-    return rest
+    table.insert(output, lua_retstat.new(lua_explist({expr})))
+    return rest, lua_functioncall.new(
+      lua_paren_exp.new(
+        lua_lambda_function.new(
+          lua_funcbody.new(lua_namelist({}),
+            lua_block(output)))),
+      lua_args.new(lua_explist({})))
   end
 end
 FunctionCall = factor("FunctionCall", function() return

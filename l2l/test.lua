@@ -45,6 +45,10 @@ end)
 -- Function definition
 (fn add (a b)  \a + b 2)
 
+\if \\local x x = x + 1 return x > 0 then
+    print("hello")
+end
+
 (if_ (and_ false (greater \local x
     x = x + 1 return x; y)) (dosomething))
 
