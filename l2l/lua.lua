@@ -89,9 +89,12 @@ local lua_field_key = r.lua_field_key
 
 local lua_local = ast.reduce("lua_local", {"local", namelist=2, explist=3},
   function(self)
-    return table.concat({
-        "local", tostring(self.namelist), "=", tostring(self.explist)
-      }, " ")
+    local text = {"local", tostring(self.namelist)}
+    if self.explist then
+      table.insert(text, "=")
+      table.insert(text, tostring(self.explist))
+    end
+    return table.concat(text, " ")
   end)
 
 local lua_varlist = ast.list("lua_varlist", ",")

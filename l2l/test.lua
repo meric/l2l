@@ -17,6 +17,9 @@ local invariant = reader.environ([=[
 -- so the compiler doesn't think any lisp statements after as being another
 -- function call.
 
+(print \function test() end return test)
+(print \local x; x = x + 1 return x)
+
 \print(1);
 \print(1 --[[This is a Lua multiline comment]]);
 (print "this line is not turned into print(...)(...)")
@@ -42,6 +45,9 @@ end)
 -- Function definition
 (fn add (a b)  \a + b 2)
 
+(if_ (and_ false (greater \local x
+    x = x + 1 return x; y)) (dosomething))
+
 -- (print (fn (a b) (print 1) \a + b))
 (print (fn () (print 1) 2))
 
@@ -64,7 +70,7 @@ local output = {}
 
 for rest, values in reader.read, invariant do
   for i, value in ipairs(values) do
-    local stat = compiler.compile_stat(invariant, value, compile)
+    local stat = compiler.compile_stat(invariant, value, output)
     if stat then
       table.insert(output, stat)
     end
@@ -77,10 +83,5 @@ end
 
 -- \! Syntax Proposal:
 
---     \{a=1, \(1 2 \!
---                  local x = 1
---                  for i=2, 100 do
---                     x = x + 1
---                  end
---                  return x)}
+--     \{a=1, \(1 2 <- {x = 1} [for i=2, 100 do x = x + 1 end])}
 

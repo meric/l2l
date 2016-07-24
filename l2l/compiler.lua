@@ -8,6 +8,7 @@ local symbol = reader.symbol
 local invariantize = require("leftry.elements.utils").invariantize
 
 local lua_functioncall = lua.lua_functioncall
+local lua_function = lua.lua_function
 local lua_explist = lua.lua_explist
 local lua_number = lua.lua_number
 local lua_name = lua.lua_name
@@ -54,14 +55,12 @@ local function expize(invariant, data, output)
   error("cannot not expize.."..tostring(data))
 end
 
-
 local function to_stat(exp, name)
   -- convert exp to stat
   local name = name or lua_name:unique("_var")
   assert(exp)
   return lua_local.new(lua_namelist({name}), lua_explist({exp}))
 end
-
 
 local function statize(invariant, data, output, last)
   if last then
@@ -90,7 +89,6 @@ local function statize(invariant, data, output, last)
   error("cannot not statize.."..tostring(data))
 end
 
-
 local function compile_stat(invariant, data, output)
   return statize(invariant, expand(reader.transform(invariant, data)), output)
 end
@@ -106,12 +104,27 @@ local function register_L(invariant, name, exp, stat)
   L[name] = {expize=exp, statize=stat}
 end
 
+local function compile_lua_block(invariant, cdr, output)
+  return cdr:car()
+end
 
--- local function compile(data)
---   return luaize(data)
--- end
+local function compile_lua_block_into_exp(invariant, cdr, output)
+  local cadr = cdr:car()
+  local retstat = cadr[#cadr]
+
+  assert(utils.hasmetatable(retstat, lua_retstat),
+    "block must end with return statement.")
+
+  for i=1, #cadr - 1 do
+    table.insert(output, cadr[i])
+  end
+
+  return retstat.explist
+end
 
 return {
+  compile_lua_block = compile_lua_block,
+  compile_lua_block_into_exp = compile_lua_block_into_exp,
   hash = reader.hash,
   statize = statize,
   expize = expize,

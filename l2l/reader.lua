@@ -189,7 +189,11 @@ end
 
 local function read_lua(invariant, position)
   local rest, value = lua.Exp(invariant, position + 1)
-  return rest, {value}
+  if rest then
+    return rest, {value}
+  end
+  rest, value = lua.Block(invariant, position + 1)
+  return rest, {list(symbol("eval-lua-block"), value)}
 end
 
 local function read_lua_comment(invariant, position)
@@ -274,7 +278,7 @@ local function transform_extension(invariant, cdr)
 end
 
 local function environ(source, position)
-  return {
+  local invariant = {
     events = {},
     L = {},
     T = {
@@ -305,6 +309,14 @@ local function environ(source, position)
     },
     source = source
   }, position or 1
+
+  local compiler = require("l2l.compiler")
+
+  compiler.register_L(invariant, "eval-lua-block",
+    compiler.compile_lua_block_into_exp,
+    compiler.compile_lua_block)
+
+  return invariant
 end
 
 local function read(invariant, position)
