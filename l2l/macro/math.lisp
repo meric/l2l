@@ -3,6 +3,9 @@
 (-# LANGUAGE l2l.contrib.fn #-)
 
 (fn + (a ...)
+ \if a == symbol("...") then
+    a = \'(+ ...)
+ end
  \if not a then
    -- `0` is not a valid ast node, but `(quote 0)` is, it converts the `0`
    -- into `lua_number(0)`. Escape into lisp and return (quote 0).

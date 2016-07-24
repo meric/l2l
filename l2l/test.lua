@@ -2,7 +2,7 @@ local reader = require("l2l.reader")
 local compiler = require("l2l.compiler")
 local list = require("l2l.list")
 
-local invariant = reader.environ([=[
+local source = [=[
 -- Install quote and quasiquote read macro and special forms.
 
 (-# LANGUAGE l2l.contrib.quote #-)
@@ -16,6 +16,8 @@ local invariant = reader.environ([=[
 
 (math.+)
 
+(fn add (...) (math.+ ...))
+
 -- Semicolons have no effect.
 ;;;
 
@@ -25,7 +27,7 @@ local invariant = reader.environ([=[
 -- function call.
 
 (print \function test() end return test)
-(print \local x; x = x + 1 return x)
+(print \local x = 0; x = x + 1 return x)
 
 \print(1);
 \print(1 --[[This is a Lua multiline comment]]);
@@ -47,7 +49,7 @@ end)
 
 -- Infix maths when starting with a number.
 (print 1 + 1 * 2; 4)
-(print 0 + x * y; 4)
+(print 0 + x * x; 4)
 
 -- Function definition
 (fn add (a b)  \a + b 2)
@@ -62,12 +64,21 @@ end
 
 (print (fn (a b) (print 1) \a + b))
 (print (fn () (print 1) 2))
-]=])
+]=]
 
+-- local lua = require("l2l.lua")
+-- local reader = require("l2l.reader")
+-- local compiler = require("l2l.compiler")
+-- local symbol = reader.symbol
+-- local list = require("l2l.list")
+-- local import = compiler.import
+-- local math = import("l2l.lib.math")
 -- print((1 + (2 + 3 + 7)))
+-- local _var0 = 0
+-- local function add(...)return _43(...) end
 -- function test() end
 -- print(test)
--- local x
+-- local x = 0
 -- ;
 -- x=x + 1
 -- print(x)
@@ -80,26 +91,27 @@ end
 -- print(function(x)print(x,list(1, 2, 3, list(symbol("a"), 1), b(1))) end)
 -- print({a=1,b=2,3,4},function()for i=1,3 do print(i) end;return 9 end)
 -- print(1 + 1 * 2,4)
--- print(0 + x * y,4)
--- local function add(a,b)local _var0 = a + b;return 2 end
+-- print(0 + x * x,4)
+-- local function add(a,b)local _var1 = a + b;return 2 end
 -- if ((function()local x = 0;for i=1,10 do x=x + 1 end;return x end)()) > 0 then print("hello") end
 -- print(function(a,b)print(1);return a + b end)
 -- print(function()print(1);return 2 end)
 
-local output = {}
+print(compiler.compile(source))
+-- local output = {}
 
-for rest, values in reader.read, invariant do
-  for i, value in ipairs(values) do
-    local stat = compiler.compile_stat(invariant, value, output)
-    if stat then
-      table.insert(output, stat)
-    end
-  end
-end
+-- for rest, values in reader.read, invariant do
+--   for i, value in ipairs(values) do
+--     local stat = compiler.compile_stat(invariant, value, output)
+--     if stat then
+--       table.insert(output, stat)
+--     end
+--   end
+-- end
 
-for i, value in ipairs(output) do
-  print(value)
-end
+-- for i, value in ipairs(output) do
+--   print(value)
+-- end
 
 -- \! Syntax Proposal:
 

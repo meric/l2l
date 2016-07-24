@@ -38,7 +38,7 @@ function list:__gc()
   data.free = data.free + 1
   if data.free == data.n then
     -- Take the opportunity to reset `data`.
-    data = setmetatable({n=0}, {})
+    data = setmetatable({n=0, free=0}, {})
   end
 end
 

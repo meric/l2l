@@ -119,7 +119,7 @@ end
 
 local exports
 
-local function header(source)
+local function header(source, mod)
   local head = {
     [[local lua = require("l2l.lua")]],
     [[local reader = require("l2l.reader")]],
@@ -140,10 +140,20 @@ local function header(source)
       table.insert(head, "local "..name.." = compiler."..name)
     end
   end
+  if string.match(source, "list") then
+    table.insert(head, [[local list = require("l2l.list")]])
+  end
+  if string.match(source, "vector") then
+    table.insert(head, [[local vector = require("l2l.vector")]])
+  end
+  if string.match(source, symbol("+"):hash()) and mod ~= "l2l.lib.math" then
+    table.insert(head, [[local import = compiler.import]])
+    table.insert(head, [[local math = import("l2l.lib.math")]])
+  end
   return table.concat(head, "\n")
 end
 
-local function compile(source, parent)
+local function compile(source, parent, mod)
   local invariant
 
   if not parent then
@@ -168,11 +178,38 @@ local function compile(source, parent)
   end
 
   output = table.concat(output, "\n")
-  output = header(output).."\n"..output
+  output = header(output, mod).."\n"..output
   return output
 end
 
+local function import(mod)
+  local path = string.gsub(mod, "[.]", "/")..".lisp"
+  local f = io.open(path)
+  local m
+  if f then
+    local source = f:read("*a")
+    f:close()
+    local out = compile(source, nil, mod)
+    local f, err = load(out)
+    local ok
+    if f then
+      ok, m = pcall(f)
+      if not ok then
+        print(out)
+        error(m)
+      end
+    else
+      print(out)
+      error(err)
+    end
+  else
+    m = require(mod)
+  end
+  return m
+end
+
 exports = {
+  import=import,
   compile=compile,
   compile_lua_block = compile_lua_block,
   compile_lua_block_into_exp = compile_lua_block_into_exp,
