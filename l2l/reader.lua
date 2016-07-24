@@ -92,8 +92,7 @@ end
 symbol.ids = {}
 
 function symbol:__eq(sym)
-  return getmetatable(self) == getmetatable(sym) and
-    tostring(self) == tostring(sym)
+  return getmetatable(self) == getmetatable(sym) and self:hash() == sym:hash()
 end
 
 function symbol:__tostring(sym)
@@ -251,38 +250,64 @@ local function transform(invariant, data)
   local T = invariant.T
   if utils.hasmetatable(data, list) then
     local car, cdr = data:car(), data:cdr()
-    if utils.hasmetatable(car, symbol) and T[car[1]] then
-      for i, transformer in ipairs(T[car[1]]) do
+    if utils.hasmetatable(car, symbol) and T[car:hash()] then
+      for i, transformer in ipairs(T[car:hash()]) do
         data = transformer(invariant, cdr)
       end
+    else
+      return list.cast(data, function(value) return
+        transform(invariant, value)
+      end)
     end
   end
   return data
 end
 
+local function extend_language(invariant, cddr)
+  local caddr = cddr:car()
+  if utils.hasmetatable(caddr, symbol) then
+    local mod = caddr[1]
+    local f = require(mod)
+    assert(type(f) == "function", "-# LANGUAGE function missing.")
+    f(invariant)
+    return lua_none
+  end
+  error("LANGUAGE must have symbol argument.")
+end
+
 local function transform_extension(invariant, cdr)
   if cdr then
     local cadr, cddr = cdr:car(), cdr:cdr()
-    if cadr == symbol("LANGUAGE") and cddr then
-      local caddr = cddr:car()
-      if utils.hasmetatable(caddr, symbol) then
-        local mod = caddr[1]
-        local f = require(mod)
-        assert(type(f) == "function", "-# LANGUAGE function missing.")
-        f(invariant)
-        return lua_none
-      end
+    if invariant.E[cadr:hash()] and cddr then
+      return invariant.E[cadr:hash()](invariant, cddr)
+    else
+      error("unrecognised extension.."..tostring(cadr[1]))
     end
   end
   return data
+end
+
+local function inherit(invariant, source)
+  local new = {}
+  for k, v in pairs(invariant) do
+    if k ~= "source" then
+      new[k] = v
+    else
+      new.source = source
+    end
+  end
+  return new
 end
 
 local function environ(source, position)
   local invariant = {
     events = {},
     L = {},
+    E = {
+      ["LANGUAGE"] = extend_language
+    },
     T = {
-      ["-#"] = {transform_extension}
+      [hash("-#")] = {transform_extension}
     },
     R = {
       [string.byte("\\")] = {read_lua},
@@ -327,13 +352,22 @@ local function register_R(invariant, character, f)
   local R = invariant.R
   local byte = string.byte(character)
   R[byte] = R[byte] or {}
-  table.insert(R[byte], f)
+  if not utils.contains(R[byte], f) then
+    table.insert(R[byte], f)
+  end
 end
 
 local function register_T(invariant, name, f)
   local T = invariant.T
-  T[name] = T[name] or {}
-  table.insert(T[name], f)
+  T[hash(name)] = T[hash(name)] or {}
+  if not utils.contains(T[hash(name)], f) then
+    table.insert(T[hash(name)], f)
+  end
+end
+
+local function register_E(invariant, name, f)
+  local E = invariant.E
+  E[hash(name)] = f
 end
 
 return {
@@ -341,6 +375,7 @@ return {
   read = read,
   transform = transform,
   environ = environ,
+  inherit = inherit,
   read_lua = read_lua,
   read_list = read_list,
   read_right_paren = read_right_paren,
@@ -351,6 +386,7 @@ return {
   read_symbol = read_symbol,
   register_R=register_R,
   register_T=register_T,
+  register_E=register_E,
   symbol=symbol,
   skip_whitespace = skip_whitespace
 }

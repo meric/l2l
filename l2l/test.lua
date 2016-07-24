@@ -8,6 +8,13 @@ local invariant = reader.environ([=[
 (-# LANGUAGE l2l.contrib.quote #-)
 (-# LANGUAGE l2l.contrib.quasiquote #-)
 (-# LANGUAGE l2l.contrib.fn #-)
+(-# LANGUAGE l2l.contrib.mac #-)
+
+(-# MACRO l2l.macro.math math #-)
+
+(print (math.+ 1 2 3 + 7))
+
+(math.+)
 
 -- Semicolons have no effect.
 ;;;
@@ -53,14 +60,17 @@ end)
     print("hello")
 end
 
-(if_ (and_ false (greater \local x
-    x = x + 1 return x; y)) (dosomething))
-
--- (print (fn (a b) (print 1) \a + b))
+(print (fn (a b) (print 1) \a + b))
 (print (fn () (print 1) 2))
-
 ]=])
 
+-- print((1 + (2 + 3 + 7)))
+-- function test() end
+-- print(test)
+-- local x
+-- ;
+-- x=x + 1
+-- print(x)
 -- print(1)
 -- print(1)
 -- print("this line is not turned into print(...)(...)")
@@ -72,6 +82,8 @@ end
 -- print(1 + 1 * 2,4)
 -- print(0 + x * y,4)
 -- local function add(a,b)local _var0 = a + b;return 2 end
+-- if ((function()local x = 0;for i=1,10 do x=x + 1 end;return x end)()) > 0 then print("hello") end
+-- print(function(a,b)print(1);return a + b end)
 -- print(function()print(1);return 2 end)
 
 local output = {}

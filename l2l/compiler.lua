@@ -17,9 +17,6 @@ local lua_local = lua.lua_local
 local lua_namelist = lua.lua_namelist
 local lua_retstat = lua.lua_retstat
 
-local function expand(data)
-  return data
-end
 
 local function validate_functioncall(car)
   assert(
@@ -44,7 +41,7 @@ local function expize(invariant, data, output)
       expize(invariant, car),
       lua.lua_args.new(lua_explist(cdr)))
   elseif utils.hasmetatable(data, symbol) then
-    return data:hash()
+    return lua_name(data:hash())
   elseif lua_ast[getmetatable(data)] then
     return data
   elseif data == nil then
@@ -90,17 +87,15 @@ local function statize(invariant, data, output, last)
 end
 
 local function compile_stat(invariant, data, output)
-  return statize(invariant, expand(reader.transform(invariant, data)), output)
+  return statize(invariant, reader.transform(invariant, data), output)
 end
 
 local function compile_exp(invariant, data, output)
-  return expize(invariant, expand(reader.transform(invariant, data)), output)
+  return expize(invariant, reader.transform(invariant, data), output)
 end
 
 local function register_L(invariant, name, exp, stat)
   local L = invariant.L
-  assert(not L[name], "L function has already been registered.."
-    ..tostring(name))
   L[name] = {expize=exp, statize=stat}
 end
 
@@ -122,7 +117,63 @@ local function compile_lua_block_into_exp(invariant, cdr, output)
   return retstat.explist
 end
 
-return {
+local exports
+
+local function header(source)
+  local head = {
+    [[local lua = require("l2l.lua")]],
+    [[local reader = require("l2l.reader")]],
+    [[local compiler = require("l2l.compiler")]],
+  }
+  for name, _ in pairs(lua) do
+    if string.match(source, name) then
+      table.insert(head, "local "..name.." = lua."..name)
+    end
+  end
+  for name, _ in pairs(reader) do
+    if string.match(source, name) then
+      table.insert(head, "local "..name.." = reader."..name)
+    end
+  end
+  for name, _ in pairs(exports) do
+    if string.match(source, name) then
+      table.insert(head, "local "..name.." = compiler."..name)
+    end
+  end
+  return table.concat(head, "\n")
+end
+
+local function compile(source, parent)
+  local invariant
+
+  if not parent then
+    invariant = reader.environ(source, 1)
+  else
+    invariant = reader.inherit(parent, source)
+  end
+
+  local output = {}
+
+  for rest, values in reader.read, invariant do
+    for i, value in ipairs(values) do
+      local stat = compile_stat(invariant, value, output)
+      if stat then
+        table.insert(output, stat)
+      end
+    end
+  end
+
+  for i, value in ipairs(output) do
+    output[i] = tostring(value)
+  end
+
+  output = table.concat(output, "\n")
+  output = header(output).."\n"..output
+  return output
+end
+
+exports = {
+  compile=compile,
   compile_lua_block = compile_lua_block,
   compile_lua_block_into_exp = compile_lua_block_into_exp,
   hash = reader.hash,
@@ -132,7 +183,8 @@ return {
   compile_stat = compile_stat,
   compile_exp = compile_exp,
   to_stat = to_stat,
-  -- to_exp = to_exp,
   expand = expand,
   register_L = register_L
 }
+
+return exports

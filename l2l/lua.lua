@@ -9,18 +9,49 @@ local each =  utils.each
 
 local grammar = require("leftry.grammar")
 
+local list = require("l2l.list")
+
 local opt = grammar.opt
 local rep = grammar.rep
 local factor = grammar.factor
 local term = grammar.term
 
+local lua_varlist
+local lua_namelist
+local lua_explist
+local lua_block
+local lua_funcname
+local lua_fieldlist
 
-local r = each(function(v, k) return
+local lua_name
+local lua_ast
+local lua_number
+
+local r
+r = each(function(v, k) 
    -- Define the Lua syntax tree representations, and corresponding output
    -- format using `ast.reduce`.
-    ast.reduce(k,
+    local st = ast.reduce(k,
       type(v) ~= "function" and v or false,
       type(v) == "function" and v or nil)
+    function st:repr()
+      local reader = require("l2l.reader")
+      local parameters = {}
+      for i, v in ipairs(self.arguments) do
+        local value = self[v[1]]
+        if lua_ast[getmetatable(value)] then
+          table.insert(parameters, value:repr())
+        elseif type(value) == "string" then
+          table.insert(parameters, reader.symbol(value))
+        else
+          table.insert(parameters, value)
+        end
+      end
+      return r.lua_functioncall.new(
+        r.lua_dot.new(lua_name(tostring(st)), lua_name("new")),
+        r.lua_args.new(lua_explist(parameters)))
+    end
+    return st
   end, {
   lua_assign = {varlist=1, "=", explist=3},
   lua_dot = {prefix=1, ".", name=3},
@@ -30,8 +61,8 @@ local r = each(function(v, k) return
   lua_while = {"while ", condition=2, " do ", block=4, " end"},
   lua_repeat = {"repeat ", block=2, " until ", condition=4},
   lua_if = {"if ", condition=2, " then ", block=4, _elseifs=5, _else=6," end"},
-  lua_elseif = {"elseif ", condition=2, " then ", block=4},
-  lua_else = {"else ", block=2},
+  lua_elseif = {" elseif ", condition=2, " then ", block=4},
+  lua_else = {" else ", block=2},
   lua_elseifs = function(self) return
       table.concat(" ", map(tostring, self))
     end,
@@ -97,12 +128,34 @@ local lua_local = ast.reduce("lua_local", {"local", namelist=2, explist=3},
     return table.concat(text, " ")
   end)
 
-local lua_varlist = ast.list("lua_varlist", ",")
-local lua_namelist = ast.list("lua_namelist", ",")
-local lua_explist = ast.list("lua_explist", ",")
-local lua_block = ast.list("lua_block", ";")
-local lua_funcname = ast.list("lua_funcname")
-local lua_fieldlist = ast.list("lua_fieldlist", ",")
+local function _list(...)
+  local st = ast.list(...)
+  function st:repr()
+    local reader = require("l2l.reader")
+    local parameters = {}
+    for i, value in ipairs(self) do
+      if lua_ast[getmetatable(value)] then
+        table.insert(parameters, value:repr())
+      elseif type(value) == "string" then
+        table.insert(parameters, reader.symbol(value))
+      else
+        table.insert(parameters, value)
+      end
+    end
+    return r.lua_functioncall.new(lua_name(tostring(st)),
+      r.lua_args.new(lua_explist({
+        lua_table_args.new(lua_fieldlist(parameters))
+      })))
+  end
+  return st
+end
+
+lua_varlist = _list("lua_varlist", ",")
+lua_namelist = _list("lua_namelist", ",")
+lua_explist = _list("lua_explist", ",")
+lua_block = _list("lua_block", ";")
+lua_funcname = _list("lua_funcname")
+lua_fieldlist = _list("lua_fieldlist", ",")
 
 local lua_nil = ast.const("lua_nil", "nil")
 local lua_true = ast.const("lua_true", "true")
@@ -111,7 +164,27 @@ local lua_break = ast.const("lua_break", "break")
 local lua_vararg = ast.const("lua_vararg", "...")
 local lua_semicolon = ast.const("lua_semicolon", ";")
 
-local lua_name = ast.id("lua_name")
+
+local function ident(...)
+  local st = ast.id(...)
+  function st:repr()
+    local parameters
+    if type(self.value) == "string" then
+      parameters = {utils.escape(self.value)}
+    elseif type(self.value) == "number" then
+      parameters = {lua_number(self.value)}
+    else
+      parameters = {self.value}
+    end
+
+    return lua_functioncall.new(
+      lua_name(tostring(st)),
+      lua_args.new(lua_explist(parameters)))
+  end
+  return st
+end
+
+lua_name = ident("lua_name")
 
 function lua_name:unique(prefix)
   self.n = self.n or 0
@@ -120,15 +193,15 @@ function lua_name:unique(prefix)
   return self(prefix)
 end
 
-local lua_number = ast.id("lua_number")
-local lua_string = ast.id("lua_string", "value", function(self)
+lua_number = ident("lua_number")
+local lua_string = ident("lua_string", "value", function(self)
   return utils.escape(self.value)
 end)
-local lua_chunk = ast.id("lua_chunk", "block")
-local lua_binop = ast.id("lua_binop", "value", function(self)
+local lua_chunk = ident("lua_chunk", "block")
+local lua_binop = ident("lua_binop", "value", function(self)
   return " "..self.value.." "
 end)
-local lua_unop = ast.id("lua_unop", "value", function(self)
+local lua_unop = ident("lua_unop", "value", function(self)
   return " "..self.value.." "
 end)
 
@@ -527,7 +600,7 @@ Name = function(invariant, position, peek)
 end
 
 
-local lua_ast = {
+lua_ast = {
   [lua_assign] = lua_assign,
   [lua_dot] = lua_dot,
   [lua_index] = lua_index,
