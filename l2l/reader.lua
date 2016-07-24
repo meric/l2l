@@ -341,6 +341,10 @@ local function environ(source, position)
     compiler.compile_lua_block_into_exp,
     compiler.compile_lua_block)
 
+  for i, name in ipairs({"fn", "quasiquote", "quote", "mac"}) do
+    require("l2l.contrib."..name)(invariant)
+  end
+
   return invariant
 end
 

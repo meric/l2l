@@ -5,18 +5,14 @@ local list = require("l2l.list")
 local source = [=[
 -- Install quote and quasiquote read macro and special forms.
 
-(-# LANGUAGE l2l.contrib.quote #-)
-(-# LANGUAGE l2l.contrib.quasiquote #-)
-(-# LANGUAGE l2l.contrib.fn #-)
-(-# LANGUAGE l2l.contrib.mac #-)
 
-(-# MACRO l2l.macro.math math #-)
+(-# MACRO l2l.macro.arithmetic #-)
 
-(print (math.+ 1 2 3 + 7))
+(print (+ 1 2 3 + 7))
 
-(math.+)
+(+)
 
-(fn add (...) (math.+ ...))
+-- (fn add (...) (math.+ ...))
 
 -- Semicolons have no effect.
 ;;;

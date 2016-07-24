@@ -1,6 +1,3 @@
-(-# LANGUAGE l2l.contrib.quote #-)
-(-# LANGUAGE l2l.contrib.fn #-)
-
 (fn + (...)
   \local args = {...}
   local x = 0

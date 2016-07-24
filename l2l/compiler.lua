@@ -146,9 +146,10 @@ local function header(source, mod)
   if string.match(source, "vector") then
     table.insert(head, [[local vector = require("l2l.vector")]])
   end
-  if string.match(source, symbol("+"):hash()) and mod ~= "l2l.lib.math" then
+  if string.match(source, symbol("+"):hash()) and mod ~= "l2l.lib.arithmetic" then
     table.insert(head, [[local import = compiler.import]])
-    table.insert(head, [[local math = import("l2l.lib.math")]])
+    table.insert(head, [[local arithmetic = import("l2l.lib.arithmetic")]])
+    table.insert(head, [[local ]]..symbol("+"):hash()..[[ = arithmetic.]]..symbol("+"):hash())
   end
   return table.concat(head, "\n")
 end

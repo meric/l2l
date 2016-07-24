@@ -1,7 +1,3 @@
-(-# LANGUAGE l2l.contrib.quote #-)
-(-# LANGUAGE l2l.contrib.quasiquote #-)
-(-# LANGUAGE l2l.contrib.fn #-)
-
 (fn + (a ...)
  \if a == symbol("...") then
     a = \'(+ ...)
