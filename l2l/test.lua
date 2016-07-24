@@ -45,7 +45,11 @@ end)
 -- Function definition
 (fn add (a b)  \a + b 2)
 
-\if \\local x x = x + 1 return x > 0 then
+\if (\\local x = 0
+             for i=1, 10 do
+                x = x + 1
+             end
+             return x) > 0 then
     print("hello")
 end
 
