@@ -27,5 +27,3 @@ local function compile_quote(invariant, cdr, output)
 end
 reader.register_R(invariant, "'", read_quote)
 compiler.register_L(invariant, "quote", compile_quote, compile_quote)
-
-return
