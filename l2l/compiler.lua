@@ -244,25 +244,25 @@ local function compile(source, mod, extensions)
 end
 
 local function compile_or_cached(source, mod, extends, path)
-
   local f = io.open(path)
+  local h = #source.."@"..source
   if not f then
     local out = compile(source, mod, extends)
     local g = io.open(path, "w")
-    g:write(source..out)
+    g:write(h..out)
     g:close()
     return out
   end
   local code = f:read("*a")
   f:close()
-  if code:sub(1, #source) ~= source then
+  if code:sub(1, #h) ~= h then
     local out = compile(source, mod, extends)
     local g = io.open(path, "w")
-    g:write(source..out)
+    g:write(h..out)
     g:close()
     return out
   end
-  return code:sub(#source + 1)
+  return code:sub(#h + 1)
 end
 
 local function build(mod, extends)
