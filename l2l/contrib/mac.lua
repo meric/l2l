@@ -35,7 +35,7 @@ local function import_macro(invariant, cddr)
     end
     for k, v in pairs(m) do
       local name = k
-      if prefix then
+      if prefix and prefix ~= "#-" then
         name = prefix.."."..k
       end
       assert(type(v) == "function")

@@ -5,7 +5,6 @@ local list = require("l2l.list")
 local source = [=[
 -- Install quote and quasiquote read macro and special forms.
 
-
 (-# MACRO l2l.macro.arithmetic #-)
 
 (print (+ 1 2 3 + 7))
