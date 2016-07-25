@@ -1,12 +1,6 @@
 \
 local invariant = ...
-local reader = require("l2l.reader")
-local compiler = require("l2l.compiler")
 local utils = require("leftry").utils
-local vector = require("l2l.vector")
-
-local symbol = reader.symbol
-local lua_none = reader.lua_none
 
 local function import_macro(invariant, cddr)
   local caddr = cddr:car()

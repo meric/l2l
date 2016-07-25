@@ -1,13 +1,5 @@
 \
 local invariant = select(1, ...)
-local reader = require("l2l.reader")
-local compiler = require("l2l.compiler")
-local read = reader.read
-local symbol = reader.symbol
-local list = require("l2l.list")
-local lua = require("l2l.lua")
-
-local lua_ast = lua.lua_ast
 
 local function read_quote(invariant, position)
   local rest, values = read(invariant, position + 1)

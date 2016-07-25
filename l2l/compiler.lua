@@ -136,6 +136,8 @@ local function initialize_dependencies()
       dependencies[name] = {{'require("l2l.compiler")', "compiler"}}
     end
 
+    dependencies["compiler"] = {{'require("l2l.compiler")'}}
+    dependencies["reader"] = {{'require("l2l.reader")'}}
     dependencies["list"] = {{'require("l2l.list")', nil}}
     dependencies["vector"] = {{'require("l2l.vector")', nil}}
     dependencies[symbol("+"):hash()] = {
@@ -192,6 +194,8 @@ end
 local function analyse_chunk(references, value)
   for match in lua.Chunk:gmatch(value, lua.Var) do
     if utils.hasmetatable(match, lua.lua_dot) then
+      references[tostring(match.prefix)] = match.prefix
+    elseif utils.hasmetatable(match, lua.lua_index) then
       references[tostring(match.prefix)] = match.prefix
     else
       references[tostring(match)] = match

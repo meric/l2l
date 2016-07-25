@@ -1,28 +1,7 @@
 \
 local invariant = ...
-local reader = require("l2l.reader")
-local read = reader.read
-local symbol = reader.symbol
-
-local compiler = require("l2l.compiler")
-local to_stat = compiler.to_stat
-
-local hash = compiler.hash
-
-local lua = require("l2l.lua")
-
-local list = require("l2l.list")
-local vector = require("l2l.vector")
 
 local utils = require("leftry").utils
-
-local lua_local_function = lua.lua_local_function
-local lua_lambda_function = lua.lua_lambda_function
-local lua_funcbody = lua.lua_funcbody
-local lua_name = lua.lua_name
-local lua_namelist = lua.lua_namelist
-local lua_block = lua.lua_block
-local lua_local = lua.lua_local
 
 local function stat_lua_function(invariant, output, name, parameters, body)
   local stats = {}
