@@ -119,39 +119,84 @@ end
 
 local exports
 
-local function header(source, mod)
-  local head = {
-    [[local lua = require("l2l.lua")]],
-    [[local reader = require("l2l.reader")]],
-    [[local compiler = require("l2l.compiler")]],
-  }
-  for name, _ in pairs(lua) do
-    if string.match(source, name) then
-      table.insert(head, "local "..name.." = lua."..name)
+local dependencies
+
+local function initialize_dependencies()
+  if not dependencies then
+    dependencies = {}
+    for name, _ in pairs(lua) do
+      dependencies[name] = {{'require("l2l.lua")', "lua"}}
+    end
+
+    for name, _ in pairs(reader) do
+      dependencies[name] = {{'require("l2l.reader")', "reader"}}
+    end
+
+    for name, _ in pairs(exports) do
+      dependencies[name] = {{'require("l2l.compiler")', "compiler"}}
+    end
+
+    dependencies["list"] = {{'require("l2l.list")', nil}}
+    dependencies["vector"] = {{'require("l2l.vector")', nil}}
+    dependencies[symbol("+"):hash()] = {
+      "import", {'import("l2l.lib.arithmetic")', "arithmetic"}}
+  end
+  return dependencies
+end
+
+local function header(references, mod)
+  local deps = initialize_dependencies()
+  local names = {}
+  for name, dep in pairs(deps) do
+    if references[name] then
+      for i, v in ipairs(dep) do
+        if type(v) == "string" then
+          table.insert(names, v)
+        end
+      end
+      table.insert(names, name)
     end
   end
-  for name, _ in pairs(reader) do
-    if string.match(source, name) then
-      table.insert(head, "local "..name.." = reader."..name)
+
+  local output = {}
+  local outputed = {}
+
+  for i, name in ipairs(names) do
+    for i, dep in ipairs(deps[name]) do
+      if type(dep) == "table" then
+        local m, label = dep[1], dep[2]
+        if not mod or not string.match(m, mod) then
+          if m then
+            local l = string.format(m, name)
+            local r = string.format("local %s = %s", label or name, m)
+            if not outputed[r] then
+              outputed[r] = true
+              table.insert(output, r)
+            end
+          end
+          if label then
+            local l = label.."."..name
+            local r = string.format("local %s = %s", name, l)
+            if not outputed[r] then
+              outputed[r] = true
+              table.insert(output, r)
+            end
+          end
+        end
+      end
     end
   end
-  for name, _ in pairs(exports) do
-    if string.match(source, name) then
-      table.insert(head, "local "..name.." = compiler."..name)
+  return table.concat(output, "\n")
+end
+
+local function analyse_chunk(references, value)
+  for match in lua.Chunk:gmatch(value, lua.Var) do
+    if utils.hasmetatable(match, lua.lua_dot) then
+      references[tostring(match.prefix)] = match.prefix
+    else
+      references[tostring(match)] = match
     end
   end
-  if string.match(source, "list") then
-    table.insert(head, [[local list = require("l2l.list")]])
-  end
-  if string.match(source, "vector") then
-    table.insert(head, [[local vector = require("l2l.vector")]])
-  end
-  if string.match(source, symbol("+"):hash()) and mod ~= "l2l.lib.arithmetic" then
-    table.insert(head, [[local import = compiler.import]])
-    table.insert(head, [[local arithmetic = import("l2l.lib.arithmetic")]])
-    table.insert(head, [[local ]]..symbol("+"):hash()..[[ = arithmetic.]]..symbol("+"):hash())
-  end
-  return table.concat(head, "\n")
 end
 
 local function compile(source, parent, mod)
@@ -174,13 +219,15 @@ local function compile(source, parent, mod)
     end
   end
 
+  local references = {}
+
   for i, value in ipairs(output) do
     output[i] = tostring(value)
+    analyse_chunk(references, output[i])
   end
 
   output = table.concat(output, "\n")
-  output = header(output, mod).."\n"..output
-  return output
+  return header(references, mod) .. "\n" .. output
 end
 
 local function import(mod)
