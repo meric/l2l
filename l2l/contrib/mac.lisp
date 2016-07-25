@@ -1,3 +1,5 @@
+\
+local invariant = ...
 local reader = require("l2l.reader")
 local compiler = require("l2l.compiler")
 local utils = require("leftry").utils
@@ -21,7 +23,7 @@ local function import_macro(invariant, cddr)
       f:close()
       local f, err = load(compiler.compile(source))
       if f then
-        m = f()
+        m = f(invariant)
       else
         error(err)
       end
@@ -48,6 +50,4 @@ local function import_macro(invariant, cddr)
   error("MACRO must have symbol argument.")
 end
 
-return function(invariant)
-  reader.register_E(invariant, "MACRO", import_macro)
-end
+reader.register_E(invariant, "MACRO", import_macro)

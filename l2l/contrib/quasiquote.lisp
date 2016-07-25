@@ -1,3 +1,5 @@
+\
+local invariant = select(1, ...)
 local reader = require("l2l.reader")
 local compiler = require("l2l.compiler")
 local utils = require("leftry.utils")
@@ -59,11 +61,9 @@ local function compile_quasiquote(invariant, cdr, output)
   return quasiquote_eval(invariant, cadr, output)
 end
 
-return function(invariant)
-  reader.register_R(invariant, ",", read_quasiquote_eval)
-  reader.register_R(invariant, "`", read_quasiquote)
-  compiler.register_L(invariant, "quasiquote", compile_quasiquote,
-    compile_quasiquote)
-  compiler.register_L(invariant, "quasiquote-eval", compile_quasiquote_eval,
-    compile_quasiquote_eval)
-end
+reader.register_R(invariant, ",", read_quasiquote_eval)
+reader.register_R(invariant, "`", read_quasiquote)
+compiler.register_L(invariant, "quasiquote", compile_quasiquote,
+  compile_quasiquote)
+compiler.register_L(invariant, "quasiquote-eval", compile_quasiquote_eval,
+  compile_quasiquote_eval)

@@ -28,6 +28,8 @@ local lua_none = setmetatable({}, {__tostring = function()
   return "lua_none"
 end})
 
+local lua_string = lua.lua_string
+
 local function matchreadmacro(R, byte)
   if not byte or not R then
     return nil
@@ -263,16 +265,25 @@ local function transform(invariant, data)
   return data
 end
 
+local function extend(invariant, mod)
+  local compiler = require("l2l.compiler")
+
+  -- Extension modules come with no default extensions.
+  local f = compiler.build(mod, {})
+  if not f then
+    f = require(mod)
+  end
+  assert(type(f) == "function", "extend function missing.")
+  return f(invariant)
+end
+
 local function extend_language(invariant, cddr)
   local caddr = cddr:car()
-  if utils.hasmetatable(caddr, symbol) then
-    local mod = caddr[1]
-    local f = require(mod)
-    assert(type(f) == "function", "-# LANGUAGE function missing.")
-    f(invariant)
+  if utils.hasmetatable(caddr, lua_string) then
+    extend(invariant, caddr.value)
     return lua_none
   end
-  error("LANGUAGE must have symbol argument.")
+  error("extend must have string literal argument.")
 end
 
 local function transform_extension(invariant, cdr)
@@ -304,7 +315,7 @@ local function environ(source, position)
     events = {},
     L = {},
     E = {
-      ["LANGUAGE"] = extend_language
+      ["extend"] = extend_language
     },
     T = {
       [hash("-#")] = {transform_extension}
@@ -341,10 +352,6 @@ local function environ(source, position)
     compiler.compile_lua_block_into_exp,
     compiler.compile_lua_block)
 
-  for i, name in ipairs({"fn", "quasiquote", "quote", "mac"}) do
-    require("l2l.contrib."..name)(invariant)
-  end
-
   return invariant
 end
 
@@ -379,6 +386,7 @@ return {
   read = read,
   transform = transform,
   environ = environ,
+  extend = extend,
   inherit = inherit,
   read_lua = read_lua,
   read_list = read_list,

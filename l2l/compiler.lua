@@ -199,13 +199,26 @@ local function analyse_chunk(references, value)
   end
 end
 
-local function compile(source, parent, mod)
+local function compile(source, mod, extensions)
   local invariant
 
   if not parent then
     invariant = reader.environ(source, 1)
   else
     invariant = reader.inherit(parent, source)
+  end
+
+  if not extensions then
+    extensions = {
+      "l2l.contrib.fn",
+      "l2l.contrib.quasiquote",
+      "l2l.contrib.quote",
+      "l2l.contrib.mac"
+    }
+  end
+
+  for i, m in ipairs(extensions) do
+    reader.extend(invariant, m)
   end
 
   local output = {}
@@ -230,25 +243,54 @@ local function compile(source, parent, mod)
   return header(references, mod) .. "\n" .. output
 end
 
-local function import(mod)
+local function compile_or_cached(source, mod, extends, path)
+
+  local f = io.open(path)
+  if not f then
+    local out = compile(source, mod, extends)
+    local g = io.open(path, "w")
+    g:write(source..out)
+    g:close()
+    return out
+  end
+  local code = f:read("*a")
+  f:close()
+  if code:sub(1, #source) ~= source then
+    local out = compile(source, mod, extends)
+    local g = io.open(path, "w")
+    g:write(source..out)
+    g:close()
+    return out
+  end
+  return code:sub(#source + 1)
+end
+
+local function build(mod, extends)
   local path = string.gsub(mod, "[.]", "/")..".lisp"
   local f = io.open(path)
-  local m
+  if not f then
+    return
+  end
+  local source = f:read("*a")
+  f:close()
+  local out = compile_or_cached(source, mod, extends, path.."c")
+  local f, err = load(out)
   if f then
-    local source = f:read("*a")
-    f:close()
-    local out = compile(source, nil, mod)
-    local f, err = load(out)
-    local ok
-    if f then
-      ok, m = pcall(f)
-      if not ok then
-        print(out)
-        error(m)
-      end
-    else
+    return f
+  else
+    print(out)
+    error(err)
+  end
+end
+
+local function import(mod)
+  local f = build(mod)
+  local ok, m
+  if f then
+    ok, m = pcall(f, mod, path)
+    if not ok then
       print(out)
-      error(err)
+      error(m)
     end
   else
     m = require(mod)
@@ -257,6 +299,7 @@ local function import(mod)
 end
 
 exports = {
+  build=build,
   import=import,
   compile=compile,
   compile_lua_block = compile_lua_block,

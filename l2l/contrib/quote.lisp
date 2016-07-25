@@ -1,3 +1,5 @@
+\
+local invariant = select(1, ...)
 local reader = require("l2l.reader")
 local compiler = require("l2l.compiler")
 local read = reader.read
@@ -23,8 +25,7 @@ local function compile_quote(invariant, cdr, output)
   end
   return cadr
 end
+reader.register_R(invariant, "'", read_quote)
+compiler.register_L(invariant, "quote", compile_quote, compile_quote)
 
-return function(invariant)
-  reader.register_R(invariant, "'", read_quote)
-  compiler.register_L(invariant, "quote", compile_quote, compile_quote)
-end
+return

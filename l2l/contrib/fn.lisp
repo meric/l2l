@@ -1,3 +1,5 @@
+\
+local invariant = ...
 local reader = require("l2l.reader")
 local read = reader.read
 local symbol = reader.symbol
@@ -83,6 +85,4 @@ local function compile_fn_stat(invariant, cdr, output)
   end
 end
 
-return function(invariant)
-  compiler.register_L(invariant, "fn", compile_fn_exp, compile_fn_stat)
-end
+compiler.register_L(invariant, "fn", compile_fn_exp, compile_fn_stat)
