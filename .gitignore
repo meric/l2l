@@ -1,2 +1,5 @@
 .DS_Store
 *.lispc
+l2l/contrib/*.lua
+l2l/lib/*.lua
+l2l/macro/*.lua
