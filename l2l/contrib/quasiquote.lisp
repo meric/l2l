@@ -61,9 +61,11 @@ local function compile_quasiquote(invariant, cdr, output)
   return quasiquote_eval(invariant, cadr, output)
 end
 
-reader.register_R(invariant, ",", read_quasiquote_eval)
-reader.register_R(invariant, "`", read_quasiquote)
-compiler.register_L(invariant, "quasiquote", compile_quasiquote,
-  compile_quasiquote)
-compiler.register_L(invariant, "quasiquote-eval", compile_quasiquote_eval,
-  compile_quasiquote_eval)
+return function(invariant)
+  reader.register_R(invariant, ",", read_quasiquote_eval)
+  reader.register_R(invariant, "`", read_quasiquote)
+  compiler.register_L(invariant, "quasiquote", compile_quasiquote,
+    compile_quasiquote)
+  compiler.register_L(invariant, "quasiquote-eval", compile_quasiquote_eval,
+    compile_quasiquote_eval)
+end

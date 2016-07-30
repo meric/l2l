@@ -17,5 +17,8 @@ local function compile_quote(invariant, cdr, output)
   end
   return cadr
 end
-reader.register_R(invariant, "'", read_quote)
-compiler.register_L(invariant, "quote", compile_quote, compile_quote)
+
+return function(invariant)
+  reader.register_R(invariant, "'", read_quote)
+  compiler.register_L(invariant, "quote", compile_quote, compile_quote)
+end

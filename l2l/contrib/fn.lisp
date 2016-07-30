@@ -1,6 +1,4 @@
 \
-local invariant = ...
-
 local utils = require("leftry").utils
 
 local function stat_lua_function(invariant, output, name, parameters, body)
@@ -64,4 +62,6 @@ local function compile_fn_stat(invariant, cdr, output)
   end
 end
 
-compiler.register_L(invariant, "fn", compile_fn_exp, compile_fn_stat)
+return function(invariant)
+  compiler.register_L(invariant, "fn", compile_fn_exp, compile_fn_stat)
+end

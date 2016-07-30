@@ -44,4 +44,6 @@ local function import_macro(invariant, cddr)
   error("MACRO must have symbol argument.")
 end
 
-reader.register_E(invariant, "MACRO", import_macro)
+return function(invariant)
+  reader.register_E(invariant, "MACRO", import_macro)
+end

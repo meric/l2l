@@ -272,6 +272,8 @@ local function extend(invariant, mod)
   local f = compiler.build(mod, {})
   if not f then
     f = require(mod)
+  else
+    f = f(mod)
   end
   assert(type(f) == "function", "extend function missing.")
   return f(invariant)

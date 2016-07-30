@@ -4,7 +4,6 @@ local list = require("l2l.list")
 
 local source = [=[
 -- Install quote and quasiquote read macro and special forms.
-(-# extend "l2l.contrib.fn")
 
 (-# MACRO l2l.macro.arithmetic #-)
 
@@ -93,4 +92,6 @@ end
 -- print(function(a,b)print(1);return a + b end)
 -- print(function()print(1);return 2 end)
 
-print(compiler.compile(source))
+local source = compiler.compile(source)
+print(source)
+print(load(source)())

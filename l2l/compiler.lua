@@ -247,9 +247,24 @@ local function compile(source, mod, extensions)
   return header(references, mod) .. "\n" .. output
 end
 
+local function _loadstring(source)
+  return load(compile(source))
+end
+
+local function hash_mod(source)
+  local h = #source.."@"..source
+  local total = 1
+
+  for i=1, #h do
+    total = total + string.byte(h, i) * 0.1 * i
+  end
+
+  return "--"..total.."\n"
+end
+
 local function compile_or_cached(source, mod, extends, path)
   local f = io.open(path)
-  local h = #source.."@"..source
+  local h = hash_mod(source)
   if not f then
     local out = compile(source, mod, extends)
     local g = io.open(path, "w")
@@ -270,14 +285,15 @@ local function compile_or_cached(source, mod, extends, path)
 end
 
 local function build(mod, extends)
-  local path = string.gsub(mod, "[.]", "/")..".lisp"
+  local prefix = string.gsub(mod, "[.]", "/")
+  local path = prefix..".lisp"
   local f = io.open(path)
   if not f then
     return
   end
   local source = f:read("*a")
   f:close()
-  local out = compile_or_cached(source, mod, extends, path.."c")
+  local out = compile_or_cached(source, mod, extends, prefix..".lua")
   local f, err = load(out)
   if f then
     return f
@@ -303,6 +319,7 @@ local function import(mod)
 end
 
 exports = {
+  loadstring=_loadstring,
   build=build,
   import=import,
   compile=compile,
