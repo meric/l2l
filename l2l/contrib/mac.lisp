@@ -10,20 +10,7 @@ local function import_macro(invariant, cddr)
   end
   if utils.hasmetatable(caddr, symbol) then
     local mod = caddr[1]
-    local path = string.gsub(mod, "[.]", "/")..".lisp"
-    local f = io.open(path)
-    if f then
-      local source = f:read("*a")
-      f:close()
-      local f, err = load(compiler.compile(source))
-      if f then
-        m = f(invariant)
-      else
-        error(err)
-      end
-    else
-      m = require(mod)
-    end
+    local m = import(mod)
     assert(type(m) == "table", "-# MACRO module missing.")
     local prefix
     if cadddr then
@@ -31,7 +18,7 @@ local function import_macro(invariant, cddr)
     end
     for k, v in pairs(m) do
       local name = k
-      if prefix and prefix ~= "#-" then
+      if prefix then
         name = prefix.."."..k
       end
       assert(type(v) == "function")
