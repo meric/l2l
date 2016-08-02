@@ -12,11 +12,8 @@
     a = \'\(\+)(...)
   end
   if not a then
-    -- `0` is not a valid ast node, but `(quote 0)` is, it converts the `0`
-    -- into `lua_number(0)`. Escape into lisp and return (quote 0).
-    return \'0
-  end
-  if ... then
+    return 0
+  elseif ... then
     -- Use recursion to build the (+ a b c d) into equivalent lua form.
     return \`\(\,a + \,(+ ...))
   end

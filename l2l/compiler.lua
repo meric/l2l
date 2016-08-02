@@ -48,6 +48,8 @@ local function expize(invariant, data, output)
     return "nil"
   elseif data == reader.lua_none then
     return
+  elseif type(data) == "number" then
+    return lua_number(data)
   end
   error("cannot not expize.."..tostring(data))
 end
