@@ -341,6 +341,7 @@ local function expand(invariant, data)
     local car, cdr = data:car(), data:cdr()
     if utils.hasmetatable(car, symbol) and macro[car:hash()] then
       data = macro[car:hash()](list.unpack(cdr))
+      -- re-expand?
     else
       return list.cast(data, function(value) return
         expand(invariant, value)

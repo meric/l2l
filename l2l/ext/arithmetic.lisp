@@ -7,7 +7,9 @@
     if ... then
       error("... must be last argument.")
     end
-    a = \'(+ ...)
+    -- a = \'(+ ...) will not work because we can't embed lisp nodes
+    -- in lua nodes.
+    a = \'\(\+)(...)
   end
   if not a then
     -- `0` is not a valid ast node, but `(quote 0)` is, it converts the `0`
