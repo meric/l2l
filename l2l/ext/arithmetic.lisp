@@ -21,10 +21,8 @@
 
 \return {
   macro = {
-    -- Similar to `(quote 0)` above, use (quote +) to get symbol("+").
     -- Symbols aren't useful for use as a key. We hash it to convert it into
-    -- string, and this works because by design, 
-    -- `symbol(hash(text)) == symbol(text)`
+    -- string.
     [(\'+):hash()] = \+
   }
 }
