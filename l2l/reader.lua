@@ -253,22 +253,14 @@ function readifnot(invariant, position, stop)
 end
 
 local function load_extension(invariant, mod, alias)
+  -- Special form and Macro extensions can be alias namespaced.
+  -- Read macros cannot.
   if mod.lua then
     for k, x in pairs(mod.lua) do
-      invariant.lua[k] = x
-    end
-  end
-  if mod.read then
-    for k, xs in pairs(mod.read) do
-      for i, x in ipairs(xs) do
-        if alias then
-          k = hash(alias .. "." .. k)
-        end
-        invariant.read[k] = invariant.read[k] or {}
-        if not utils.contains(invariant.read[k], x) then
-          table.insert(invariant.read[k], x)
-        end
+      if alias then
+        k = hash(alias .. "." .. k)
       end
+      invariant.lua[k] = x
     end
   end
   if mod.macro then
@@ -277,6 +269,17 @@ local function load_extension(invariant, mod, alias)
         k = hash(alias .. "." .. k)
       end
       invariant.macro[k] = x
+    end
+  end
+  if mod.read then
+    assert(not alias, "read macros cannot be namespaced.")
+    for k, xs in pairs(mod.read) do
+      for i, x in ipairs(xs) do
+        invariant.read[k] = invariant.read[k] or {}
+        if not utils.contains(invariant.read[k], x) then
+          table.insert(invariant.read[k], x)
+        end
+      end
     end
   end
 end

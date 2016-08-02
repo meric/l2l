@@ -7,7 +7,11 @@ local source = [=[
 
 -- #import mac
 
+#import (fn q)
+#import (arithmetic)
 #import (arithmetic a)
+
+(q.fn add (...) (+ 1 2 3 4))
 
 (print (a.+ 1 2 3 7))
 
