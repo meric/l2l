@@ -1,0 +1,2 @@
+Extensions require importing all extensions explicitly, whereas usually modules
+implicitly come with a default set of extensions.
