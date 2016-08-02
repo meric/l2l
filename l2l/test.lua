@@ -5,11 +5,13 @@ local list = require("l2l.list")
 local source = [=[
 -- Install quote and quasiquote read macro and special forms.
 
-(-# MACRO l2l.macro.arithmetic)
+-- #import mac
 
-(print (+ 1 2 3 + 7))
+#import arithmetic
 
-(+)
+(print (+ 1 2 3 7))
+
+-- (+)
 
 -- (fn add (...) (math.+ ...))
 

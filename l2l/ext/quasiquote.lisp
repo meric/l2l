@@ -9,23 +9,6 @@ local list = require("l2l.list")
 local vector = require("l2l.vector")
 local lua = require("l2l.lua")
 
-local lua_ast = lua.lua_ast
-
-local function read_quasiquote(invariant, position)
-  local rest, values = read(invariant, position + 1)
-  if rest then
-    values[1] = list(symbol("quasiquote"), values[1])
-    return rest, values
-  end
-end
-
-local function read_quasiquote_eval(invariant, position)
-  local rest, values = read(invariant, position + 1)
-  if rest then
-    values[1] = list(symbol("quasiquote-eval"), values[1])
-    return rest, values
-  end
-end
 
 local function quasiquote_eval(invariant, car, output)
   if utils.hasmetatable(car, list) then
@@ -61,11 +44,30 @@ local function compile_quasiquote(invariant, cdr, output)
   return quasiquote_eval(invariant, cadr, output)
 end
 
-return function(invariant)
-  reader.register_R(invariant, ",", read_quasiquote_eval)
-  reader.register_R(invariant, "`", read_quasiquote)
-  compiler.register_L(invariant, "quasiquote", compile_quasiquote,
-    compile_quasiquote)
-  compiler.register_L(invariant, "quasiquote-eval", compile_quasiquote_eval,
-    compile_quasiquote_eval)
+local function read_quasiquote(invariant, position)
+  local rest, values = read(invariant, position + 1)
+  if rest then
+    values[1] = list(symbol("quasiquote"), values[1])
+    return rest, values
+  end
 end
+
+local function read_quasiquote_eval(invariant, position)
+  local rest, values = read(invariant, position + 1)
+  if rest then
+    values[1] = list(symbol("quasiquote-eval"), values[1])
+    return rest, values
+  end
+end
+
+return {
+  read = {
+    [string.byte(",")] = {read_quasiquote_eval},
+    [string.byte("`")] = {read_quasiquote}
+  },
+  lua = {
+    ["quasiquote"] = {expize=compile_quasiquote, statize=compile_quasiquote},
+    ["quasiquote-eval"] = {expize=compile_quasiquote_eval,
+      statize=compile_quasiquote_eval}
+  }
+}

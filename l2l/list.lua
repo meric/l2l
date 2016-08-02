@@ -97,6 +97,9 @@ function list:cdr()
 end
 
 function list:unpack()
+  if not self then
+    return
+  end
   local car, cdr = self:car(), self:cdr()
   if cdr then
     return car, cdr:unpack()

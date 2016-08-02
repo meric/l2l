@@ -107,7 +107,7 @@ end
 
 local function read_symbol(invariant, position)
   local source, rest = invariant.source
-  local R = invariant.R
+  local R = invariant.read
   local dot, zero, nine, minus = 46, 48, 57, 45
   for i=position, #source do
     local byte = source:byte(i)
@@ -158,6 +158,10 @@ local function read_list(invariant, position)
         t:insert(value)
       end
     end
+  end
+
+  if not rest then
+    return
   end
 
   -- Add 1 for the right_paren.
@@ -214,7 +218,7 @@ local function read_lua_literal(invariant, position)
 end
 
 function readifnot(invariant, position, stop)
-  local R, source = invariant.R, invariant.source
+  local R, source = invariant.read, invariant.source
   local rest, macro = position
 
   if position > #source then
@@ -248,53 +252,94 @@ function readifnot(invariant, position, stop)
   return false
 end
 
-local function transform(invariant, data)
-  local T = invariant.T
-  if utils.hasmetatable(data, list) then
-    local car, cdr = data:car(), data:cdr()
-    if utils.hasmetatable(car, symbol) and T[car:hash()] then
-      for i, transformer in ipairs(T[car:hash()]) do
-        data = transformer(invariant, cdr)
-      end
-    else
-      return list.cast(data, function(value) return
-        transform(invariant, value)
-      end)
+local function load_extension(invariant, mod, alias)
+  if mod.lua then
+    for k, x in pairs(mod.lua) do
+      invariant.lua[k] = x
     end
   end
-  return data
+  if mod.read then
+    for k, xs in pairs(mod.read) do
+      for i, x in ipairs(xs) do
+        if alias then
+          k = hash(alias .. "." .. k)
+        end
+        invariant.read[k] = invariant.read[k] or {}
+        if not utils.contains(invariant.read[k], x) then
+          table.insert(invariant.read[k], x)
+        end
+      end
+    end
+  end
+  if mod.macro then
+    for k, x in pairs(mod.macro) do
+      if alias then
+        k = hash(alias .. "." .. k)
+      end
+      invariant.macro[k] = x
+    end
+  end
 end
 
-local function extend(invariant, mod)
+local function import_extension(invariant, name)
   local compiler = require("l2l.compiler")
+  local ok, mod = pcall(compiler.import, name)
+  if not ok and string.match(mod, "not found") then
+    mod = compiler.import("l2l.ext."..name, {})
+  end
+  if not mod then
+    error("cannot load "..name)
+  end
+  return mod
+end
 
-  -- Extension modules come with no default extensions.
-  local f = compiler.build(mod, {})
-  if not f then
-    f = require(mod)
+local function dispatch_import(invariant, position)
+  local rest, values = read_symbol(invariant, position+1)
+  local sym, alias
+  if rest then
+    sym = values[1]
   else
-    f = f(mod)
+    rest, values = read_list(invariant, position+1)
+    sym = values[1]:car()
+    alias = values[1]:cdr():car():hash()
   end
-  assert(type(f) == "function", "extend function missing.")
-  return f(invariant)
+  if rest then
+    local name = sym:hash()
+    local compiler = require("l2l.compiler")
+    local mod = import_extension(invariant, name)
+    load_extension(invariant, mod, alias)
+    return rest, {}
+  end
 end
 
-local function extend_language(invariant, cddr)
-  local caddr = cddr:car()
-  if utils.hasmetatable(caddr, lua_string) then
-    extend(invariant, caddr.value)
-    return lua_none
+local function read_dispatch(invariant, position)
+  local rest, values = read_symbol(invariant, position+1)
+  if rest then
+    local name = values[1]:hash()
+    local dispatches = invariant.dispatch[name]
+    if not dispatches then
+      error("no dispatch: "..name)
+    end
+    for i, dispatch in ipairs(dispatches) do
+      local r, v = dispatch(invariant, rest)
+      if r then
+        return r, v
+      end
+    end
+    error("no matched dispatch: "..name)
   end
-  error("extend must have string literal argument.")
 end
 
-local function transform_extension(invariant, cdr)
-  if cdr then
-    local cadr, cddr = cdr:car(), cdr:cdr()
-    if invariant.E[cadr:hash()] and cddr then
-      return invariant.E[cadr:hash()](invariant, cddr)
+local function expand(invariant, data)
+  local macro = invariant.macro
+  if utils.hasmetatable(data, list) then
+    local car, cdr = data:car(), data:cdr()
+    if utils.hasmetatable(car, symbol) and macro[car:hash()] then
+      data = macro[car:hash()](list.unpack(cdr))
     else
-      error("unrecognised extension.."..tostring(cadr[1]))
+      return list.cast(data, function(value) return
+        expand(invariant, value)
+      end)
     end
   end
   return data
@@ -312,17 +357,17 @@ local function inherit(invariant, source)
   return new
 end
 
+
 local function environ(source, position)
   local invariant = {
     events = {},
-    L = {},
-    E = {
-      ["extend"] = extend_language
+    macro = {},
+    dispatch = {
+      ["import"] = {dispatch_import}
     },
-    T = {
-      [hash("-#")] = {transform_extension}
-    },
-    R = {
+    lua = {},
+    read = {
+      [string.byte("#")] = {read_dispatch},
       [string.byte("\\")] = {read_lua},
       [string.byte("(")] = {read_list},
       [string.byte(";")] = {read_semicolon},
@@ -350,9 +395,10 @@ local function environ(source, position)
 
   local compiler = require("l2l.compiler")
 
-  compiler.register_L(invariant, "eval-lua-block",
-    compiler.compile_lua_block_into_exp,
-    compiler.compile_lua_block)
+  invariant.lua["eval-lua-block"] = {
+    expize=compiler.compile_lua_block_into_exp,
+    statize=compiler.compile_lua_block
+  }
 
   return invariant
 end
@@ -361,34 +407,15 @@ local function read(invariant, position)
   return select(2, readifnot(invariant, position or 1))
 end
 
-local function register_R(invariant, character, f)
-  local R = invariant.R
-  local byte = string.byte(character)
-  R[byte] = R[byte] or {}
-  if not utils.contains(R[byte], f) then
-    table.insert(R[byte], f)
-  end
-end
-
-local function register_T(invariant, name, f)
-  local T = invariant.T
-  T[hash(name)] = T[hash(name)] or {}
-  if not utils.contains(T[hash(name)], f) then
-    table.insert(T[hash(name)], f)
-  end
-end
-
-local function register_E(invariant, name, f)
-  local E = invariant.E
-  E[hash(name)] = f
-end
 
 return {
   lua_none = lua_none,
   read = read,
-  transform = transform,
+  expand = expand,
   environ = environ,
   extend = extend,
+  load_extension = load_extension,
+  import_extension = import_extension,
   inherit = inherit,
   read_lua = read_lua,
   read_list = read_list,
@@ -398,9 +425,6 @@ return {
   read_quasiquote_eval = read_quasiquote_eval,
   read_quote = read_quote,
   read_symbol = read_symbol,
-  register_R=register_R,
-  register_T=register_T,
-  register_E=register_E,
   symbol=symbol,
   skip_whitespace = skip_whitespace
 }

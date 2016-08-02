@@ -62,6 +62,8 @@ local function compile_fn_stat(invariant, cdr, output)
   end
 end
 
-return function(invariant)
-  compiler.register_L(invariant, "fn", compile_fn_exp, compile_fn_stat)
-end
+return {
+  lua = {
+    fn = {expize=compile_fn_exp, statize=compile_fn_stat}
+  }
+}

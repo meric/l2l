@@ -24,14 +24,14 @@ local function validate_functioncall(car)
     utils.hasmetatable(car, list) or
     utils.hasmetatable(car, symbol) or
     lua_ast[getmetatable(car)]),
-    "only expressions and symbols can be called.")
+    "only expressions and symbols can be called.."..tostring(car))
 end
 
 local function expize(invariant, data, output)
   if utils.hasmetatable(data, list) then
     local car = data:car()
-    if utils.hasmetatable(car, symbol) and invariant.L[car[1]] then
-      return invariant.L[car[1]].expize(invariant, data:cdr(), output)
+    if utils.hasmetatable(car, symbol) and invariant.lua[car[1]] then
+      return invariant.lua[car[1]].expize(invariant, data:cdr(), output)
     end
     local cdr = vector.cast(data:cdr(), function(value)
       return expize(invariant, value, output)
@@ -65,8 +65,8 @@ local function statize(invariant, data, output, last)
   end
   if utils.hasmetatable(data, list) then
     local car = data:car()
-    if utils.hasmetatable(car, symbol) and invariant.L[car[1]] then
-      return invariant.L[car[1]].statize(invariant, data:cdr(), output)
+    if utils.hasmetatable(car, symbol) and invariant.lua[car[1]] then
+      return invariant.lua[car[1]].statize(invariant, data:cdr(), output)
     end
     local cdr = vector.cast(data:cdr(), function(value)
       return expize(invariant, value, output)
@@ -87,16 +87,11 @@ local function statize(invariant, data, output, last)
 end
 
 local function compile_stat(invariant, data, output)
-  return statize(invariant, reader.transform(invariant, data), output)
+  return statize(invariant, reader.expand(invariant, data), output)
 end
 
 local function compile_exp(invariant, data, output)
-  return expize(invariant, reader.transform(invariant, data), output)
-end
-
-local function register_L(invariant, name, exp, stat)
-  local L = invariant.L
-  L[name] = {expize=exp, statize=stat}
+  return expize(invariant, reader.expand(invariant, data), output)
 end
 
 local function compile_lua_block(invariant, cdr, output)
@@ -203,26 +198,56 @@ local function analyse_chunk(references, value)
   end
 end
 
-local function compile(source, mod, extensions)
-  local invariant
+local compile_or_cached
 
-  if not parent then
-    invariant = reader.environ(source, 1)
-  else
-    invariant = reader.inherit(parent, source)
+local function build(mod, extends)
+  local prefix = string.gsub(mod, "[.]", "/")
+  local path = prefix..".lisp"
+  local f = io.open(path)
+  if not f then
+    return
   end
+  local source = f:read("*a")
+  f:close()
+  local out = compile_or_cached(source, mod, extends, prefix..".lua")
+  local f, err = load(out)
+  if f then
+    return f, out
+  else
+    print(out)
+    error(err)
+  end
+end
+
+local function import(mod, extends)
+  local f, out = build(mod, extends)
+  local ok, m
+  if f then
+    ok, m = pcall(f, mod, path)
+    if not ok then
+      print(out)
+      error(m)
+    end
+  else
+    m = require(mod)
+  end
+  return m
+end
+
+local function compile(source, mod, extensions)
+  local invariant = reader.environ(source, 1)
 
   if not extensions then
     extensions = {
-      "l2l.contrib.fn",
-      "l2l.contrib.quasiquote",
-      "l2l.contrib.quote",
-      "l2l.contrib.mac"
+      "fn",
+      "quasiquote",
+      "quote",
     }
   end
 
-  for i, m in ipairs(extensions) do
-    reader.extend(invariant, m)
+  for i, e in ipairs(extensions) do
+    reader.load_extension(invariant,
+      reader.import_extension(invariant, e))
   end
 
   local output = {}
@@ -262,7 +287,7 @@ local function hash_mod(source)
   return "--"..total.."\n"
 end
 
-local function compile_or_cached(source, mod, extends, path)
+compile_or_cached = function(source, mod, extends, path)
   local f = io.open(path)
   local h = hash_mod(source)
   if not f then
@@ -284,40 +309,6 @@ local function compile_or_cached(source, mod, extends, path)
   return code:sub(#h + 1)
 end
 
-local function build(mod, extends)
-  local prefix = string.gsub(mod, "[.]", "/")
-  local path = prefix..".lisp"
-  local f = io.open(path)
-  if not f then
-    return
-  end
-  local source = f:read("*a")
-  f:close()
-  local out = compile_or_cached(source, mod, extends, prefix..".lua")
-  local f, err = load(out)
-  if f then
-    return f
-  else
-    print(out)
-    error(err)
-  end
-end
-
-local function import(mod)
-  local f = build(mod)
-  local ok, m
-  if f then
-    ok, m = pcall(f, mod, path)
-    if not ok then
-      print(out)
-      error(m)
-    end
-  else
-    m = require(mod)
-  end
-  return m
-end
-
 exports = {
   loadstring=_loadstring,
   build=build,
@@ -332,8 +323,7 @@ exports = {
   compile_stat = compile_stat,
   compile_exp = compile_exp,
   to_stat = to_stat,
-  expand = expand,
-  register_L = register_L
+  expand = expand
 }
 
 return exports
