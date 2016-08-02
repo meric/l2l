@@ -7,9 +7,9 @@ local source = [=[
 
 -- #import mac
 
-#import arithmetic
+#import (arithmetic a)
 
-(print (+ 1 2 3 7))
+(print (a.+ 1 2 3 7))
 
 -- (+)
 
@@ -97,3 +97,4 @@ end
 local source = compiler.compile(source)
 print(source)
 print(load(source)())
+

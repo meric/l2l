@@ -118,7 +118,14 @@ local dependencies
 
 local function initialize_dependencies()
   if not dependencies then
-    dependencies = {}
+    dependencies = {
+      ["compiler"] = {{'require("l2l.compiler")'}},
+      ["reader"] = {{'require("l2l.reader")'}},
+      ["list"] = {{'require("l2l.list")', nil}},
+      ["vector"] = {{'require("l2l.vector")', nil}},
+      [symbol("+"):hash()] = {
+        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}}
+    }
     for name, _ in pairs(lua) do
       dependencies[name] = {{'require("l2l.lua")', "lua"}}
     end
@@ -130,13 +137,6 @@ local function initialize_dependencies()
     for name, _ in pairs(exports) do
       dependencies[name] = {{'require("l2l.compiler")', "compiler"}}
     end
-
-    dependencies["compiler"] = {{'require("l2l.compiler")'}}
-    dependencies["reader"] = {{'require("l2l.reader")'}}
-    dependencies["list"] = {{'require("l2l.list")', nil}}
-    dependencies["vector"] = {{'require("l2l.vector")', nil}}
-    dependencies[symbol("+"):hash()] = {
-      "import", {'import("l2l.lib.arithmetic")', "arithmetic"}}
   end
   return dependencies
 end

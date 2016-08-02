@@ -301,7 +301,9 @@ local function dispatch_import(invariant, position)
   else
     rest, values = read_list(invariant, position+1)
     sym = values[1]:car()
-    alias = values[1]:cdr():car():hash()
+    if #values[1] > 1 then
+      alias = values[1]:cdr():car():hash()
+    end
   end
   if rest then
     local name = sym:hash()
