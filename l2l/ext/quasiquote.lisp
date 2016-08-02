@@ -1,14 +1,5 @@
 \
-local invariant = select(1, ...)
-local reader = require("l2l.reader")
-local compiler = require("l2l.compiler")
 local utils = require("leftry.utils")
-local read = reader.read
-local symbol = reader.symbol
-local list = require("l2l.list")
-local vector = require("l2l.vector")
-local lua = require("l2l.lua")
-
 
 local function quasiquote_eval(invariant, car, output)
   if utils.hasmetatable(car, list) then
