@@ -309,7 +309,7 @@ local function dispatch_import(invariant, position)
     end
   end
   if rest then
-    local name = sym:hash()
+    local name = sym[1]
     local compiler = require("l2l.compiler")
     local mod = import_extension(invariant, name)
     load_extension(invariant, mod, alias)

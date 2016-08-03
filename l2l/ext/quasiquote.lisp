@@ -26,13 +26,22 @@ local function compile_quasiquote_eval(invariant, cdr, output)
   return exp
 end
 
+local function escape_lua(invariant, data)
+  if lua_ast[getmetatable(data)] then
+    return data:repr()
+  end
+  if utils.hasmetatable(data, list) then
+    data = list.cast(data, function(value)
+      return escape_lua(invariant, value)
+    end)
+  end
+  return data
+end
+
 local function compile_quasiquote(invariant, cdr, output)
   assert(list.__len(cdr) == 1, "quasiquote only accepts one parameter.")
   local cadr = cdr:car()
-  if lua_ast[getmetatable(cadr)] then
-    cadr = cadr:repr()
-  end
-  return quasiquote_eval(invariant, cadr, output)
+  return quasiquote_eval(invariant, escape_lua(invariant, cadr), output)
 end
 
 local function read_quasiquote(invariant, position)

@@ -292,6 +292,9 @@ end
 compile_or_cached = function(source, mod, extends, path)
   local f = io.open(path)
   local h = hash_mod(source)
+  if string.match(mod, "let") then
+    f= nil
+  end
   if not f then
     local out = compile(source, mod, extends)
     local g = io.open(path, "w")

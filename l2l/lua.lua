@@ -128,6 +128,40 @@ local lua_local = ast.reduce("lua_local", {"local", namelist=2, explist=3},
     return table.concat(text, " ")
   end)
 
+function lua_local:repr()
+  local parameters = {}
+  for i, v in ipairs(self.arguments) do
+    local value = self[v[1]]
+    if lua_ast[getmetatable(value)] then
+      table.insert(parameters, value:repr())
+    elseif type(value) == "string" then
+      table.insert(parameters, reader.symbol(value))
+    else
+      table.insert(parameters, value)
+    end
+  end
+  return r.lua_functioncall.new(
+    r.lua_dot.new(lua_name(tostring(lua_local)), lua_name("new")),
+    r.lua_args.new(lua_explist(parameters)))
+end
+-- function lua_local:repr()
+--   local reader = require("l2l.reader")
+--   local parameters = {}
+--   for i, v in ipairs(self.arguments) do
+--     local value = self[v[1]]
+--     if lua_ast[getmetatable(value)] then
+--       table.insert(parameters, value:repr())
+--     elseif type(value) == "string" then
+--       table.insert(parameters, reader.symbol(value))
+--     else
+--       table.insert(parameters, value)
+--     end
+--   end
+--   return r.lua_functioncall.new(
+--     r.lua_dot.new(lua_name(tostring(lua_local)), lua_name("new")),
+--     r.lua_args.new(lua_explist(parameters)))
+-- end
+
 local function _list(...)
   local st = ast.list(...)
   function st:repr()

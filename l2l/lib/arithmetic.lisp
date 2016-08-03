@@ -1,3 +1,5 @@
+-- (local x (require y))
+
 (fn + (...)
   \local args = {...}
   local x = 0
