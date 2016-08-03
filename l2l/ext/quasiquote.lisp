@@ -62,8 +62,8 @@ end
 
 return {
   read = {
-    [string.byte(",")] = {read_quasiquote_eval},
-    [string.byte("`")] = {read_quasiquote}
+    [","] = {read_quasiquote_eval},
+    ["`"] = {read_quasiquote}
   },
   lua = {
     ["quasiquote"] = {expize=compile_quasiquote, statize=compile_quasiquote},

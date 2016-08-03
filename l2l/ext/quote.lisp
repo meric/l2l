@@ -22,6 +22,6 @@ return {
     ["quote"] = {expize=compile_quote, statize=compile_quote}
   },
   read = {
-    [string.byte("'")] = {read_quote}
+    ["'"] = {read_quote}
   }
 }

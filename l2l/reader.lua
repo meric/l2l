@@ -287,6 +287,9 @@ local function load_extension(invariant, mod, alias)
   if mod.read then
     assert(not alias, "read macros cannot be namespaced.")
     for k, xs in pairs(mod.read) do
+      if type(k) == "string" then
+        k = string.byte(k)
+      end
       for i, x in ipairs(xs) do
         invariant.read[k] = invariant.read[k] or {}
         if not utils.contains(invariant.read[k], x) then
