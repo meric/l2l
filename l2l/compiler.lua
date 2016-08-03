@@ -41,7 +41,7 @@ local function expize(invariant, data, output)
       expize(invariant, car),
       lua.lua_args.new(lua_explist(cdr)))
   elseif utils.hasmetatable(data, symbol) then
-    return lua_name(data:hash())
+    return lua_name(data:mangle())
   elseif lua_ast[getmetatable(data)] then
     return data
   elseif data == nil then
@@ -125,7 +125,7 @@ local function initialize_dependencies()
       ["reader"] = {{'require("l2l.reader")'}},
       ["list"] = {{'require("l2l.list")', nil}},
       ["vector"] = {{'require("l2l.vector")', nil}},
-      [symbol("+"):hash()] = {
+      [symbol("+"):mangle()] = {
         "import", {'import("l2l.lib.arithmetic")', "arithmetic"}}
     }
     for name, _ in pairs(lua) do
@@ -278,7 +278,7 @@ local function _loadstring(source)
   return load(compile(source))
 end
 
-local function hash_mod(source)
+local function mangle_mod(source)
   local h = #source.."@"..source
   local total = 1
 
@@ -291,7 +291,7 @@ end
 
 compile_or_cached = function(source, mod, extends, path)
   local f = io.open(path)
-  local h = hash_mod(source)
+  local h = mangle_mod(source)
   if string.match(mod, "let") then
     f= nil
   end
@@ -321,10 +321,10 @@ exports = {
   compile=compile,
   compile_lua_block = compile_lua_block,
   compile_lua_block_into_exp = compile_lua_block_into_exp,
-  hash = reader.hash,
+  mangle = reader.mangle,
   statize = statize,
   expize = expize,
-  hash = hash,
+  mangle = mangle,
   compile_stat = compile_stat,
   compile_exp = compile_exp,
   to_stat = to_stat,

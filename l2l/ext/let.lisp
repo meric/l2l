@@ -16,7 +16,7 @@
 
 \return {
   lua = {
-    [symbol("let"):hash()] = {
+    [symbol("let"):mangle()] = {
         expize=compile_local_exp,
         statize=compile_local_stat
     }

@@ -9,5 +9,5 @@
   return x)
 
 \return {
-  [(\'+):hash()] = \+
+  [(\'+):mangle()] = \+
 }

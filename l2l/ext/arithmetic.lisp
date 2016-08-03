@@ -21,8 +21,6 @@
 
 \return {
   macro = {
-    -- Symbols aren't useful for use as a key. We hash it to convert it into
-    -- string.
-    [(\'+):hash()] = \+
+    [(\'+)] = \+
   }
 }

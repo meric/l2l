@@ -66,7 +66,7 @@ local symbol = utils.prototype("symbol", function(symbol, name)
   return setmetatable({name}, symbol)
 end)
 
-local function hash(text)
+local function mangle(text)
   if utils.hasmetatable(text, symbol) then
     text = text[1]
   end
@@ -94,15 +94,22 @@ end
 symbol.ids = {}
 
 function symbol:__eq(sym)
-  return getmetatable(self) == getmetatable(sym) and self:hash() == sym:hash()
+  return getmetatable(self) == getmetatable(sym) and self:mangle() == sym:mangle()
 end
 
 function symbol:__tostring(sym)
   return "symbol("..utils.escape(tostring(self[1]))..")"
 end
 
-function symbol:hash()
-  return hash(self[1])
+function symbol:mangle()
+  return mangle(self[1])
+end
+
+function symbol:__index(k, v)
+  if k == "name" then
+    return self[1]
+  end
+  return symbol[k]
 end
 
 local function read_symbol(invariant, position)
@@ -257,16 +264,22 @@ local function load_extension(invariant, mod, alias)
   -- Read macros cannot.
   if mod.lua then
     for k, x in pairs(mod.lua) do
+      if utils.hasmetatable(k, symbol) then
+        k = k.name
+      end
       if alias then
-        k = hash(alias .. "." .. k)
+        k = alias .. "." .. k
       end
       invariant.lua[k] = x
     end
   end
   if mod.macro then
     for k, x in pairs(mod.macro) do
+      if utils.hasmetatable(k, symbol) then
+        k = k.name
+      end
       if alias then
-        k = hash(alias .. "." .. k)
+        k = alias .. "." .. k
       end
       invariant.macro[k] = x
     end
@@ -305,7 +318,7 @@ local function dispatch_import(invariant, position)
     rest, values = read_list(invariant, position+1)
     sym = values[1]:car()
     if #values[1] > 1 then
-      alias = values[1]:cdr():car():hash()
+      alias = values[1]:cdr():car().name
     end
   end
   if rest then
@@ -320,7 +333,7 @@ end
 local function read_dispatch(invariant, position)
   local rest, values = read_symbol(invariant, position+1)
   if rest then
-    local name = values[1]:hash()
+    local name = values[1]:mangle()
     local dispatches = invariant.dispatch[name]
     if not dispatches then
       error("no dispatch: "..name)
@@ -339,8 +352,8 @@ local function expand(invariant, data)
   local macro = invariant.macro
   if utils.hasmetatable(data, list) then
     local car, cdr = data:car(), data:cdr()
-    if utils.hasmetatable(car, symbol) and macro[car:hash()] then
-      data = macro[car:hash()](list.unpack(cdr))
+    if utils.hasmetatable(car, symbol) and macro[car.name] then
+      data = macro[car.name](list.unpack(cdr))
       -- re-expand?
     else
       return list.cast(data, function(value) return

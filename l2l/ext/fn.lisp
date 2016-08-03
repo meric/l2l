@@ -4,10 +4,10 @@ local utils = require("leftry").utils
 local function stat_lua_function(invariant, output, name, parameters, body)
   local stats = {}
   local local_function = lua_local_function.new(
-    lua_name(name:hash()),
+    lua_name(name:mangle()),
     lua_funcbody.new(
       lua_namelist(vector.cast(parameters, function(value)
-          return lua_name(value:hash())
+          return lua_name(value:mangle())
         end)),
       lua_block(vector.cast(body, function(value, i)
         return compiler.statize(invariant, value, stats, i == #body) end))))
@@ -21,7 +21,7 @@ end
 local function exp_lua_lambda_function(invariant, output, parameters, body)
   return lua_lambda_function.new(lua_funcbody.new(
     lua_namelist(vector.cast(parameters, function(value)
-        return lua_name(value:hash())
+        return lua_name(value:mangle())
       end)),
     lua_block(vector.cast(body, function(value, i)
       return compiler.statize(invariant, value, output, i == #body) end))))
