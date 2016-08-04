@@ -41,6 +41,9 @@ local source = [=[
 -- Using the LANGUAGE extensions.
 (print '(1 2 3))
 (print `(1 (1) ,(print 1 2)))
+(print (apply + (list 1 2)))
+(print (apply + 1 2 (list 3 4)))
+(print (apply + 1 2 (list)))
 
 -- Use Lua expressions in Lisp S-Expressions with backslash.
 (print \function(x) print(x, \'(1 2 3 (a 1) \b(1))) end)

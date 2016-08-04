@@ -126,7 +126,8 @@ local function initialize_dependencies()
       ["list"] = {{'require("l2l.list")', nil}},
       ["vector"] = {{'require("l2l.vector")', nil}},
       [symbol("+"):hash()] = {
-        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}}
+        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
+      ["apply"] = {"import", {'import("l2l.lib.apply")', "apply"}}
     }
     for name, _ in pairs(lua) do
       dependencies[name] = {{'require("l2l.lua")', "lua"}}
