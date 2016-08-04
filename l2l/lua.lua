@@ -184,8 +184,34 @@ local function _list(...)
   return st
 end
 
+local function name_cast(values)
+  local u = {}
+  local reader = require("l2l.reader")
+  for i, value in ipairs(values) do
+    if utils.hasmetatable(value, reader.symbol) then
+      value = lua_name(value:mangle())
+    end
+    if utils.hasmetatable(value, lua_name) and
+        utils.hasmetatable(value.value, reader.symbol) then
+      value = lua_name(value.value:mangle())
+    end
+    if utils.hasmetatable(value, lua_namelist) then
+      for i, name in ipairs(name_cast(value)) do
+        table.insert(u, name)
+      end
+    else
+      assert(utils.hasmetatable(value, lua_name),
+      "lua_namelist must have array of lua_name or symbol as arguments, got..."
+        ..tostring(value)..", which has metatable..."
+        ..tostring(getmetatable(value)))
+      table.insert(u, value)
+    end
+  end
+  return u
+end
+
 lua_varlist = _list("lua_varlist", ",")
-lua_namelist = _list("lua_namelist", ",")
+lua_namelist = _list("lua_namelist", ",", nil, name_cast)
 lua_explist = _list("lua_explist", ",")
 lua_block = _list("lua_block", ";")
 lua_funcname = _list("lua_funcname")
@@ -301,7 +327,7 @@ local Chunk, Block, Stat, RetStat, Label, FuncName, VarList, Var, NameList,
       ExpList, Exp, PrefixExp, FunctionCall, Args, FunctionDef, FuncBody,
       ParList, TableConstructor, FieldList, Field, FieldSep, BinOp, UnOp,
       numeral, Numeral, LiteralString, Name, Space, Comment, LongString,
-      LispExp
+      LispExp, LispSymbol, NameOrLispSymbol
 
 local dquoted, squoted
 
@@ -412,8 +438,11 @@ Var = factor("Var", function() return
   Name,
   span(PrefixExp, "[", Exp, "]") % lua_index,
   span(PrefixExp, ".", Name) % lua_dot end)
+NameOrLispExp = factor("NameOrLispExp", function() return
+  Name, LispExp end)
 NameList = factor("NameList", function() return
-  span(Name, rep(span(",", Name) % second)) % rightflat end, lua_namelist)
+  span(NameOrLispExp, rep(span(",", NameOrLispExp) % second))
+    % rightflat end, lua_namelist)
 ExpList = factor("ExpList", function() return
   span(Exp, rep(span(",", Exp) % second)) % rightflat end, lua_explist)
 Exp = factor("Exp", function(Exp) return
@@ -429,7 +458,7 @@ Exp = factor("Exp", function(Exp) return
   span("\\", LispExp) % second,
   span(Exp, BinOp, Exp) % lua_binop_exp,
   span(UnOp, Exp) % lua_unop_exp end)
-LispExp = function(invariant, position, peek)
+LispSymbol = function(invariant, position, peek)
   local reader = require("l2l.reader")
   local compiler = require("l2l.compiler")
   local rest, values = reader.read(invariant, position)
@@ -437,6 +466,39 @@ LispExp = function(invariant, position, peek)
     return rest
   end
   local output = {}
+  if not rest then
+    error("Could not compile Lisp expression embedded in Lua.\n"..
+      invariant.source:sub(position, position+20))
+  end
+  local expr = compiler.compile_exp(invariant, values[1], output)
+  print(expr, getmetatable(expr))
+  if #output == 0 then
+    return rest, expr
+  else
+    table.insert(output, lua_retstat.new(lua_explist({expr})))
+    return rest, lua_functioncall.new(
+      lua_paren_exp.new(
+        lua_lambda_function.new(
+          lua_funcbody.new(lua_namelist({}),
+            lua_block(output)))),
+      lua_args.new(lua_explist({})))
+  end
+end
+LispExp = function(invariant, position, peek)
+  local reader = require("l2l.reader")
+  local compiler = require("l2l.compiler")
+  local ok, rest, values = pcall(reader.read, invariant, position)
+  if not ok then
+    return
+  end
+  if peek then
+    return rest
+  end
+  local output = {}
+  if not rest then
+    error("Could not compile Lisp expression embedded in Lua."..
+      invariant.source:sub(position, position+10))
+  end
   local expr = compiler.compile_exp(invariant, values[1], output)
   if #output == 0 then
     return rest, expr

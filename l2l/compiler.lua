@@ -5,8 +5,6 @@ local reader = require("l2l.reader")
 local vector = require("l2l.vector")
 local symbol = reader.symbol
 
-local invariantize = require("leftry.elements.utils").invariantize
-
 local lua_functioncall = lua.lua_functioncall
 local lua_function = lua.lua_function
 local lua_explist = lua.lua_explist
@@ -16,6 +14,9 @@ local lua_ast = lua.lua_ast
 local lua_local = lua.lua_local
 local lua_namelist = lua.lua_namelist
 local lua_retstat = lua.lua_retstat
+local lua_block = lua.lua_block
+local lua_lambda_function = lua.lua_lambda_function
+local lua_paren_exp = lua.lua_paren_exp
 
 
 local function validate_functioncall(car)
@@ -37,8 +38,12 @@ local function expize(invariant, data, output)
       return expize(invariant, value, output)
     end)
     validate_functioncall(car)
+    local func = expize(invariant, car)
+    if utils.hasmetatable(func, lua_lambda_function) then
+      func = lua_paren_exp.new(func)
+    end
     return lua_functioncall.new(
-      expize(invariant, car),
+      func,
       lua.lua_args.new(lua_explist(cdr)))
   elseif utils.hasmetatable(data, symbol) then
     return lua_name(data:mangle())
@@ -61,8 +66,22 @@ local function to_stat(exp, name)
   return lua_local.new(lua_namelist({name}), lua_explist({exp}))
 end
 
+local function compile_lua_block_into_exp(invariant, cdr, output)
+  local cadr = cdr:car()
+  local retstat = cadr[#cadr]
+
+  assert(utils.hasmetatable(retstat, lua_retstat),
+    "block must end with return statement when used as an exp.")
+
+  for i=1, #cadr - 1 do
+    table.insert(output, cadr[i])
+  end
+
+  return retstat.explist
+end
+
 local function statize(invariant, data, output, last)
-  if last then
+  if last and not utils.hasmetatable(data, lua_block) then
     return lua_retstat.new(lua_explist({expize(invariant, data, output)}))
   end
   if utils.hasmetatable(data, list) then
@@ -77,6 +96,8 @@ local function statize(invariant, data, output, last)
     return lua_functioncall.new(
       expize(invariant, car),
       lua.lua_args.new(lua_explist(cdr)))
+  elseif utils.hasmetatable(data, lua_block) then
+    return data
   elseif lua_ast[getmetatable(data)] then
     if not utils.hasmetatable(data, lua_functioncall) then
       return to_stat(data)
@@ -94,24 +115,6 @@ end
 
 local function compile_exp(invariant, data, output)
   return expize(invariant, reader.expand(invariant, data), output)
-end
-
-local function compile_lua_block(invariant, cdr, output)
-  return cdr:car()
-end
-
-local function compile_lua_block_into_exp(invariant, cdr, output)
-  local cadr = cdr:car()
-  local retstat = cadr[#cadr]
-
-  assert(utils.hasmetatable(retstat, lua_retstat),
-    "block must end with return statement when used as an exp.")
-
-  for i=1, #cadr - 1 do
-    table.insert(output, cadr[i])
-  end
-
-  return retstat.explist
 end
 
 local exports

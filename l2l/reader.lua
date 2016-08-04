@@ -205,7 +205,7 @@ local function read_lua(invariant, position)
     return rest, {value}
   end
   rest, value = lua.Block(invariant, position + 1)
-  return rest, {list(symbol("eval-lua-block"), value)}
+  return rest, {value}
 end
 
 local function read_lua_comment(invariant, position)
@@ -414,13 +414,6 @@ local function environ(source, position)
     },
     source = source
   }, position or 1
-
-  local compiler = require("l2l.compiler")
-
-  invariant.lua["eval-lua-block"] = {
-    expize=compiler.compile_lua_block_into_exp,
-    statize=compiler.compile_lua_block
-  }
 
   return invariant
 end
