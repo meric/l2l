@@ -4,9 +4,7 @@ local list = require("l2l.list")
 
 
 local source = [==[
-#import let
-
-(let a b ((fn () \return 1, 2)))
+(local a b ((fn () \return 1, 2)))
 (print a b)
 (print "hello")
 (print (+ 1 2 3 4))

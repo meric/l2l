@@ -250,7 +250,8 @@ local function compile(source, mod, extensions)
       "fn",
       "quasiquote",
       "quote",
-      "arithmetic"
+      "arithmetic",
+      "local"
     }
   end
 

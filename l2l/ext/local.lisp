@@ -18,12 +18,11 @@ local compiler = require("l2l.compiler")
   `\local ,names = \,\compiler.compile_exp(invariant, val, output))
 
 (fn compile_local_exp (invariant cdr output)
-  (table.insert output `\local ,var = \,val)
-  var)
+  (error "cannot use local as expression."))
 
 \return {
   lua = {
-    [symbol("let"):mangle()] = {
+    [symbol("local")] = {
         expize=compile_local_exp,
         statize=compile_local_stat
     }
