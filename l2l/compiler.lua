@@ -278,7 +278,7 @@ local function _loadstring(source)
   return load(compile(source))
 end
 
-local function mangle_mod(source)
+local function hash_mod(source)
   local h = #source.."@"..source
   local total = 1
 
@@ -291,7 +291,7 @@ end
 
 compile_or_cached = function(source, mod, extends, path)
   local f = io.open(path)
-  local h = mangle_mod(source)
+  local h = hash_mod(source)
   if string.match(mod, "let") then
     f= nil
   end
