@@ -2,7 +2,7 @@ Notice
 ======
 This branch is deprecated.
 
-When the [rewrite](https://github.com/meric/tree/rewrite) branch is ready, this master branch will be tagged and replaced with it.
+When the [rewrite](https://github.com/meric/l2l/tree/rewrite) branch is ready, this master branch will be tagged and replaced with it.
 
 Lisp to Lua Compiler
 ====================
