@@ -20,15 +20,15 @@
   end
 
   return \`\if \,(compile_exp invariant condition output) then
-      \,(compile_block invariant block)
-      \,(compile_block invariant rest)
+      \,(unpack block)
+      \,(unpack rest)
     end)
 
 (fn stat_else (invariant value found default)
   (local block {})
   (table.insert block `\\,value = \,(compile_exp invariant default block))
   `\if not \,found then
-    \,(compile_block invariant block)
+    \,(unpack block)
   end)
 
 (fn compile_cond_stat (invariant cdr output)

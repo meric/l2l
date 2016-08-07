@@ -95,11 +95,6 @@ local function statize(invariant, data, output, last)
   error("cannot not statize.."..tostring(data))
 end
 
-
-local function compile_block(invariant, block)
-  return unpack(block)
-end
-
 local function compile_stat(invariant, data, output, ...)
   return statize(invariant, reader.expand(invariant, data), output, ...)
 end
@@ -344,7 +339,6 @@ exports = {
   mangle = mangle,
   compile_stat = compile_stat,
   compile_exp = compile_exp,
-  compile_block = compile_block,
   to_stat = to_stat,
   expand = expand
 }
