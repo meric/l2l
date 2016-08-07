@@ -16,8 +16,8 @@ local function read_quote(invariant, position)
   end
 end
 
-
-return {
+\
+{
   lua = {
     ["quote"] = {expize=compile_quote, statize=compile_quote}
   },

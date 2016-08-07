@@ -18,7 +18,8 @@ local utils = require("leftry").utils
     return i <= len-1
   end)
   names = lua_namelist(names)
-  return names, \`\local ,names = \,\compiler.compile_exp(invariant, val, output))
+  return names,
+    \`\local ,names = \,\compiler.compile_exp(invariant, val, output))
 
 (fn compile_local_stat (invariant cdr output)
   (select 2 (stat_local invariant cdr output)))
