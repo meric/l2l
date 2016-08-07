@@ -439,7 +439,7 @@ Var = factor("Var", function() return
   span(PrefixExp, "[", Exp, "]") % lua_index,
   span(PrefixExp, ".", Name) % lua_dot end)
 NameOrLispExp = factor("NameOrLispExp", function() return
-  Name, LispExp end)
+  Name, span("\\", LispExp) % second end)
 NameList = factor("NameList", function() return
   span(NameOrLispExp, rep(span(",", NameOrLispExp) % second))
     % rightflat end, lua_namelist)
