@@ -3,6 +3,14 @@
 #import fn
 #import local
 
+\--[[
+Usage:
+  (cond
+    false (+ 1 2)
+    true (+ 1 2 3)
+    (else_clause some arg))
+]]
+
 (fn stat_cond (invariant output value found condition action ...)
   (assert \(condition and action);
     "cond requires positive even number of arguments.")

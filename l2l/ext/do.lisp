@@ -2,6 +2,14 @@
 #import fn
 #import quasiquote
 
+\--[[
+Usage:
+  (do
+    (local x 1)
+    (local y 2)
+    (+ x y))
+]]
+
 (fn compile_do_exp (invariant cdr output)
   \
   if not cdr then

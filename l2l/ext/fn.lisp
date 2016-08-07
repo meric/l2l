@@ -1,4 +1,12 @@
 \
+--[[
+Usage:
+  (fn my_function_name (arg1 arg2)
+    (+ arg1 arg2))
+
+  (print (fn (arg1 arg2) (+ arg1 arg2)))
+]]
+
 local utils = require("leftry").utils
 
 local function stat_lua_function(invariant, output, name, parameters, body)

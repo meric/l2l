@@ -4,6 +4,10 @@
 
 (fn + (a ...)
   \
+  --[[
+  Usage:
+    (+ 1 2 3 4)
+  ]]
   if not a then
     return 0
   elseif ... then

@@ -3,7 +3,11 @@
 #import quasiquote
 
 \
-local compiler = require("l2l.compiler")
+--[[
+Usage:
+  (local x y ...)
+]]
+
 local utils = require("leftry").utils
 \
 
