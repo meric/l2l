@@ -1,4 +1,4 @@
-requires https://github.com/meric/leftry cloned as a sibling to this repo.
+Requires https://github.com/meric/leftry cloned as a sibling to this repo.
 
 ```bash
 lua l2l/test.lua
@@ -8,7 +8,7 @@ See [do.lisp](/l2l/ext/do.lisp) for an example.
 
 `do.lisp` implements the `(do ...)` special form.
 
-`do.lisp` compiles into:
+`do.lisp` compiles into (formatted by hand):
 
 ```lua
 --4027068.2
