@@ -107,7 +107,16 @@ function list:unpack()
   return car
 end
 
-function list.cast(t, f)
+
+function list.sub(t, from, to)
+  to = to or #t
+  from = from or 1
+  return list.cast(t, function(i)
+    return i >= from and i <= to
+  end)
+end
+
+function list.cast(t, f, g)
   -- Cast an ipairs-enumerable object into a list.
   if not t or #t == 0 then
     return nil
@@ -116,15 +125,17 @@ function list.cast(t, f)
   local n = data.n
   data.n = data.n + #t * 2
   for i, v in ipairs(t) do
-    n = n + 1
-    if f then
-      data[n] = f(v, i)
-    else
-      data[n] = v
-    end
-    n = n + 1
-    if i < #t then
-      data[n] = n + 1
+    if not g or g(i, v) then
+      n = n + 1
+      if f then
+        data[n] = f(v, i)
+      else
+        data[n] = v
+      end
+      n = n + 1
+      if i < #t then
+        data[n] = n + 1
+      end
     end
   end
   return self

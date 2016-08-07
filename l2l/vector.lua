@@ -32,20 +32,31 @@ function vector:__tostring()
   return "vector.cast({n="..self.n..","..table.concat(text, ",").."})"
 end
 
-function vector.cast(t, f)
+function vector.sub(t, from, to)
+  to = to or #t
+  from = from or 1
+  return vector.cast(t, function(i)
+    return i >= from and i <= to
+  end)
+end
+
+function vector.cast(t, f, g)
   if not t then
     return setmetatable({n=0}, vector)
   end
-  local u = setmetatable({n=#t}, vector)
+  local u = setmetatable({}, vector)
   local n = 0
   for i, v in ipairs(t) do
-    n = n + 1
-    if f then
-      u[i] = f(v, i)
-    else
-      u[i] = v
+    if not g or g(i, v) then
+      n = n + 1
+      if f then
+        u[i] = f(v, i)
+      else
+        u[i] = v
+      end
     end
   end
+  u.n = n
   return u
 end
 

@@ -188,22 +188,14 @@ local function name_cast(values)
   local u = {}
   local reader = require("l2l.reader")
   for i, value in ipairs(values) do
-    if utils.hasmetatable(value, reader.symbol) then
-      value = lua_name(value:mangle())
-    end
-    if utils.hasmetatable(value, lua_name) and
-        utils.hasmetatable(value.value, reader.symbol) then
-      value = lua_name(value.value:mangle())
-    end
     if utils.hasmetatable(value, lua_namelist) then
       for i, name in ipairs(name_cast(value)) do
         table.insert(u, name)
       end
     else
-      assert(utils.hasmetatable(value, lua_name),
-      "lua_namelist must have array of lua_name or symbol as arguments, got..."
-        ..tostring(value)..", which has metatable..."
-        ..tostring(getmetatable(value)))
+      if not utils.hasmetatable(value, lua_name) then
+        value = lua_name(value)
+      end
       table.insert(u, value)
     end
   end
@@ -244,7 +236,15 @@ local function ident(...)
   return st
 end
 
-lua_name = ident("lua_name")
+lua_name = ident("lua_name", nil, nil, function(value)
+  local reader = require("l2l.reader")
+  if utils.hasmetatable(value, lua_name) then
+    value = value.value
+  elseif utils.hasmetatable(value, reader.symbol) then
+    value = lua_name(value:mangle())
+  end
+  return value
+end)
 
 function lua_name:unique(prefix)
   self.n = self.n or 0

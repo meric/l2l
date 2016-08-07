@@ -4,16 +4,19 @@
 
 \
 local compiler = require("l2l.compiler")
+local utils = require("leftry").utils
 \
 
 (fn compile_local_stat (invariant cdr output)
   \
-  local args = vector.cast(cdr)
-  local val = args[#args]
-  local names = {}
-  for i=1, #args-1 do
-    names[i] = lua_name(args[i])
-  end
+  local val
+  local len = #cdr
+  local names = vector.cast(cdr, nil, function(i, v)
+    if i == len then
+      val = v
+    end
+    return i <= len-1
+  end)
   names = lua_namelist(names)
   `\local ,names = \,\compiler.compile_exp(invariant, val, output))
 
