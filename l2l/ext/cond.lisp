@@ -40,7 +40,7 @@ Usage:
     \,(unpack block)
   end)
 
-(fn compile_cond_stat (invariant cdr output)
+(fn statize_cond (invariant cdr output)
   (local clauses (vector.cast cdr))
   \
   if #clauses == 1 then
@@ -60,7 +60,7 @@ Usage:
   (stat_else invariant value found default)
 )
 
-(fn compile_cond_exp (invariant cdr output)
+(fn expize_cond (invariant cdr output)
   (local clauses (vector.cast cdr))
   \
   if #clauses == 1 then
@@ -85,6 +85,6 @@ Usage:
 
 {
   lua = {
-    cond = {expize=compile_cond_exp, statize=compile_cond_stat}
+    cond = {expize=expize_cond, statize=statize_cond}
   }
 }

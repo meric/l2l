@@ -25,10 +25,10 @@ local utils = require("leftry").utils
   return names,
     \`\local \,names = \,\compiler.compile_exp(invariant, val, output))
 
-(fn compile_local_stat (invariant cdr output)
+(fn statize_local (invariant cdr output)
   (select 2 (stat_local invariant cdr output)))
 
-(fn compile_local_exp (invariant cdr output)
+(fn expize_local (invariant cdr output)
   \
   local names, stat = stat_local(invariant, cdr, output)
   table.insert(output, stat)
@@ -36,9 +36,6 @@ local utils = require("leftry").utils
 
 {
   lua = {
-    [symbol("local")] = {
-        expize=compile_local_exp,
-        statize=compile_local_stat
-    }
+    [symbol("local")] = { expize=expize_local, statize=statize_local }
   }
 }

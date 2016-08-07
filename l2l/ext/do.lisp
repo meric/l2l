@@ -10,7 +10,7 @@ Usage:
     (+ x y))
 ]]
 
-(fn compile_do_exp (invariant cdr output)
+(fn expize_do (invariant cdr output)
   \
   if not cdr then
     return lua_nil()
@@ -33,7 +33,7 @@ Usage:
   (table.insert output `\do \,(unpack block) end)
   var)
 
-(fn compile_do_stat (invariant cdr output)
+(fn statize_do (invariant cdr output)
   \
   if not cdr then
     return
@@ -50,6 +50,6 @@ Usage:
 
 {
   lua = {
-    ["do"] = {expize=compile_do_exp, statize=compile_do_stat}
+    ["do"] = {expize=expize_do, statize=statize_do}
   }
 }

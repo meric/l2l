@@ -43,7 +43,7 @@ local function validate_function(cadr)
       "fn definition requires name or parameter list as first argument.")
 end
 
-local function compile_fn_exp(invariant, cdr, output)
+local function expize_fn(invariant, cdr, output)
   local cadr = cdr:car()
   validate_function(cadr)
   if utils.hasmetatable(cadr, symbol) then
@@ -58,7 +58,7 @@ local function compile_fn_exp(invariant, cdr, output)
   end
 end
 
-local function compile_fn_stat(invariant, cdr, output)
+local function statize_fn(invariant, cdr, output)
 
   local cadr = cdr:car()
   validate_function(cadr)
@@ -74,6 +74,6 @@ end
 
 {
   lua = {
-    fn = {expize=compile_fn_exp, statize=compile_fn_stat}
+    fn = {expize=expize_fn, statize=statize_fn}
   }
 }
