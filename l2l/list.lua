@@ -1,19 +1,36 @@
---[[
-
-A very fast Lua linked list implementation that has a program lifetime.
-
-The maximum number of cons cells created is the maximum integer that can be
-
-held accurately in a lua number.
-
-Likely to have unsolved memory leaks.
-
-Garbage Collection not thought through.
-]]--
+-- A very fast Lua linked list implementation that can only add a number of
+-- items equal to the maximum integer that can be held in a lua number.
 
 local utils = require("leftry").utils
 local vector = require("l2l.vector")
 local data = setmetatable({n=0, free=0}, {})
+local retains = {}
+
+local function retain(n)
+  retains[n] = (retains[n] or 0) + 1
+  local rest = data[n+1]
+  if rest then
+    return retain(rest)
+  end
+end
+
+local function release(n)
+  retains[n] = retains[n] - 1
+  if retains[n] == 0 then
+    retains[n] = nil
+    data[n] = nil
+    data[n+1] = nil
+    data.free = data.free + 1
+  end
+  if data.free == data.n then
+    -- Take the opportunity to reset `data`.
+    data = setmetatable({n=0, free=0}, {})
+  end
+  local rest = data[n+1]
+  if rest then
+    return release(rest)
+  end
+end
 
 local list = utils.prototype("list", function(list, ...)
   if select("#", ...) == 0 then
@@ -31,19 +48,13 @@ local list = utils.prototype("list", function(list, ...)
       data[data.n] = index + i * 2
     end
   end
+  retain(self.position)
   return self
 end)
 
--- function list:__gc()
---   -- Free this cell.
---   data[self.position] = nil
---   data[self.position + 1] = nil
---   data.free = data.free + 1
---   if data.free == data.n then
---     -- Take the opportunity to reset `data`.
---     data = setmetatable({n=0, free=0}, {})
---   end
--- end
+function list:__gc()
+  release(self.position)
+end
 
 function list:__tostring()
   local text = {}
@@ -95,6 +106,7 @@ end
 function list:cdr()
   local position = data[self.position + 1]
   if position then
+    retain(position)
     return setmetatable({position = position}, list)
   end
 end
@@ -138,6 +150,7 @@ function list.cast(t, f)
       data[n] = n + 1
     end
   end
+  retain(self.position)
   return self
 end
 
@@ -150,6 +163,7 @@ function list:cons(car)
   if self then
     data[data.n] = self.position
   end
+  retain(position)
   return setmetatable({position = position}, list)  
 end
 
