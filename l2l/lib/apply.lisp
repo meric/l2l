@@ -3,5 +3,5 @@
 
 { apply = \
   (fn (f ...)
-    (local args (vector.pack ...))
+    (local args (vector ...))
     (f (:unpack (args:append (args:pop)))))}

@@ -1,7 +1,7 @@
 local utils = require("leftry").utils
 
 local vector = utils.prototype("vector", function(vector, ...)
-  return setmetatable({n=select("#", ...), ...}, vector)
+  return setmetatable(table.pack(...), vector)
 end)
 
 function vector:insert(value)
@@ -88,10 +88,6 @@ end
 
 function vector:unpack()
   return unpack(self, 1, #self)
-end
-
-function vector.pack(...)
-  return setmetatable(table.pack(...), vector)
 end
 
 function vector:__len()

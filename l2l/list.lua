@@ -110,7 +110,6 @@ function list:unpack()
   return car
 end
 
-
 function list.sub(t, from, to)
   to = to or #t
   from = from or 1
