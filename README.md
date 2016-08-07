@@ -1,10 +1,10 @@
 requires https://github.com/meric/leftry cloned as a sibling to this repo.
 
-```
+```bash
 lua l2l/test.lua
 ```
 
-See [do.lisp](/meric/l2l/blob/rewrite/l2l/ext/do.lisp) for an example.
+See [do.lisp](/l2l/ext/do.lisp) for an example.
 
 `do.lisp` implements the `(do ...)` special form.
 
