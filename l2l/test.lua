@@ -6,7 +6,7 @@ local list = require("l2l.list")
 local source = [==[
 (local a b ((fn () \return 1, 2)))
 (print a b)
-(print (local c 1))
+(print (local c d 1))
 (print "hello")
 (print (+ 1 2 3 4))
 
