@@ -21,6 +21,7 @@
 
   return \`\if \,(compile_exp invariant condition output) then
       \,(unpack block)
+    else
       \,(unpack rest)
     end)
 
