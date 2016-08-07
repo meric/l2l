@@ -9,7 +9,9 @@ local function import(library, ...)
     
     if count == 0 then
         for key, value in pairs(library) do
-            _G[key] = value
+            if not _G[key] then
+                _G[key] = value
+            end
         end
     else
         local t = {}
