@@ -7,7 +7,7 @@ local compiler = require("l2l.compiler")
 local utils = require("leftry").utils
 \
 
-(fn compile_local_stat (invariant cdr output)
+(fn stat_local (invariant cdr output)
   \
   local val
   local len = #cdr
@@ -18,10 +18,16 @@ local utils = require("leftry").utils
     return i <= len-1
   end)
   names = lua_namelist(names)
-  `\local ,names = \,\compiler.compile_exp(invariant, val, output))
+  return names, \`\local ,names = \,\compiler.compile_exp(invariant, val, output))
+
+(fn compile_local_stat (invariant cdr output)
+  (select 2 (stat_local invariant cdr output)))
 
 (fn compile_local_exp (invariant cdr output)
-  (error "cannot use local as expression."))
+  \
+  local names, stat = stat_local(invariant, cdr, output)
+  table.insert(output, stat)
+  return names)
 
 \return {
   lua = {
