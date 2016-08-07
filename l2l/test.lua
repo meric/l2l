@@ -10,6 +10,9 @@ local source = [==[
 (print "hello")
 (print (+ 1 2 3 4))
 
+(set yy "yyyy")
+(print yy)
+(print (set xx "xxxx"))
 
 (print (do
     (print 1)

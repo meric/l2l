@@ -69,7 +69,8 @@ Usage:
   (local value (lua_name:unique "_cond_value"))
   (local found (lua_name:unique "_cond_found"))
   (table.insert output `\local \,value)
-  \if #clauses % 2 == 0 then
+  \
+  if #clauses % 2 == 0 then
     \(table.insert output
       (stat_cond invariant output value nil (vector.unpack clauses)))
     return value

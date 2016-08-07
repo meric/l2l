@@ -249,7 +249,8 @@ local function compile(source, mod, extensions)
         "arithmetic",
         "local",
         "cond",
-        "do"
+        "do",
+        "set"
       }
     end
   end
