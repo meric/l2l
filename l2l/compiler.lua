@@ -248,7 +248,8 @@ local function compile(source, mod, extensions)
         "quote",
         "arithmetic",
         "local",
-        "cond"
+        "cond",
+        "do"
       }
     end
   end
@@ -259,6 +260,7 @@ local function compile(source, mod, extensions)
   end
 
   local output, ret, index = {}
+  local ending
   for rest, values in reader.read, invariant do
     for i, value in ipairs(values) do
       ret, index = value, #output
@@ -267,6 +269,11 @@ local function compile(source, mod, extensions)
         table.insert(output, stat)
       end
     end
+    ending = rest
+  end
+  if ending < #source then
+    error("syntax error in module `"..tostring(mod).."`:\n"
+      ..source:sub(ending, ending + 100))
   end
 
   -- Convert final stat into a retstat.

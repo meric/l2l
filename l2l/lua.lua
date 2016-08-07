@@ -433,7 +433,7 @@ Stat = factor("Stat", function() return
   Label,
   term("break") % lua_break,
   span("goto", Name) % lua_goto,
-  span("do", Block, "end") % lua_do,
+  span("do", opt(Block), "end") % lua_do,
   span("while", Exp, "do", opt(Block), "end") % lua_while,
   span("repeat", Block, "until", Exp) % lua_repeat,
   span("if", Exp, "then", opt(Block),

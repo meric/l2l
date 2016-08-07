@@ -11,8 +11,12 @@ local source = [==[
 (print (+ 1 2 3 4))
 
 
+(print (do
+    (print 1)
+    (print 2)
+    1))
 
-(cond 1
+(cond (do (local x 1) 7 + x)
     (local a 2)
     3 4
     1)
