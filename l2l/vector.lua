@@ -11,15 +11,17 @@ function vector:insert(value)
 end
 
 function vector:append(t, f, g)
+  local n = self.n
   for i, v in ipairs(t) do
     if not g or g(i, v) then
-      self.n = self.n + 1
-      local j = self.n
+      n = n + 1
+      local j = n
       if f then
         self[j] = f(v, i)
       else
         self[j] = v
       end
+      self.n = n
     end
   end
   return self
@@ -77,10 +79,15 @@ function vector.cast(t, f, g)
       else
         u[i] = v
       end
+      u.n = n
     end
   end
   u.n = n
   return u
+end
+
+function vector:unpack()
+  return unpack(self, 1, #self)
 end
 
 function vector:__len()

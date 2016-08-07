@@ -34,16 +34,16 @@ local list = utils.prototype("list", function(list, ...)
   return self
 end)
 
-function list:__gc()
-  -- Free this cell.
-  data[self.position] = nil
-  data[self.position + 1] = nil
-  data.free = data.free + 1
-  if data.free == data.n then
-    -- Take the opportunity to reset `data`.
-    data = setmetatable({n=0, free=0}, {})
-  end
-end
+-- function list:__gc()
+--   -- Free this cell.
+--   data[self.position] = nil
+--   data[self.position + 1] = nil
+--   data.free = data.free + 1
+--   if data.free == data.n then
+--     -- Take the opportunity to reset `data`.
+--     data = setmetatable({n=0, free=0}, {})
+--   end
+-- end
 
 function list:__tostring()
   local text = {}
@@ -119,7 +119,7 @@ function list.sub(t, from, to)
   end)
 end
 
-function list.cast(t, f, g)
+function list.cast(t, f)
   -- Cast an ipairs-enumerable object into a list.
   if not t or #t == 0 then
     return nil
@@ -128,17 +128,15 @@ function list.cast(t, f, g)
   local n = data.n
   data.n = data.n + #t * 2
   for i, v in ipairs(t) do
-    if not g or g(i, v) then
-      n = n + 1
-      if f then
-        data[n] = f(v, i)
-      else
-        data[n] = v
-      end
-      n = n + 1
-      if i < #t then
-        data[n] = n + 1
-      end
+    n = n + 1
+    if f then
+      data[n] = f(v, i)
+    else
+      data[n] = v
+    end
+    n = n + 1
+    if i < #t then
+      data[n] = n + 1
     end
   end
   return self

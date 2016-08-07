@@ -30,7 +30,7 @@ local utils = require("leftry").utils
   table.insert(output, stat)
   return names)
 
-\return {
+{
   lua = {
     [symbol("local")] = {
         expize=compile_local_exp,

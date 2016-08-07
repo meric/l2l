@@ -95,6 +95,11 @@ local function statize(invariant, data, output, last)
   error("cannot not statize.."..tostring(data))
 end
 
+
+local function compile_block(invariant, block)
+  return unpack(block)
+end
+
 local function compile_stat(invariant, data, output, ...)
   return statize(invariant, reader.expand(invariant, data), output, ...)
 end
@@ -218,6 +223,9 @@ local function import(mod, extends)
   local ok, m
   if f then
     ok, m = pcall(f, mod, path)
+    if not m then
+      print("missing module", mod, path)
+    end
     for k, v in pairs(m) do
       if utils.hasmetatable(k, symbol) then
         m[k:mangle()] = v
@@ -246,7 +254,8 @@ local function compile(source, mod, extensions)
         "quasiquote",
         "quote",
         "arithmetic",
-        "local"
+        "local",
+        "cond"
       }
     end
   end
@@ -305,9 +314,6 @@ end
 compile_or_cached = function(source, mod, extends, path)
   local f = io.open(path)
   local h = hash_mod(source)
-  if string.match(mod, "let") then
-    f= nil
-  end
   if not f then
     local out = compile(source, mod, extends)
     local g = io.open(path, "w")
@@ -338,6 +344,7 @@ exports = {
   mangle = mangle,
   compile_stat = compile_stat,
   compile_exp = compile_exp,
+  compile_block = compile_block,
   to_stat = to_stat,
   expand = expand
 }

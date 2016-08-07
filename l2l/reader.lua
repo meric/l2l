@@ -200,11 +200,11 @@ local function read_semicolon(invariant, position)
 end
 
 local function read_lua(invariant, position)
-  local rest, value = lua.Exp(invariant, position + 1)
+  local rest, value = lua.Block(invariant, position + 1)
   if rest then
     return rest, {value}
   end
-  rest, value = lua.Block(invariant, position + 1)
+  rest, value = lua.Exp(invariant, position + 1)
   return rest, {value}
 end
 

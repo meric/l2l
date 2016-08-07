@@ -60,7 +60,7 @@ local function read_quasiquote_eval(invariant, position)
   end
 end
 
-return {
+{
   read = {
     [","] = {read_quasiquote_eval},
     ["`"] = {read_quasiquote}

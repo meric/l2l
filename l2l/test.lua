@@ -10,6 +10,20 @@ local source = [==[
 (print "hello")
 (print (+ 1 2 3 4))
 
+
+
+(cond 1
+    (local a 2)
+    3 4
+    1)
+
+(print (cond 1
+    (local a 2)
+    3 4
+    1))
+(cond 1)
+(print (cond 1))
+
 (fn add (...) (+ 1 2 3 4 ...))
 
 (print `(1 2 3))

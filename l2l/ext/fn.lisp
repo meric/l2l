@@ -6,10 +6,12 @@ local function stat_lua_function(invariant, output, name, parameters, body)
   local local_function = lua_local_function.new(
     lua_name(name:mangle()),
     lua_funcbody.new(
-      lua_namelist(vector.cast(parameters, function(value)
+      lua_namelist(vector.cast(parameters, function(value, i)
+          assert(value, "missing value: ".. i..", " .. tostring(parameters))
           return lua_name(value:mangle())
         end)),
       lua_block(vector.cast(body, function(value, i)
+        assert(value, "missing value: ".. i..", ".. tostring(body))
         return compiler.statize(invariant, value, stats, i == #body) end))))
   for i, stat in ipairs(local_function.body.block) do
     table.insert(stats, stat)
@@ -62,7 +64,7 @@ local function compile_fn_stat(invariant, cdr, output)
   end
 end
 
-return {
+{
   lua = {
     fn = {expize=compile_fn_exp, statize=compile_fn_stat}
   }

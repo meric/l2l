@@ -15,6 +15,7 @@ local opt = grammar.opt
 local rep = grammar.rep
 local factor = grammar.factor
 local term = grammar.term
+local any = grammar.any
 
 local lua_varlist
 local lua_namelist
@@ -202,7 +203,27 @@ local function name_cast(values)
   return u
 end
 
-lua_varlist = _list("lua_varlist", ",")
+local function var_cast(values)
+  local u = {}
+  local reader = require("l2l.reader")
+  for i, value in ipairs(values) do
+    if utils.hasmetatable(value, lua_varlist) then
+      for i, name in ipairs(var_cast(value)) do
+        table.insert(u, name)
+      end
+    else
+      if not utils.hasmetatable(value, lua_name)
+        and not utils.hasmetatable(value, lua_dot)
+        and not utils.hasmetatable(value, lua_index) then
+        value = lua_name(value)
+      end
+      table.insert(u, value)
+    end
+  end
+  return u
+end
+
+lua_varlist = _list("lua_varlist", ",", nil, var_cast)
 lua_namelist = _list("lua_namelist", ",", nil, name_cast)
 lua_explist = _list("lua_explist", ",")
 lua_block = _list("lua_block", ";")
@@ -327,7 +348,7 @@ local Chunk, Block, Stat, RetStat, Label, FuncName, VarList, Var, NameList,
       ExpList, Exp, PrefixExp, FunctionCall, Args, FunctionDef, FuncBody,
       ParList, TableConstructor, FieldList, Field, FieldSep, BinOp, UnOp,
       numeral, Numeral, LiteralString, Name, Space, Comment, LongString,
-      LispExp, LispSymbol, NameOrLispSymbol
+      LispExp, NameOrLispExp
 
 local dquoted, squoted
 
@@ -408,6 +429,7 @@ Stat = factor("Stat", function() return
   term(';') % lua_semicolon,
   span(VarList, "=", ExpList) % lua_assign,
   FunctionCall,
+  span("\\", LispStat) % second,
   Label,
   term("break") % lua_break,
   span("goto", Name) % lua_goto,
@@ -433,9 +455,11 @@ FuncName = factor("FuncName", function() return
     opt(span(":", Name) % concat)) % leftflat end,
   lua_funcname)
 VarList = factor("VarList", function() return
-  span(Var, rep(span(",", Var) % second)) % rightflat end, lua_varlist)
+  span(Var, rep(span(",", Var) % second))
+    % rightflat end, lua_varlist)
 Var = factor("Var", function() return
   Name,
+  span("\\", LispExp) % second,
   span(PrefixExp, "[", Exp, "]") % lua_index,
   span(PrefixExp, ".", Name) % lua_dot end)
 NameOrLispExp = factor("NameOrLispExp", function() return
@@ -458,31 +482,27 @@ Exp = factor("Exp", function(Exp) return
   span("\\", LispExp) % second,
   span(Exp, BinOp, Exp) % lua_binop_exp,
   span(UnOp, Exp) % lua_unop_exp end)
-LispSymbol = function(invariant, position, peek)
+LispStat = function(invariant, position, peek)
   local reader = require("l2l.reader")
   local compiler = require("l2l.compiler")
-  local rest, values = reader.read(invariant, position)
+  local ok, rest, values = pcall(reader.read, invariant, position)
+  if not ok then
+    return
+  end
   if peek then
     return rest
   end
-  local output = {}
   if not rest then
-    error("Could not compile Lisp expression embedded in Lua.\n"..
-      invariant.source:sub(position, position+20))
+    error("Could not compile Lisp expression embedded in Lua."..
+      invariant.source:sub(position, position+10))
   end
-  local expr = compiler.compile_exp(invariant, values[1], output)
-  print(expr, getmetatable(expr))
-  if #output == 0 then
-    return rest, expr
-  else
-    table.insert(output, lua_retstat.new(lua_explist({expr})))
-    return rest, lua_functioncall.new(
-      lua_paren_exp.new(
-        lua_lambda_function.new(
-          lua_funcbody.new(lua_namelist({}),
-            lua_block(output)))),
-      lua_args.new(lua_explist({})))
+  local output = {}
+  local stat = compiler.compile_stat(invariant, values[1], output)
+  table.insert(output, stat)
+  if #output > 0 then
+    return rest, lua_block(output)
   end
+  return rest
 end
 LispExp = function(invariant, position, peek)
   local reader = require("l2l.reader")
@@ -777,6 +797,7 @@ local exports = {
   numeral=numeral,
   LiteralString=LiteralString,
   Name=Name,
+  NameOrLispExp=NameOrLispExp,
   Space=Space,
   Comment=Comment,
   LongString=LongString,
