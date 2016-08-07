@@ -34,9 +34,10 @@ Usage:
 
 (fn let (vars ...)
   (cond \#vars > 0
-    (do
-      `(do ,(vector.unpack
-         (:append (vector (locals (list.unpack vars))) (vector ...)))))
+    `(do ,(vector.unpack
+      (:append
+        (vector (locals (list.unpack vars)))
+        (vector ...))))
     `(do ,...)))
 
 {
