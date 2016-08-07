@@ -2,6 +2,12 @@
 #import quasiquote
 #import local
 
+\--[[
+Usage:
+  (set x 1)
+  (print (set y 2))
+]]
+
 (fn expize_set(invariant cdr output)
   (local args (vector.cast cdr))
   (local value (args:pop))
