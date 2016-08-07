@@ -19,8 +19,4 @@
   end
   return a)
 
-\return {
-  macro = {
-    [(\'+)] = \+
-  }
-}
+{ macro = {[(\'+)]= \+ }}
