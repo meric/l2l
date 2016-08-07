@@ -3,5 +3,5 @@
 
 { apply = \
   (fn (f ...)
-    (local args (setmetatable (table.pack ...) vector))
+    (local args (vector.pack ...))
     (f (:unpack (args:append (args:pop)))))}

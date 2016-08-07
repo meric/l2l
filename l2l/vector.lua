@@ -90,6 +90,10 @@ function vector:unpack()
   return unpack(self, 1, #self)
 end
 
+function vector.pack(...)
+  return setmetatable(table.pack(...), vector)
+end
+
 function vector:__len()
   return self.n or #self
 end
