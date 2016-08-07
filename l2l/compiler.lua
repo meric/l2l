@@ -17,6 +17,7 @@ local lua_retstat = lua.lua_retstat
 local lua_block = lua.lua_block
 local lua_lambda_function = lua.lua_lambda_function
 local lua_paren_exp = lua.lua_paren_exp
+local lua_dot = lua.lua_dot
 
 
 local function validate_functioncall(car)
@@ -26,6 +27,23 @@ local function validate_functioncall(car)
     utils.hasmetatable(car, symbol) or
     lua_ast[getmetatable(car)]),
     "only expressions and symbols can be called.."..tostring(car))
+end
+
+local function accessor_functioncall(car, cdr)
+  if utils.hasmetatable(car, symbol) then
+    local first = string.sub(car.name, 1, 1)
+    local rest = lua.lua_args.new(lua_explist(vector.sub(cdr, 2)))
+    if first == ":"then
+      return lua.lua_colon_functioncall.new(
+        cdr[1],
+        lua_name(car.name:sub(2)),
+        rest)
+    elseif first == "." then
+      return lua_functioncall.new(
+        lua_dot.new(cdr[1], lua_name(car.name:sub(2))),
+        rest)
+    end
+  end
 end
 
 local function expize(invariant, data, output)
@@ -38,6 +56,10 @@ local function expize(invariant, data, output)
       return expize(invariant, value, output)
     end)
     validate_functioncall(car)
+    local accessor = accessor_functioncall(car, cdr)
+    if accessor then
+      return accessor
+    end
     local func = expize(invariant, car)
     if utils.hasmetatable(func, lua_lambda_function) then
       func = lua_paren_exp.new(func)
@@ -79,6 +101,10 @@ local function statize(invariant, data, output, last)
       return expize(invariant, value, output)
     end)
     validate_functioncall(car)
+    local accessor = accessor_functioncall(car, cdr)
+    if accessor then
+      return accessor
+    end
     return lua_functioncall.new(
       expize(invariant, car),
       lua.lua_args.new(lua_explist(cdr)))
@@ -250,7 +276,8 @@ local function compile(source, mod, extensions)
         "local",
         "cond",
         "do",
-        "set"
+        "set",
+        "let"
       }
     end
   end
@@ -280,9 +307,10 @@ local function compile(source, mod, extensions)
   -- Convert final stat into a retstat.
   if #output > 0 then
     output = vector.sub(output, 1, index)
+    setmetatable(output, nil)
     local stat = compile_stat(invariant, ret, output, true)
     if stat then
-      output:insert(stat)
+      table.insert(output, stat)
     end
   end
 
@@ -315,6 +343,9 @@ end
 compile_or_cached = function(source, mod, extends, path)
   local f = io.open(path)
   local h = hash_mod(source)
+  if mod == "l2l.ext.let" then
+    f = nil
+  end
   if not f then
     local out = compile(source, mod, extends)
     local g = io.open(path, "w")

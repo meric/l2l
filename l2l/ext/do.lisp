@@ -39,9 +39,15 @@ Usage:
     return
   end
   (local block {})
+  (local len \#cdr)
   \
   for i, value in ipairs(cdr) do
-    local stat = compile_stat(invariant, value, block)
+    local stat
+    if i < len then
+      stat = compile_stat(invariant, value, block)
+    else
+      stat = to_stat(compile_exp(invariant, value, block))
+    end
     if stat then
       table.insert(block, stat)
     end

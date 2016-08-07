@@ -14,6 +14,24 @@ local source = [==[
 (print yy)
 (print (set xx "xxxx"))
 
+(let (
+    (a b) (unpack {1, 2})
+    c 1
+    d 2)
+    (print c)
+    (print d)
+    (set x 1))
+
+
+--   (^each (v i) (set x (+ x i v))
+--     (^filter (v i) (< v 5)
+--       (ipairs values))))
+
+--   (each print
+--     (filter my-function
+--       (ipairs values))))
+
+
 (print (do
     (print 1)
     (print 2)

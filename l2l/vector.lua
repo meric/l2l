@@ -75,9 +75,9 @@ function vector.cast(t, f, g)
     if not g or g(i, v) then
       n = n + 1
       if f then
-        u[i] = f(v, i)
+        u[n] = f(v, i)
       else
-        u[i] = v
+        u[n] = v
       end
       u.n = n
     end
