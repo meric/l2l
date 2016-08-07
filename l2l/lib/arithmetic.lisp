@@ -4,7 +4,7 @@
 
 { [(\'+)] = \
   (fn (...)
-    (local args (setmetatable (table.pack ...) vector))
+    (local args (vector ...))
     (local x 0)
     \
     for i, v in ipairs(args) do
