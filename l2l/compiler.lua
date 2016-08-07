@@ -116,8 +116,6 @@ local function initialize_dependencies()
       ["vector"] = {{'require("l2l.vector")', nil}},
       [symbol("+"):mangle()] = {
         "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
-      [symbol("+"):mangle()] = {
-        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
       ["apply"] = {"import", {'import("l2l.lib.apply")', "apply"}}
     }
     for name, _ in pairs(lua) do
