@@ -1,7 +1,8 @@
-(fn apply (f ...)
-    \local args = {...}
-    local last = table.remove(args, select("#", ...))
-    for _,v in ipairs(last) do table.insert(args, v) end
-    return f(unpack(args)))
+#import fn
+#import local
 
-\return { apply = apply }
+{ apply = \
+  (fn (f ...)
+    (local args (setmetatable (table.pack ...) vector))
+    (args:append (args:pop))
+    (f (table.unpack args 1 \#args)))}

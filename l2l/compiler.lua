@@ -66,20 +66,6 @@ local function to_stat(exp, name)
   return lua_local.new(lua_namelist({name}), lua_explist({exp}))
 end
 
-local function compile_lua_block_into_exp(invariant, cdr, output)
-  local cadr = cdr:car()
-  local retstat = cadr[#cadr]
-
-  assert(utils.hasmetatable(retstat, lua_retstat),
-    "block must end with return statement when used as an exp.")
-
-  for i=1, #cadr - 1 do
-    table.insert(output, cadr[i])
-  end
-
-  return retstat.explist
-end
-
 local function statize(invariant, data, output, last)
   if last and not utils.hasmetatable(data, lua_block) then
     return lua_retstat.new(lua_explist({expize(invariant, data, output)}))
@@ -109,8 +95,8 @@ local function statize(invariant, data, output, last)
   error("cannot not statize.."..tostring(data))
 end
 
-local function compile_stat(invariant, data, output)
-  return statize(invariant, reader.expand(invariant, data), output)
+local function compile_stat(invariant, data, output, ...)
+  return statize(invariant, reader.expand(invariant, data), output, ...)
 end
 
 local function compile_exp(invariant, data, output)
@@ -232,6 +218,12 @@ local function import(mod, extends)
   local ok, m
   if f then
     ok, m = pcall(f, mod, path)
+    for k, v in pairs(m) do
+      if utils.hasmetatable(k, symbol) then
+        m[k:mangle()] = v
+        m[k] = nil
+      end
+    end
     if not ok then
       print(out)
       error(m)
@@ -246,13 +238,17 @@ local function compile(source, mod, extensions)
   local invariant = reader.environ(source, 1)
 
   if not extensions then
-    extensions = {
-      "fn",
-      "quasiquote",
-      "quote",
-      "arithmetic",
-      "local"
-    }
+    if mod and string.match(mod, "^l2l[.]lib") then
+      extensions = {}
+    else
+      extensions = {
+        "fn",
+        "quasiquote",
+        "quote",
+        "arithmetic",
+        "local"
+      }
+    end
   end
 
   for i, e in ipairs(extensions) do
@@ -260,14 +256,23 @@ local function compile(source, mod, extensions)
       reader.import_extension(invariant, e))
   end
 
-  local output = {}
-
+  local output, ret, index = {}
   for rest, values in reader.read, invariant do
     for i, value in ipairs(values) do
+      ret, index = value, #output
       local stat = compile_stat(invariant, value, output)
       if stat then
         table.insert(output, stat)
       end
+    end
+  end
+
+  -- Convert final stat into a retstat.
+  if #output > 0 then
+    output = vector.sub(output, 1, index)
+    local stat = compile_stat(invariant, ret, output, true)
+    if stat then
+      output:insert(stat)
     end
   end
 
@@ -327,8 +332,6 @@ exports = {
   build=build,
   import=import,
   compile=compile,
-  compile_lua_block = compile_lua_block,
-  compile_lua_block_into_exp = compile_lua_block_into_exp,
   mangle = reader.mangle,
   statize = statize,
   expize = expize,

@@ -12,10 +12,13 @@ Garbage Collection not thought through.
 ]]--
 
 local utils = require("leftry").utils
-
+local vector = require("l2l.vector")
 local data = setmetatable({n=0, free=0}, {})
 
 local list = utils.prototype("list", function(list, ...)
+  if select("#", ...) == 0 then
+    return vector()
+  end
   local self = setmetatable({position = data.n + 1}, list)
   local count = select("#", ...)
   local index = self.position

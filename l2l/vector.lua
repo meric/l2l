@@ -10,6 +10,29 @@ function vector:insert(value)
   return self
 end
 
+function vector:append(t, f, g)
+  for i, v in ipairs(t) do
+    if not g or g(i, v) then
+      self.n = self.n + 1
+      local j = self.n
+      if f then
+        self[j] = f(v, i)
+      else
+        self[j] = v
+      end
+    end
+  end
+  return self
+end
+
+function vector:pop()
+  assert(self.n > 0)
+  local value = self[self.n]
+  self[self.n] = nil
+  self.n = self.n-1
+  return value
+end
+
 function vector:next(i)
   if i < self.n then
     return i + 1, self[i + 1]
@@ -33,9 +56,9 @@ function vector:__tostring()
 end
 
 function vector.sub(t, from, to)
-  to = to or #t
   from = from or 1
-  return vector.cast(t, function(i)
+  to = to or #t
+  return vector.cast(t, nil, function(i)
     return i >= from and i <= to
   end)
 end

@@ -78,7 +78,7 @@ local function mangle(text)
     pattern = "(.)"
     prefix = text
   else
-    pattern = "[^_a-zA-Z0-9.%[%]]"
+    pattern = "[^:_a-zA-Z0-9.%[%]]"
   end
   return prefix..text:gsub(pattern, function(char)
     if char == "-" then
