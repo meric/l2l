@@ -2,8 +2,8 @@
 #import quote
 #import local
 
-{
-  [(\'+)] = \(fn (...)
+{ [(\'+)] = \
+  (fn (...)
     (local args (setmetatable (table.pack ...) vector))
     (local x 0)
     \
