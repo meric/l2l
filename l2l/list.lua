@@ -1,6 +1,9 @@
 -- A very fast Lua linked list implementation that can only add a number of
 -- items equal to the maximum integer that can be held in a lua number.
 
+-- The reference counting O(n) for length of remaining list when doing cdr or
+-- cons.
+
 local utils = require("leftry").utils
 local vector = require("l2l.vector")
 local data = setmetatable({n=0, free=0}, {})
