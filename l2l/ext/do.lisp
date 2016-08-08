@@ -10,6 +10,8 @@ Usage:
     (+ x y))
 ]]
 
+(local utils (require "leftry.utils"))
+
 (fn expize_do (invariant cdr output)
   \
   if not cdr then
@@ -27,7 +29,13 @@ Usage:
         table.insert(block, stat)
       end
     else
-      table.insert(block, \`\\,var = \,(compile_exp invariant value block))
+      local exp = compile_exp(invariant, value, block)
+      if utils.hasmetatable(exp, lua_block) then
+        -- We have no choice, cannot assign lua_block into variable.
+        table.insert(block, exp)
+      else
+        table.insert(block, \`\\,var = \,exp)
+      end
     end
   end
   (table.insert output `\do \,(unpack block) end)

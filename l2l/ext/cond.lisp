@@ -11,6 +11,8 @@ Usage:
     (else_clause some arg))
 ]]
 
+(local utils (require "leftry.utils"))
+
 (fn stat_cond (invariant output value found condition action ...)
   (assert \(condition and action);
     "cond requires positive even number of arguments.")
@@ -21,9 +23,16 @@ Usage:
     \(table.insert block `\\,found = true)
   end
 
-  (table.insert block `\\,value = \,(compile_exp invariant action block))  
+  (local exp (compile_exp invariant action block))
+  \
+  if utils.hasmetatable(exp, lua_block) then
+    -- We have no choice, cannot assign lua_block into variable.
+    table.insert(block, exp)
+  else
+    table.insert(block, \`\\,value = \,exp)
+  end
 
-  \if ... then
+  if ... then
     \(table.insert rest (stat_cond invariant block value found ...))
   end
 

@@ -14,6 +14,7 @@ Usage:
     (print d))
 ]]
 
+
 (local utils (require "leftry.utils"))
 
 (fn assign (names values)
@@ -26,11 +27,9 @@ Usage:
       tostring(getmetatable(names)))))
 
 (fn locals (names values ...)
-  \
-  if ... then
-    return assign(names, values), locals(...)
-  end
-  return assign(names, values))
+  (cond ...
+    \return assign(names, values), locals(...)
+    (assign names values)))
 
 (fn let (vars ...)
   (cond \#vars > 0
