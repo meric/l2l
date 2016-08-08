@@ -62,8 +62,13 @@ local function byteat(invariant, position)
   return string.char(invariant.source:byte(position))
 end
 
+local symbol_cache = {}
+
 local symbol = utils.prototype("symbol", function(symbol, name)
-  return setmetatable({name}, symbol)
+  if not symbol_cache[name] then
+    symbol_cache[name] = setmetatable({name}, symbol)
+  end
+  return symbol_cache[name]
 end)
 
 local function mangle(text)
@@ -90,8 +95,6 @@ local function mangle(text)
     end
   end)
 end
-
-symbol.ids = {}
 
 function symbol:__eq(sym)
   return getmetatable(self) == getmetatable(sym) and self:mangle() == sym:mangle()
@@ -352,16 +355,15 @@ local function read_dispatch(invariant, position)
 end
 
 local function expand(invariant, data)
+  local _expand = function(value) return expand(invariant, value) end
   local macro = invariant.macro
   if utils.hasmetatable(data, list) then
     local car, cdr = data:car(), data:cdr()
     if utils.hasmetatable(car, symbol) and macro[car.name] then
-      data = macro[car.name](list.unpack(cdr))
-      -- re-expand?
+      data = expand(invariant, macro[car.name](
+        vector.unpack(vector.cast(cdr, _expand))))
     else
-      return list.cast(data, function(value) return
-        expand(invariant, value)
-      end)
+      return list.cast(data, _expand)
     end
   end
   return data

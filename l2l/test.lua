@@ -23,6 +23,11 @@ local source = [==[
     (set x 1))
 
 
+(print (and 1 (+ 1 2)))
+(print (+ 1 (+ 1 2)))
+(print (do ">>"))
+
+
 --   (^each (v i) (set x (+ x i v))
 --     (^filter (v i) (< v 5)
 --       (ipairs values))))
@@ -84,7 +89,7 @@ end)
 (print (fn () (print 1) 2))
 ]==]
 
-local source = compiler.compile(source)
+local source = compiler.compile(source, "test")
 print(source)
 print("--------------------------")
 print(load(source)())

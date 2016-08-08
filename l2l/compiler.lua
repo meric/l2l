@@ -19,6 +19,8 @@ local lua_lambda_function = lua.lua_lambda_function
 local lua_paren_exp = lua.lua_paren_exp
 local lua_dot = lua.lua_dot
 
+local unpack = table.unpack or unpack
+
 
 local function validate_functioncall(car)
   assert(
@@ -142,7 +144,14 @@ local function initialize_dependencies()
       ["vector"] = {{'require("l2l.vector")', nil}},
       [symbol("+"):mangle()] = {
         "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
-      ["apply"] = {"import", {'import("l2l.lib.apply")', "apply"}}
+      [symbol("*"):mangle()] = {
+        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
+      [symbol("and"):mangle()] = {
+        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
+      [symbol("or"):mangle()] = {
+        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
+      ["apply"] = {"import", {'import("l2l.lib.apply")', "apply"}},
+      ["unpack"] = {{"table.unpack or unpack", nil}}
     }
     for name, _ in pairs(lua) do
       dependencies[name] = {{'require("l2l.lua")', "lua"}}
@@ -218,9 +227,14 @@ end
 
 local compile_or_cached
 
+local build_cache = {}
+
 local function build(mod, extends)
   local prefix = string.gsub(mod, "[.]", "/")
   local path = prefix..".lisp"
+  if build_cache[path] then
+    return unpack(build_cache[path])
+  end
   local f = io.open(path)
   if not f then
     return
@@ -230,6 +244,7 @@ local function build(mod, extends)
   local out = compile_or_cached(source, mod, extends, prefix..".lua")
   local f, err = load(out)
   if f then
+    build_cache[path] = {f, out}
     return f, out
   else
     print(out)
@@ -245,18 +260,21 @@ local function import(mod, extends)
     if not m then
       print("missing module", mod, path)
     end
-    for k, v in pairs(m) do
-      if utils.hasmetatable(k, symbol) then
-        m[k:mangle()] = v
-        m[k] = nil
-      end
-    end
     if not ok then
       print(out)
       error(m)
     end
   else
     m = require(mod)
+  end
+  local s = {}
+  for k, v in pairs(m) do
+    if utils.hasmetatable(k, symbol) then
+      s[k:mangle()] = v
+    end
+  end
+  for k, v in pairs(s) do
+    m[k] = v
   end
   return m
 end

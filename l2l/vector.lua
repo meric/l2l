@@ -1,5 +1,7 @@
 local utils = require("leftry").utils
 
+local unpack = table.unpack or unpack
+
 local vector = utils.prototype("vector", function(vector, ...)
   return setmetatable(table.pack(...), vector)
 end)
@@ -10,18 +12,15 @@ function vector:insert(value)
   return self
 end
 
-function vector:append(t, f, g)
+function vector:append(t, f)
   local n = self.n
+  self.n = n + #t
   for i, v in ipairs(t) do
-    if not g or g(i, v) then
-      n = n + 1
-      local j = n
-      if f then
-        self[j] = f(v, i)
-      else
-        self[j] = v
-      end
-      self.n = n
+    n = n + 1
+    if f then
+      self[n] = f(v, i)
+    else
+      self[n] = v
     end
   end
   return self
