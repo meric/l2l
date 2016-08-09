@@ -22,7 +22,7 @@ Usage:
 
 (fn - (a ...)
   (cond
-    ... (subt a ...)
+    (\... or a == symbol("...")) (subt a ...)
     `\-\,a))
 
 (fn * (a ...)
