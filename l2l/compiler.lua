@@ -127,6 +127,8 @@ local function initialize_dependencies()
       ["reader"] = {{'require("l2l.reader")'}},
       ["list"] = {{'require("l2l.list")', nil}},
       ["vector"] = {{'require("l2l.vector")', nil}},
+      [symbol("-"):mangle()] = {
+        "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("+"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("*"):mangle()] = {

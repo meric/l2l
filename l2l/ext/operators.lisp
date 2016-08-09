@@ -13,27 +13,43 @@ Usage:
     ... `\(\,a + \,(+ ...))
     \a == symbol("..."); '\(\+)(...)
     a))
+
+(fn subt (a ...)
+  (cond
+      ... `\(\,a - \,(subt ...))
+      \a == symbol("..."); '\(\+)(...)
+      a))
+
+(fn - (a ...)
+  (cond
+    ... (subt a ...)
+    `\-\,a))
+
 (fn * (a ...)
   (cond
     \not a 1
     ... `\(\,a * \,(* ...))
     \a == symbol("..."); '\(\*)(...)
     a))
+
 (fn and (a ...)
   (cond
     \not a true
     ... `\(\,a and \,(and ...))
     \a == symbol("..."); '\(\and)(...)
     a))
+
 (fn or (a ...)
   (cond
     \not a false
     ... `\(\,a or \,(or ...))
     \a == symbol("..."); '\(\or)(...)
     a))
+
 {
   macro = {
     [(\'+)]= \+,
+    [(\'-)]= \-,
     [(\'*)]= \*,
     [(\'and)]= \and,
     [(\'or)]= \or,

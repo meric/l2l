@@ -6,6 +6,7 @@ local source = [==[
 (print (local c d 1))
 (print "hello")
 (print (+ 1 2 3 4))
+(print (- 100 5 3 1))
 
 (set yy "yyyy")
 (print yy)

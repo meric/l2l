@@ -67,6 +67,9 @@ local symbol = utils.prototype("symbol", function(symbol, name)
 end)
 
 local function mangle(text)
+  if text == "-" then
+    return "_45"
+  end
   if utils.hasmetatable(text, symbol) then
     text = text[1]
   end
@@ -115,11 +118,12 @@ local function read_symbol(invariant, position)
   local R = invariant.read
   local dot, zero, nine, minus = 46, 48, 57, 45
   for i=position, #source do
-    local byte = source:byte(i+1)
+    local byte = source:byte(i)
     rest = i + 1
     if not byte or (matchreadmacro(R, byte) ~= 1
         and byte ~= dot and byte ~= minus
         and not (byte >= zero and byte <= nine)) then
+      rest = rest - 1
       break
     end
   end
@@ -235,6 +239,7 @@ function readifnot(invariant, position, stop)
   while (not macro or not values) and rest <= #source do
     local byte = source:byte(rest)
     local index = matchreadmacro(R, byte)
+    position = rest
     for i=1, #R[index] do
       macro = R[index][i]
       if stop == macro then
