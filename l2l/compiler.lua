@@ -5,44 +5,29 @@ local reader = require("l2l.reader")
 local vector = require("l2l.vector")
 local symbol = reader.symbol
 
-local lua_functioncall = lua.lua_functioncall
-local lua_function = lua.lua_function
-local lua_explist = lua.lua_explist
-local lua_number = lua.lua_number
-local lua_name = lua.lua_name
-local lua_ast = lua.lua_ast
-local lua_local = lua.lua_local
-local lua_namelist = lua.lua_namelist
-local lua_retstat = lua.lua_retstat
-local lua_block = lua.lua_block
-local lua_lambda_function = lua.lua_lambda_function
-local lua_paren_exp = lua.lua_paren_exp
-local lua_dot = lua.lua_dot
-
 local unpack = table.unpack or unpack
-
 
 local function validate_functioncall(car)
   assert(
-    getmetatable(car) ~= lua_number and (
+    getmetatable(car) ~= lua.lua_number and (
     utils.hasmetatable(car, list) or
     utils.hasmetatable(car, symbol) or
-    lua_ast[getmetatable(car)]),
+    lua.lua_ast[getmetatable(car)]),
     "only expressions and symbols can be called.."..tostring(car))
 end
 
 local function accessor_functioncall(car, cdr)
   if utils.hasmetatable(car, symbol) then
     local first = string.sub(car.name, 1, 1)
-    local rest = lua.lua_args.new(lua_explist(vector.sub(cdr, 2)))
+    local rest = lua.lua_args.new(lua.lua_explist(vector.sub(cdr, 2)))
     if first == ":"then
       return lua.lua_colon_functioncall.new(
         cdr[1],
-        lua_name(car.name:sub(2)),
+        lua.lua_name(car.name:sub(2)),
         rest)
     elseif first == "." then
-      return lua_functioncall.new(
-        lua_dot.new(cdr[1], lua_name(car.name:sub(2))),
+      return lua.lua_functioncall.new(
+        lua.lua_dot.new(cdr[1], lua.lua_name(car.name:sub(2))),
         rest)
     end
   end
@@ -63,36 +48,36 @@ local function expize(invariant, data, output)
       return accessor
     end
     local func = expize(invariant, car)
-    if utils.hasmetatable(func, lua_lambda_function) then
-      func = lua_paren_exp.new(func)
+    if utils.hasmetatable(func, lua.lua_lambda_function) then
+      func = lua.lua_paren_exp.new(func)
     end
-    return lua_functioncall.new(
+    return lua.lua_functioncall.new(
       func,
-      lua.lua_args.new(lua_explist(cdr)))
+      lua.lua_args.new(lua.lua_explist(cdr)))
   elseif utils.hasmetatable(data, symbol) then
-    return lua_name(data:mangle())
-  elseif lua_ast[getmetatable(data)] then
+    return lua.lua_name(data:mangle())
+  elseif lua.lua_ast[getmetatable(data)] then
     return data
   elseif data == nil then
     return "nil"
   elseif data == reader.lua_none then
     return
   elseif type(data) == "number" then
-    return lua_number(data)
+    return lua.lua_number(data)
   end
   error("cannot not expize.."..tostring(data))
 end
 
 local function to_stat(exp, name)
   -- convert exp to stat
-  local name = name or lua_name:unique("_var")
+  name = name or lua.lua_name:unique("_var")
   assert(exp)
-  return lua_local.new(lua_namelist({name}), lua_explist({exp}))
+  return lua.lua_local.new(lua.lua_namelist({name}), lua.lua_explist({exp}))
 end
 
 local function statize(invariant, data, output, last)
-  if last and not utils.hasmetatable(data, lua_block) then
-    return lua_retstat.new(lua_explist({expize(invariant, data, output)}))
+  if last and not utils.hasmetatable(data, lua.lua_block) then
+    return lua.lua_retstat.new(lua.lua_explist({expize(invariant, data, output)}))
   end
   if utils.hasmetatable(data, list) then
     local car = data:car()
@@ -107,13 +92,13 @@ local function statize(invariant, data, output, last)
     if accessor then
       return accessor
     end
-    return lua_functioncall.new(
+    return lua.lua_functioncall.new(
       expize(invariant, car),
-      lua.lua_args.new(lua_explist(cdr)))
-  elseif utils.hasmetatable(data, lua_block) then
+      lua.lua_args.new(lua.lua_explist(cdr)))
+  elseif utils.hasmetatable(data, lua.lua_block) then
     return data
-  elseif lua_ast[getmetatable(data)] then
-    if not utils.hasmetatable(data, lua_functioncall) then
+  elseif lua.lua_ast[getmetatable(data)] then
+    if not utils.hasmetatable(data, lua.lua_functioncall) then
       return to_stat(data)
     end
     return data
@@ -173,7 +158,7 @@ local function header(references, mod)
   local names = {}
   for name, dep in pairs(deps) do
     if references[name] then
-      for i, v in ipairs(dep) do
+      for _, v in ipairs(dep) do
         if type(v) == "string" then
           table.insert(names, v)
         end
@@ -185,13 +170,12 @@ local function header(references, mod)
   local output = {}
   local outputed = {}
 
-  for i, name in ipairs(names) do
-    for i, dep in ipairs(deps[name]) do
+  for _, name in ipairs(names) do
+    for _, dep in ipairs(deps[name]) do
       if type(dep) == "table" then
         local m, label = dep[1], dep[2]
         if not mod or not string.match(m, mod) then
           if m then
-            local l = string.format(m, name)
             local r = string.format("local %s = %s", label or name, m)
             if not outputed[r] then
               outputed[r] = true
@@ -235,12 +219,12 @@ local function build(mod, extends)
   if build_cache[path] then
     return unpack(build_cache[path])
   end
-  local f = io.open(path)
-  if not f then
+  local file = io.open(path)
+  if not file then
     return
   end
-  local source = f:read("*a")
-  f:close()
+  local source = file:read("*a")
+  file:close()
   local out = compile_or_cached(source, mod, extends, prefix..".lua")
   local f, err = load(out)
   if f then
@@ -256,6 +240,7 @@ local function import(mod, extends)
   local f, out = build(mod, extends)
   local ok, m
   if f then
+    -- TODO: path here is undefined
     ok, m = pcall(f, mod, path)
     if not m then
       print("missing module", mod, path)
@@ -300,7 +285,7 @@ local function compile(source, mod, extensions)
     end
   end
 
-  for i, e in ipairs(extensions) do
+  for _, e in ipairs(extensions) do
     reader.load_extension(invariant,
       reader.import_extension(invariant, e))
   end
@@ -308,7 +293,7 @@ local function compile(source, mod, extensions)
   local output, ret, index = {}
   local ending
   for rest, values in reader.read, invariant do
-    for i, value in ipairs(values) do
+    for _, value in ipairs(values) do
       ret, index = value, #output
       local stat = compile_stat(invariant, value, output)
       if stat then
@@ -391,11 +376,10 @@ exports = {
   mangle = reader.mangle,
   statize = statize,
   expize = expize,
-  mangle = mangle,
   compile_stat = compile_stat,
   compile_exp = compile_exp,
   to_stat = to_stat,
-  expand = expand
+  expand = reader.expand,
 }
 
 return exports

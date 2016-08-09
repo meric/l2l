@@ -2,20 +2,17 @@
 -- backslash allows escaping a l2llisp expression.
 
 local utils = require("leftry.utils")
-
 local ast = require("leftry.ast")
+
 local map = utils.map
 local each =  utils.each
 
 local grammar = require("leftry.grammar")
 
-local list = require("l2l.list")
-
 local opt = grammar.opt
 local rep = grammar.rep
 local factor = grammar.factor
 local term = grammar.term
-local any = grammar.any
 
 local lua_varlist
 local lua_namelist
@@ -29,17 +26,17 @@ local lua_ast
 local lua_number
 
 local r
-r = each(function(v, k) 
-   -- Define the Lua syntax tree representations, and corresponding output
-   -- format using `ast.reduce`.
+r = each(function(v, k)
+    -- Define the Lua syntax tree representations, and corresponding output
+    -- format using `ast.reduce`.
     local st = ast.reduce(k,
       type(v) ~= "function" and v or false,
       type(v) == "function" and v or nil)
     function st:repr()
       local reader = require("l2l.reader")
       local parameters = {}
-      for i, v in ipairs(self.arguments) do
-        local value = self[v[1]]
+      for _, v2 in ipairs(self.arguments) do
+        local value = self[v2[1]]
         if lua_ast[getmetatable(value)] then
           table.insert(parameters, value:repr())
         elseif type(value) == "string" then
@@ -131,8 +128,9 @@ local lua_local = ast.reduce("lua_local", {"local", namelist=2, explist=3},
 
 function lua_local:repr()
   local parameters = {}
-  for i, v in ipairs(self.arguments) do
+  for _, v in ipairs(self.arguments) do
     local value = self[v[1]]
+    local reader = require("l2l.reader")
     if lua_ast[getmetatable(value)] then
       table.insert(parameters, value:repr())
     elseif type(value) == "string" then
@@ -168,7 +166,7 @@ local function _list(...)
   function st:repr()
     local reader = require("l2l.reader")
     local parameters = {}
-    for i, value in ipairs(self) do
+    for _, value in ipairs(self) do
       if lua_ast[getmetatable(value)] then
         table.insert(parameters, value:repr())
       elseif type(value) == "string" then
@@ -187,10 +185,9 @@ end
 
 local function name_cast(values)
   local u = {}
-  local reader = require("l2l.reader")
-  for i, value in ipairs(values) do
+  for _, value in ipairs(values) do
     if utils.hasmetatable(value, lua_namelist) then
-      for i, name in ipairs(name_cast(value)) do
+      for _, name in ipairs(name_cast(value)) do
         table.insert(u, name)
       end
     else
@@ -205,10 +202,9 @@ end
 
 local function var_cast(values)
   local u = {}
-  local reader = require("l2l.reader")
-  for i, value in ipairs(values) do
+  for _, value in ipairs(values) do
     if utils.hasmetatable(value, lua_varlist) then
-      for i, name in ipairs(var_cast(value)) do
+      for _, name in ipairs(var_cast(value)) do
         table.insert(u, name)
       end
     else
@@ -348,7 +344,7 @@ local Chunk, Block, Stat, RetStat, Label, FuncName, VarList, Var, NameList,
       ExpList, Exp, PrefixExp, FunctionCall, Args, FunctionDef, FuncBody,
       ParList, TableConstructor, FieldList, Field, FieldSep, BinOp, UnOp,
       numeral, Numeral, LiteralString, Name, Space, Comment, LongString,
-      LispExp, NameOrLispExp
+      LispExp, LispStat, NameOrLispExp
 
 local dquoted, squoted
 
@@ -389,9 +385,8 @@ Comment = factor("Comment", function() return
 
 local spaces = " \t\r\n"
 
-local function spacing(invariant, position, previous, current)
-  local src = invariant.source
-  local byte = src:byte(position)
+local function spacing(invariant, position, previous)
+  local src, byte = invariant.source
 
   -- Skip whitespace and comments
   local comment = position
@@ -469,7 +464,7 @@ NameList = factor("NameList", function() return
     % rightflat end, lua_namelist)
 ExpList = factor("ExpList", function() return
   span(Exp, rep(span(",", Exp) % second)) % rightflat end, lua_explist)
-Exp = factor("Exp", function(Exp) return
+Exp = factor("Exp", function(Exp2) return
   term("nil") % lua_nil,
   term("false") % lua_false,
   term("true") % lua_true,
@@ -480,8 +475,8 @@ Exp = factor("Exp", function(Exp) return
   PrefixExp,
   TableConstructor,
   span("\\", LispExp) % second,
-  span(Exp, BinOp, Exp) % lua_binop_exp,
-  span(UnOp, Exp) % lua_unop_exp end)
+  span(Exp2, BinOp, Exp2) % lua_binop_exp,
+  span(UnOp, Exp2) % lua_unop_exp end)
 LispStat = function(invariant, position, peek)
   local reader = require("l2l.reader")
   local compiler = require("l2l.compiler")
@@ -568,7 +563,7 @@ LiteralString = factor("LiteralString", function() return
   grammar.span("\'", opt(squoted), "\'") % second,
   LongString end, lua_string)
 
-long_string_quote = grammar.span("[", rep("="), "[")
+local long_string_quote = grammar.span("[", rep("="), "[")
 LongString = function(invariant, position, peek)
   local rest = long_string_quote(invariant, position, true)
   if not rest then
@@ -616,6 +611,7 @@ local function stringcontent(quotechar)
         return i, table.concat(value)
       end
     end
+    -- TODO: raise and UnmatchedQuoteException are undefined
     raise(UnmatchedQuoteException(src, limit))
   end
 end
@@ -624,20 +620,20 @@ dquoted = stringcontent("\"")
 squoted = stringcontent("\'")
 
 numeral = function(invariant, position, peek)
-  local sign, numbers = position
+  local sign = position
   local src = invariant.source
   local byte = src:byte(position)
-  local dot, zero, nine, minus = 46, 48, 57, 45
+  local dot, minus = 46, 45
   if byte == minus then
     sign = position + 1
   end
   local decimal = false
   local rest
   for i=sign, #src do
-    local byte = src:byte(i)
-    if i ~= sign and byte == dot and decimal == false then
+    local byte2 = src:byte(i)
+    if i ~= sign and byte2 == dot and decimal == false then
       decimal = true
-    elseif not (byte >= zero and byte <= nine) then
+    elseif not (byte2 >= zero and byte2 <= nine) then
       rest = i
       break
     elseif i == #src then
@@ -684,8 +680,6 @@ local keywords = {
 }
 
 Name = function(invariant, position, peek)
-  local underscore, alpha, zeta, ALPHA, ZETA = 95, 97, 122, 65, 90
-  local zero, nine = 48, 57
   local src = invariant.source
   local byte = src:byte(position)
 
@@ -798,7 +792,7 @@ local exports = {
   LiteralString=LiteralString,
   Name=Name,
   NameOrLispExp=NameOrLispExp,
-  Space=Space,
+  Space=Space, -- TODO: this is never set
   Comment=Comment,
   LongString=LongString,
   span=span,
@@ -857,7 +851,7 @@ local exports = {
   lua_name = lua_name
 }
 
-for k, v in pairs(exports) do
+for _, v in pairs(exports) do
   if getmetatable(v) == grammar.factor and v ~= LispExp then
     v:setup()
     v:actualize()
