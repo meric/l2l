@@ -115,12 +115,11 @@ local function read_symbol(invariant, position)
   local R = invariant.read
   local dot, zero, nine, minus = 46, 48, 57, 45
   for i=position, #source do
-    local byte = source:byte(i)
+    local byte = source:byte(i+1)
     rest = i + 1
     if not byte or (matchreadmacro(R, byte) ~= 1
         and byte ~= dot and byte ~= minus
         and not (byte >= zero and byte <= nine)) then
-      rest = rest - 1
       break
     end
   end
@@ -206,12 +205,16 @@ end
 
 local function read_lua_comment(invariant, position)
   local rest = lua.Comment(invariant, skip_whitespace(invariant, position))
-  return rest, {}
+  if rest then
+    return rest, {}
+  end
 end
 
 local function read_lua_number(invariant, position)
   local rest, value = lua.Numeral(invariant, position)
-  return rest, {value}
+  if rest then
+    return rest, {value}
+  end
 end
 
 local function read_lua_literal(invariant, position)
