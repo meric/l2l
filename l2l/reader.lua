@@ -24,11 +24,11 @@ local lua_keyword = {
   ["while"] = true
 }
 
+local read, readifnot
+
 local lua_none = setmetatable({}, {__tostring = function()
   return "lua_none"
 end})
-
-local lua_string = lua.lua_string
 
 local function matchreadmacro(R, byte)
   if not byte or not R then
@@ -57,11 +57,6 @@ local function matchreadmacro(R, byte)
   return 1, R[1]
 end
 
--- Returns byte at `position` in `invariant.source`.
-local function byteat(invariant, position)
-  return string.char(invariant.source:byte(position))
-end
-
 local symbol_cache = {}
 
 local symbol = utils.prototype("symbol", function(symbol, name)
@@ -75,7 +70,7 @@ local function mangle(text)
   if utils.hasmetatable(text, symbol) then
     text = text[1]
   end
-  local prefix = ""
+  local prefix, pattern = ""
   if text == "..." then
     return "..."
   end
@@ -100,7 +95,7 @@ function symbol:__eq(sym)
   return getmetatable(self) == getmetatable(sym) and self:mangle() == sym:mangle()
 end
 
-function symbol:__tostring(sym)
+function symbol:__tostring()
   return "symbol("..utils.escape(tostring(self[1]))..")"
 end
 
@@ -108,7 +103,7 @@ function symbol:mangle()
   return mangle(self[1])
 end
 
-function symbol:__index(k, v)
+function symbol:__index(k)
   if k == "name" then
     return self[1]
   end
@@ -137,7 +132,7 @@ local function read_symbol(invariant, position)
   return rest, {symbol(source:sub(position, rest-1))}
 end
 
-local function read_right_paren(invariant, position)
+local function read_right_paren()
   error("unmatched right parenthesis")
 end
 
@@ -153,18 +148,16 @@ local function read_quote(invariant, position)
 end
 
 local function read_list(invariant, position)
-  local source, rest = invariant.source
   local size = #invariant.source
   local t = vector()
-  local ok, rest, value = true, position + 1
+  local ok, rest, values = true, position + 1
   while ok do
     if rest > size then
       error("no bytes")
     end
-    local index = rest
     ok, rest, values = readifnot(invariant, rest, read_right_paren)
     if ok then
-      for i, value in ipairs(values) do
+      for _, value in ipairs(values) do
         t:insert(value)
       end
     end
@@ -198,7 +191,7 @@ local function skip_whitespace(invariant, position)
   return rest
 end
 
-local function read_semicolon(invariant, position)
+local function read_semicolon(_, position)
   return position + 1, {}
 end
 
@@ -212,8 +205,7 @@ local function read_lua(invariant, position)
 end
 
 local function read_lua_comment(invariant, position)
-  local rest, value = lua.Comment(invariant,
-    skip_whitespace(invariant, position))
+  local rest = lua.Comment(invariant, skip_whitespace(invariant, position))
   return rest, {}
 end
 
@@ -240,7 +232,6 @@ function readifnot(invariant, position, stop)
   while (not macro or not values) and rest <= #source do
     local byte = source:byte(rest)
     local index = matchreadmacro(R, byte)
-    local origin = rest
     for i=1, #R[index] do
       macro = R[index][i]
       if stop == macro then
@@ -293,7 +284,7 @@ local function load_extension(invariant, mod, alias)
       if type(k) == "string" then
         k = string.byte(k)
       end
-      for i, x in ipairs(xs) do
+      for _, x in ipairs(xs) do
         invariant.read[k] = invariant.read[k] or {}
         if not utils.contains(invariant.read[k], x) then
           table.insert(invariant.read[k], x)
@@ -303,7 +294,7 @@ local function load_extension(invariant, mod, alias)
   end
 end
 
-local function import_extension(invariant, name)
+local function import_extension(_, name)
   local compiler = require("l2l.compiler")
   local ok, mod = pcall(compiler.import, name)
   if not ok and string.match(mod, "not found") then
@@ -329,7 +320,6 @@ local function dispatch_import(invariant, position)
   end
   if rest then
     local name = sym[1]
-    local compiler = require("l2l.compiler")
     local mod = import_extension(invariant, name)
     load_extension(invariant, mod, alias)
     return rest, {}
@@ -344,7 +334,7 @@ local function read_dispatch(invariant, position)
     if not dispatches then
       error("no dispatch: "..name)
     end
-    for i, dispatch in ipairs(dispatches) do
+    for _, dispatch in ipairs(dispatches) do
       local r, v = dispatch(invariant, rest)
       if r then
         return r, v
@@ -382,8 +372,8 @@ local function inherit(invariant, source)
 end
 
 
-local function environ(source, position)
-  local invariant = {
+local function environ(source)
+  return {
     events = {},
     macro = {},
     dispatch = {
@@ -415,12 +405,10 @@ local function environ(source, position)
       {read_symbol}
     },
     source = source
-  }, position or 1
-
-  return invariant
+  }
 end
 
-local function read(invariant, position)
+function read(invariant, position)
   return select(2, readifnot(invariant, position or 1))
 end
 
@@ -430,7 +418,6 @@ return {
   read = read,
   expand = expand,
   environ = environ,
-  extend = extend,
   load_extension = load_extension,
   import_extension = import_extension,
   inherit = inherit,
@@ -438,8 +425,6 @@ return {
   read_list = read_list,
   read_right_paren = read_right_paren,
   read_lua_literal = read_lua_literal,
-  read_quasiquote = read_quasiquote,
-  read_quasiquote_eval = read_quasiquote_eval,
   read_quote = read_quote,
   read_symbol = read_symbol,
   symbol=symbol,

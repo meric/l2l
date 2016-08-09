@@ -1,7 +1,4 @@
-local reader = require("l2l.reader")
 local compiler = require("l2l.compiler")
-local list = require("l2l.list")
-
 
 local source = [==[
 (local a b ((fn () \return 1, 2)))
@@ -89,8 +86,8 @@ end)
 (print (fn () (print 1) 2))
 ]==]
 
-local source = compiler.compile(source, "test")
-print(source)
+local source2 = compiler.compile(source, "test")
+print(source2)
 print("--------------------------")
-print(load(source)())
+print(load(source2)())
 print("done")

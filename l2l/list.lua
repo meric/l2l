@@ -78,7 +78,7 @@ end
 function list:__ipairs()
   local cdr = self
   local i = 0
-  return function(invariant, state)
+  return function()
     if not cdr then
       return
     end
