@@ -9,4 +9,4 @@ test:
 	lua l2l/test.lua
 
 count:
-	cloc l2l/*.lua
+	cloc l2l/*.lua l2l/ext/*.lisp l2l/lib/*.lisp
