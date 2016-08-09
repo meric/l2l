@@ -128,13 +128,13 @@ local function initialize_dependencies()
       ["list"] = {{'require("l2l.list")', nil}},
       ["vector"] = {{'require("l2l.vector")', nil}},
       [symbol("+"):mangle()] = {
-        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
+        "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("*"):mangle()] = {
-        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
+        "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("and"):mangle()] = {
-        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
+        "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("or"):mangle()] = {
-        "import", {'import("l2l.lib.arithmetic")', "arithmetic"}},
+        "import", {'import("l2l.lib.operators")', "operators"}},
       ["apply"] = {"import", {'import("l2l.lib.apply")', "apply"}},
       ["unpack"] = {{"table.unpack or unpack", nil}}
     }
@@ -275,7 +275,7 @@ local function compile(source, mod, extensions)
         "fn",
         "quasiquote",
         "quote",
-        "arithmetic",
+        "operators",
         "local",
         "cond",
         "do",
