@@ -7,7 +7,8 @@ local source = [==[
 (print "hello")
 (print (+ 1 2 3 4))
 (print (- 100 5 3 1))
-
+(print ((fn (...) \return \(- ...)) 1))
+(print (- 10))
 (set yy "yyyy")
 (print yy)
 (print (set xx "xxxx"))
