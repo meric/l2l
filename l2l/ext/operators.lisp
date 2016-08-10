@@ -59,6 +59,9 @@ Usage:
 (fn not (a)
   `\not \,a)
 
+(fn % (a b)
+  `\(\,a % \,b))
+
 (fn len (a)
   `\#\,a)
 
@@ -72,6 +75,7 @@ Usage:
     [(\'and)]= \and,
     [(\'or)]= \or,
     [(\'not)]= \not,
+    [(\'%)]= \%,
     [(\'len)]= \len,
   }
 }
