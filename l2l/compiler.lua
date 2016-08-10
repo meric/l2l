@@ -26,9 +26,7 @@ local function accessor_functioncall(car, cdr)
         lua.lua_name(car.name:sub(2)),
         rest)
     elseif first == "." then
-      return lua.lua_functioncall.new(
-        lua.lua_dot.new(cdr[1], lua.lua_name(car.name:sub(2))),
-        rest)
+      return lua.lua_dot.new(cdr[1], lua.lua_name(car.name:sub(2)))
     end
   end
 end
