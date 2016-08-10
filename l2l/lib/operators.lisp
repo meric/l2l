@@ -54,5 +54,8 @@
       for i, v in ipairs(args) do
         x = x or v
       end
-      return x)
+      return x),
+  [(\'not)] = \
+    (fn (a)
+      \not a)
 }

@@ -75,9 +75,20 @@ local function to_stat(exp, name)
   return lua.lua_local.new(lua.lua_namelist({name}), lua.lua_explist({exp}))
 end
 
+local function retstatize(invariant, data, output)
+  -- Convert stat to retstat.
+  if not utils.hasmetatable(data, lua.lua_block) then
+    return lua.lua_retstat.new(
+      lua.lua_explist({expize(invariant, data, output)}))
+  else
+    data[#data] = retstatize(invariant, data[#data], output)
+    return data
+  end
+end
+
 local function statize(invariant, data, output, last)
-  if last and not utils.hasmetatable(data, lua.lua_block) then
-    return lua.lua_retstat.new(lua.lua_explist({expize(invariant, data, output)}))
+  if last then
+    return retstatize(invariant, data, output)
   end
   if utils.hasmetatable(data, list) then
     local car = data:car()
@@ -133,9 +144,13 @@ local function initialize_dependencies()
         "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("*"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
+      [symbol("/"):mangle()] = {
+        "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("and"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("or"):mangle()] = {
+        "import", {'import("l2l.lib.operators")', "operators"}},
+      [symbol("not"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
       ["apply"] = {"import", {'import("l2l.lib.apply")', "apply"}},
       ["unpack"] = {{"table.unpack or unpack", nil}}
