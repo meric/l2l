@@ -13,6 +13,15 @@
   end
   return x)
 
+(fn * (...)
+  (local args (vector ...))
+  (local x 1)
+  \
+  for i, v in ipairs(args) do
+    x = x * v
+  end
+  return x)
+
 {
   [(\'+)] = (\+),
   [(\'-)] = \
@@ -21,15 +30,13 @@
         \not a 0
         \not ... \-a
         \a - \(+ ...))),
-  [(\'*)] = \
-    (fn (...)
-      (local args (vector ...))
-      (local x 1)
-      \
-      for i, v in ipairs(args) do
-        x = x * v
-      end
-      return x),
+  [(\'*)] = (\*),
+  [(\'/)] = \
+    (fn (a ...)
+      (cond
+        \not a 0
+        \not ... \1/a
+        \a / \(* ...))),
   [(\'and)] = \
     (fn (...)
       (local args (vector ...))

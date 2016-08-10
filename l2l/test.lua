@@ -8,6 +8,7 @@ local source = [==[
 (print (+ 1 2 3 4))
 (print (- 100 5 3 1))
 (print ((fn (...) \return \(- ...)) 1))
+(print ((fn (...) (/ 4 ...)) 1 2 3))
 (print (- 10))
 (set yy "yyyy")
 (print yy)
