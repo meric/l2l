@@ -13,6 +13,15 @@
   end
   return x)
 
+(fn .. (...)
+  (local args (vector ...))
+  (local x "")
+  \
+  for i, v in ipairs(args) do
+    x = x .. v
+  end
+  return x)
+
 (fn * (...)
   (local args (vector ...))
   (local x 1)
@@ -24,6 +33,7 @@
 
 {
   [(\'+)] = (\+),
+  [(\'..)] = (\..),
   [(\'-)] = \
     (fn (a ...)
       (cond

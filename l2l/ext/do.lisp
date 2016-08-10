@@ -18,12 +18,12 @@ Usage:
     return lua_nil()
   end
   (local block {})
-  (local len \#cdr)
+  (local count \#cdr)
   (local var (lua_name:unique "_do"))
   (table.insert output `\local \,var)
   \
   for i, value in ipairs(cdr) do
-    if i < len then
+    if i < count then
       local stat = compile_stat(invariant, value, block)
       if stat then
         table.insert(block, stat)
@@ -47,11 +47,11 @@ Usage:
     return
   end
   (local block {})
-  (local len \#cdr)
+  (local count \#cdr)
   \
   for i, value in ipairs(cdr) do
     local stat
-    if i < len then
+    if i < count then
       stat = compile_stat(invariant, value, block)
     else
       stat = to_stat(compile_exp(invariant, value, block))

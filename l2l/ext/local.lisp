@@ -14,12 +14,12 @@ local utils = require("leftry").utils
 (fn stat_local (invariant cdr output)
   \
   local val
-  local len = #cdr
+  local count = #cdr
   local names = vector.cast(cdr, nil, function(i, v)
-    if i == len then
+    if i == count then
       val = v
     end
-    return i <= len-1
+    return i <= count-1
   end)
   names = lua_namelist(names)
   return names,

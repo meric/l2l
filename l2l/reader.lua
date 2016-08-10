@@ -83,6 +83,7 @@ local function mangle(text)
   else
     pattern = "[^:_a-zA-Z0-9.%[%]]"
   end
+  text = text:gsub("[.][.]", "_dot_dot")
   return prefix..text:gsub(pattern, function(char)
     if char == "-" then
       return "_"

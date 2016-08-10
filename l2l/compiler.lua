@@ -19,13 +19,14 @@ end
 local function accessor_functioncall(car, cdr)
   if utils.hasmetatable(car, symbol) then
     local first = string.sub(car.name, 1, 1)
+    local second = string.sub(car.name, 2, 2)
     local rest = lua.lua_args.new(lua.lua_explist(vector.sub(cdr, 2)))
     if first == ":"then
       return lua.lua_colon_functioncall.new(
         cdr[1],
         lua.lua_name(car.name:sub(2)),
         rest)
-    elseif first == "." then
+    elseif first == "." and second ~= "." then
       return lua.lua_dot.new(cdr[1], lua.lua_name(car.name:sub(2)))
     end
   end
@@ -137,6 +138,8 @@ local function initialize_dependencies()
       ["reader"] = {{'require("l2l.reader")'}},
       ["list"] = {{'require("l2l.list")', nil}},
       ["vector"] = {{'require("l2l.vector")', nil}},
+      [symbol(".."):mangle()] = {
+        "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("-"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("+"):mangle()] = {
@@ -150,6 +153,8 @@ local function initialize_dependencies()
       [symbol("or"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("not"):mangle()] = {
+        "import", {'import("l2l.lib.operators")', "operators"}},
+      [symbol("len"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
       ["apply"] = {"import", {'import("l2l.lib.apply")', "apply"}},
       ["unpack"] = {{"table.unpack or unpack", nil}}
