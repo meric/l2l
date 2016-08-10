@@ -62,7 +62,7 @@ Usage:
 (fn % (a b)
   `\(\,a % \,b))
 
-(fn len (a)
+(fn length (a)
   `\#\,a)
 
 {
@@ -76,6 +76,6 @@ Usage:
     [(\'or)]= \or,
     [(\'not)]= \not,
     [(\'%)]= \%,
-    [(\'len)]= \len,
+    [(\'length)]= \length,
   }
 }

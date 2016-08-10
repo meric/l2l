@@ -156,7 +156,7 @@ local function initialize_dependencies()
         "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("not"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
-      [symbol("len"):mangle()] = {
+      [symbol("length"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
       ["apply"] = {"import", {'import("l2l.lib.apply")', "apply"}},
       ["unpack"] = {{"table.unpack or unpack", nil}}
