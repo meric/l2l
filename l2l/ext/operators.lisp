@@ -52,6 +52,9 @@ Usage:
 (fn not (a)
   `\not \,a)
 
+(fn len (a)
+  `\#\,a)
+
 {
   macro = {
     [(\'+)]= \+,
@@ -61,5 +64,6 @@ Usage:
     [(\'and)]= \and,
     [(\'or)]= \or,
     [(\'not)]= \not,
+    [(\'len)]= \len,
   }
 }

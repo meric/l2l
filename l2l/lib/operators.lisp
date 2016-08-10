@@ -57,5 +57,8 @@
       return x),
   [(\'not)] = \
     (fn (a)
-      \not a)
+      \not a),
+  [(\'len)] = \
+    (fn (a)
+      \#a)
 }
