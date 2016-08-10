@@ -78,10 +78,11 @@ local function retstatize(invariant, data, output)
   if not utils.hasmetatable(data, lua.lua_block) then
     return lua.lua_retstat.new(
       lua.lua_explist({expize(invariant, data, output)}))
-  else
+  elseif not utils.hasmetatable(data[#data], lua.lua_retstat) then
     data[#data] = retstatize(invariant, data[#data], output)
     return data
   end
+  return data
 end
 
 local function statize(invariant, data, output, last)
