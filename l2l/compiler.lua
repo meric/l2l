@@ -150,6 +150,16 @@ local function initialize_dependencies()
         "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("/"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
+      [symbol("<"):mangle()] = {
+        "import", {'import("l2l.lib.operators")', "operators"}},
+      [symbol("<="):mangle()] = {
+        "import", {'import("l2l.lib.operators")', "operators"}},
+      [symbol(">"):mangle()] = {
+        "import", {'import("l2l.lib.operators")', "operators"}},
+      [symbol(">="):mangle()] = {
+        "import", {'import("l2l.lib.operators")', "operators"}},
+      [symbol("=="):mangle()] = {
+        "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("and"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol("or"):mangle()] = {

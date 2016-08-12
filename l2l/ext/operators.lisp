@@ -65,6 +65,56 @@ Usage:
 (fn length (a)
   `\#\,a)
 
+(fn < (a b ...)
+  (cond
+    \a == nil true
+    \(a == symbol("...") and not b); '\((\<)(b, ...))
+    \b == nil true
+    \(b == symbol("...")); '\((\<)(...))
+    \(not ...); `\(\,a < \,b)
+    ... (and (< a b) (< b ...))
+    true))
+
+(fn > (a b ...)
+  (cond
+    \a == nil true
+    \(a == symbol("...") and not b); '\((\>)(b, ...))
+    \b == nil true
+    \(b == symbol("...")); '\((\>)(...))
+    \(not ...); `\(\,a > \,b)
+    ... (and (> a b) (> b ...))
+    true))
+
+(fn <= (a b ...)
+  (cond
+    \a == nil true
+    \(a == symbol("...") and not b); '\((\<=)(b, ...))
+    \b == nil true
+    \(b == symbol("...")); '\((\<=)(...))
+    \(not ...); `\(\,a <= \,b)
+    ... (and (<= a b) (<= b ...))
+    true))
+
+(fn >= (a b ...)
+  (cond
+    \a == nil true
+    \(a == symbol("...") and not b); '\((\>=)(b, ...))
+    \b == nil true
+    \(b == symbol("...")); '\((\>=)(...))
+    \(not ...); `\(\,a >= \,b)
+    ... (and (>= a b) (>= b ...))
+    true))
+
+(fn == (a b ...)
+  (cond
+    \a == nil true
+    \(a == symbol("...") and not b); '\((\==)(b, ...))
+    \b == nil true
+    \(b == symbol("...")); '\((\==)(...))
+    \(not ...); `\(\,a == \,b)
+    ... (and (== a b) (== b ...))
+    true))
+
 {
   macro = {
     [(\'..)]= \..,
@@ -72,6 +122,11 @@ Usage:
     [(\'-)]= \-,
     [(\'*)]= \*,
     [(\'/)]= \/,
+    [(\'<)]= \<,
+    [(\'>)]= \>,
+    [(\'>=)]= \>=,
+    [(\'<=)]= \<=,
+    [(\'==)]= \==,
     [(\'and)]= \and,
     [(\'or)]= \or,
     [(\'not)]= \not,

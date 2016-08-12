@@ -87,6 +87,7 @@ end)
 
 (print (fn (a b) (print 1) \a + b))
 (print (fn () (print 1) 2))
+(assert (== 1 2 - 1))
 ]==]
 
 local source2 = compiler.compile(source, "test")

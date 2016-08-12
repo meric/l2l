@@ -65,6 +65,71 @@
         x = x or v
       end
       return x),
+  [(\'<)] = \
+    (fn (a ...)
+      (local args (vector ...))
+      (local x true)
+      \
+      for i, v in ipairs(args) do
+        x = x and a < v
+        a = v
+        if not x then
+          return false
+        end
+      end
+      return x),
+  [(\'>)] = \
+    (fn (a ...)
+      (local args (vector ...))
+      (local x true)
+      \
+      for i, v in ipairs(args) do
+        x = x and a > v
+        a = v
+        if not x then
+          return false
+        end
+      end
+      return x),
+  [(\'>=)] = \
+    (fn (a ...)
+      (local args (vector ...))
+      (local x true)
+      \
+      for i, v in ipairs(args) do
+        x = x and a >= v
+        a = v
+        if not x then
+          return false
+        end
+      end
+      return x),
+  [(\'<=)] = \
+    (fn (a ...)
+      (local args (vector ...))
+      (local x true)
+      \
+      for i, v in ipairs(args) do
+        x = x and a <= v
+        a = v
+        if not x then
+          return false
+        end
+      end
+      return x),
+  [(\'==)] = \
+    (fn (a ...)
+      (local args (vector ...))
+      (local x true)
+      \
+      for i, v in ipairs(args) do
+        x = x and a == v
+        a = v
+        if not x then
+          return false
+        end
+      end
+      return x),
   [(\'not)] = \
     (fn (a)
       \not a),
