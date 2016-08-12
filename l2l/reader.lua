@@ -140,6 +140,17 @@ local function read_right_paren()
   error("unmatched right parenthesis")
 end
 
+local function read_length(invariant, position)
+  local rest, values = read(invariant, position + 1)
+  if rest then
+    if not values[1] then
+      error('nothing to length')
+    end
+    values[1] = list(symbol("length"), values[1])
+    return rest, values
+  end
+end
+
 local function read_quote(invariant, position)
   local rest, values = read(invariant, position + 1)
   if rest then
@@ -390,7 +401,8 @@ local function environ(source)
     },
     lua = {},
     read = {
-      [string.byte("#")] = {read_dispatch},
+      [string.byte("@")] = {read_dispatch},
+      [string.byte("#")] = {read_length},
       [string.byte("\\")] = {read_lua},
       [string.byte("(")] = {read_list},
       [string.byte(";")] = {read_semicolon},

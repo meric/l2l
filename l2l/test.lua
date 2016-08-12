@@ -13,7 +13,7 @@ local source = [==[
 (set yy "yyyy")
 (print yy)
 (print (set xx "xxxx"))
-(print "len" (len {1,2,3,4,5}))
+(print "len" #{1,2,3,4,5})
 (let (
     (a b) (unpack {1, 2})
     c 1

@@ -1,7 +1,7 @@
-#import quasiquote
-#import quote
-#import fn
-#import cond
+@import quasiquote
+@import quote
+@import fn
+@import cond
 
 \--[[
 Usage:

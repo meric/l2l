@@ -1,5 +1,5 @@
-#import fn
-#import local
+@import fn
+@import local
 
 { apply = \
   (fn (f ...)

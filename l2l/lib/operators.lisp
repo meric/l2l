@@ -1,8 +1,8 @@
-#import fn
-#import quote
-#import local
-#import cond
-#import do
+@import fn
+@import quote
+@import local
+@import cond
+@import do
 
 (fn + (...)
   (local args (vector ...))

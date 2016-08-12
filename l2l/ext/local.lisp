@@ -1,6 +1,6 @@
-#import fn
-#import quote
-#import quasiquote
+@import fn
+@import quote
+@import quasiquote
 
 \
 --[[

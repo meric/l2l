@@ -1,8 +1,8 @@
-#import quasiquote
-#import fn
-#import local
-#import cond
-#import do
+@import quasiquote
+@import fn
+@import local
+@import cond
+@import do
 
 \--[[
 Usage:
