@@ -25,6 +25,21 @@ local lua_name
 local lua_ast
 local lua_number
 
+local lua_nameize = function(proto)
+  local super = proto.new
+  function proto.new(...)
+    local reader = require("l2l.reader")
+    local t = table.pack(...)
+    for i, value in ipairs(t) do
+      if utils.hasmetatable(value, reader.symbol) then
+        t[i] = lua_name(value)
+      end
+    end
+    return super(table.unpack(t, 1, n))
+  end
+  return proto
+end
+
 local r
 r = each(function(v, k)
     -- Define the Lua syntax tree representations, and corresponding output
@@ -49,7 +64,7 @@ r = each(function(v, k)
         r.lua_dot.new(lua_name(tostring(st)), lua_name("new")),
         r.lua_args.new(lua_explist(parameters)))
     end
-    return st
+    return lua_nameize(st)
   end, {
   lua_assign = {varlist=1, "=", explist=3},
   lua_dot = {prefix=1, ".", name=3},

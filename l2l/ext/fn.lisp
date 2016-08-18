@@ -14,7 +14,13 @@ local function stat_lua_function(invariant, name, parameters, body)
   for i, value in ipairs(body) do
     table.insert(stats, compiler.statize(invariant, value, stats, i == #body))
   end
-  local local_function = lua_local_function.new(
+  local constructor = lua_local_function
+
+  if name.name:match(":") then
+    constructor = lua_function
+  end
+
+  local local_function = constructor.new(
     lua_name(name:mangle()),
     lua_funcbody.new(
       lua_namelist(vector.cast(parameters, function(value, i)

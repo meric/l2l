@@ -313,7 +313,8 @@ local function compile(source, mod, extensions)
         "cond",
         "do",
         "set",
-        "let"
+        "let",
+        -- "iterator"
       }
     end
   end
@@ -361,6 +362,59 @@ local function compile(source, mod, extensions)
   return header(references, mod) .. "\n" .. output
 end
 
+
+local function macroize(invariant, f, output)
+  assert(utils.hasmetatable(f, lua.lua_lambda_function)
+      and #f.body.block == 1
+      and utils.hasmetatable(f.body.block[1], lua.lua_retstat),
+      "only single line return lambda functions can be turned into macros")
+  local exp = f.body.block[1].explist
+  local names = {}
+  for i, name in ipairs(f.body.namelist) do
+    names[name.value] = true
+  end
+  exp = exp:gsub(lua.lua_name, function(x)
+    if names[x.value] then
+      x = compile_exp(invariant, symbol("x"), output)
+      function x:repr()
+        return x
+      end
+      return compile_exp(invariant, x, output)
+    end
+    return x
+  end)
+  return lua.lua_lambda_function.new(
+    lua.lua_funcbody.new(
+      f.body.namelist,
+      lua.lua_block({
+        lua.lua_retstat.new(exp:repr())
+      })
+    ))
+end
+
+local function lua_inline_functioncall(invariant, f, output, ...)
+  f = compile_exp(invariant, f, output)
+  if utils.hasmetatable(f, lua.lua_lambda_function)
+      and #f.body.block == 1
+      and utils.hasmetatable(f.body.block[1], lua.lua_retstat) then
+    local src = "\\"..tostring(macroize(invariant, f, output))
+    local g = load(compile(src))
+    if g then
+      local ok, h = pcall(g)
+      local value
+      if ok and h then
+        ok, value = pcall(h, ...)
+        if ok and value then
+          return value
+        end
+      end
+    end
+  end
+  return lua.lua_functioncall.new(
+    lua.lua_paren_exp.new(f),
+    lua.lua_args.new(lua.lua_explist{...}))
+end
+
 local function _loadstring(source)
   return load(compile(source))
 end
@@ -399,6 +453,7 @@ compile_or_cached = function(source, mod, extends, path)
 end
 
 exports = {
+  lua_inline_functioncall=lua_inline_functioncall,
   loadstring=_loadstring,
   build=build,
   import=import,
