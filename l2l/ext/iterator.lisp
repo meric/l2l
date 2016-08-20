@@ -27,9 +27,18 @@ Usage:
         next = lua_name:unique("next"),
         i = lua_name:unique("i"),
         v = lua_name:unique("v"),
-        block = lua_block({}),
         values = lua_name:unique("values")
       } lua_iteration))
+      (set self.block (lua_lazy (fn () `\
+        local \,self.next, \,self.invariant, \,self.i = ipairs(\,self.iterable)
+        local \,self.values = \,vector()
+        while \,self.i do
+          local \,self.v
+          \,self.i, \,self.v = \,self.next(\,self.invariant, \,self.i)
+          if \,self.i then
+            \,(self:construct `\(\,self.values):insert(\,self.v))
+          end
+        end)))
       (set self.cursor self)
       self))))
 
@@ -41,20 +50,7 @@ Usage:
     block = f(block) or block
   end
   block:insert(suffix)
-  return lua_block(vector.cast(origin)))
-
-(fn lua_iteration:statize ()
-  (set self.block[1] `\
-    local \,self.next, \,self.invariant, \,self.i = ipairs(\,self.iterable)
-    local \,self.values = \,vector()
-    while \,self.i do
-      local \,self.v
-      \,self.i, \,self.v = \,self.next(\,self.invariant, \,self.i)
-      if \,self.i then
-        \,(self:construct `\(\,self.values):insert(\,self.v))
-      end
-    end)
-  (set self.block.n #self.block))
+  return lua_block(origin))
 
 (fn lua_iteration:__tostring()
   (tostring self.values))
@@ -82,14 +78,12 @@ Usage:
             (block:insert (lua_assign.new
               (lua_namelist {iterable.v})
               (iterable:apply invariant f output)))))
-          (iterable:statize)
           (insert iterable))
       (let (iterable (lua_iteration iterable))
         (iterable:insert (fn (block)
           (block:insert (lua_assign.new
               (lua_namelist {iterable.v})
               (iterable:apply invariant f output)))))
-        (iterable:statize)
         (create iterable)))))
 
 (fn expize_map (invariant cdr output)
@@ -119,7 +113,6 @@ Usage:
           (block:insert
             (lua_if.new condition cursor))
           cursor)))
-      (iterable:statize)
       (initialize iterable)))
 
 (fn expize_filter (invariant cdr output)

@@ -444,8 +444,8 @@ local function lua_inline_functioncall(invariant, f, output, ...)
   if utils.hasmetatable(f, lua.lua_lambda_function)
       and #f.body.block == 1
       and utils.hasmetatable(f.body.block[1], lua.lua_retstat) then
-    local src = "\\"..tostring(macroize(invariant, f, output))
-    local g = load(compile(src))
+    local src = tostring(macroize(invariant, f, output))
+    local g = load("return "..src)
     if g then
       local ok, h = pcall(g)
       local value

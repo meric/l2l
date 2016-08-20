@@ -704,6 +704,13 @@ Name = function(invariant, position, peek)
   return rest, lua_name(value)
 end
 
+local lua_lazy = utils.prototype("lua_lazy", function(self, f)
+  return setmetatable({f=f}, self)
+end)
+
+function lua_lazy:__tostring()
+  return tostring(self.f())
+end
 
 lua_ast = {
   [lua_assign] = lua_assign,
@@ -752,6 +759,7 @@ lua_ast = {
   [lua_binop] = lua_binop,
   [lua_unop] = lua_unop,
   [lua_name] = lua_name,
+  [lua_lazy] = lua_lazy,
 }
 
 
@@ -844,6 +852,7 @@ local exports = {
   lua_binop = lua_binop,
   lua_unop = lua_unop,
   lua_name = lua_name,
+  lua_lazy = lua_lazy,
   lua_nameize = lua_nameize
 }
 
