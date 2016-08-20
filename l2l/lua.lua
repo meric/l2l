@@ -25,6 +25,14 @@ local lua_name
 local lua_ast
 local lua_number
 
+local function lua_nameize(x)
+  local reader = require("l2l.reader")
+  if getmetatable(x) == reader.symbol then
+    x = lua_name(x)
+  end
+  return x
+end
+
 local r
 r = each(function(v, k)
     -- Define the Lua syntax tree representations, and corresponding output
@@ -37,7 +45,9 @@ r = each(function(v, k)
       local parameters = {}
       for _, v2 in ipairs(self.arguments) do
         local value = self[v2[1]]
-        if lua_ast[getmetatable(value)] then
+        if utils.hasmetatable(value, lua_name) then
+          table.insert(parameters, value:repr())
+        elseif lua_ast[getmetatable(value)] then
           table.insert(parameters, value:repr())
         elseif type(value) == "string" then
           table.insert(parameters, reader.symbol(value))
@@ -833,7 +843,8 @@ local exports = {
   lua_chunk = lua_chunk,
   lua_binop = lua_binop,
   lua_unop = lua_unop,
-  lua_name = lua_name
+  lua_name = lua_name,
+  lua_nameize = lua_nameize
 }
 
 for _, v in pairs(exports) do

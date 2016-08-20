@@ -20,8 +20,15 @@ local function compile_quasiquote_eval(invariant, cdr, output)
   local cadr = cdr:car()
   local exp = compiler.compile_exp(invariant,
     quasiquote_eval(invariant, cadr, output), output)
-  function exp:repr()
-    return exp
+  if utils.hasmetatable(exp, lua_name) then
+    function exp:repr()
+      return lua_functioncall.new(lua_name("lua_nameize"),
+                lua_args.new(lua_explist({exp})))
+    end
+  else
+    function exp:repr()
+      return exp
+    end
   end
   return exp
 end
