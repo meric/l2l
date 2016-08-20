@@ -43,7 +43,7 @@ Usage:
   block:insert(suffix)
   return lua_block(vector.cast(origin)))
 
-(fn lua_iteration:statize()
+(fn lua_iteration:statize ()
   (set self.block[1] `\
     local \,self.next, \,self.invariant, \,self.i = ipairs(\,self.iterable)
     local \,self.values = \,vector()
@@ -65,6 +65,11 @@ Usage:
 
 (fn lua_iteration:apply (invariant f output)
   (lua_inline_functioncall invariant f output self.v, self.i))
+
+(fn lua_iteration:gsub ()
+  self)
+
+(set lua_ast[lua_iteration] lua_iteration)
 
 (fn compile_map (invariant cdr output insert create)
   (let (
@@ -133,7 +138,7 @@ Usage:
 
 {
   lua = {
-    map = {expize = expize_map, statize=statize_map},
-    filter = {expize = expize_filter, statize=statize_filter}
+    map = {expize = expize_map, statize=statize_map, in_lua=true},
+    filter = {expize = expize_filter, statize=statize_filter, in_lua=true}
   }
 }

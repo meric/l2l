@@ -61,6 +61,24 @@ function list:__gc()
   release(self.position)
 end
 
+function list:repr()
+  local parameters = {}
+  local cdr = self
+  local i = 0
+  while cdr do
+    i = i + 1
+    local car = cdr:car()
+    if type(car) == "string" then
+      car = utils.escape(car)
+    end
+    parameters[i] = car
+    cdr = cdr:cdr()
+  end
+  return lua.lua_functioncall.new(lua.lua_name("list"),
+    lua.lua_args.new(
+      lua.lua_explist(parameters)))
+end
+
 function list:__tostring()
   local text = {}
   local cdr = self

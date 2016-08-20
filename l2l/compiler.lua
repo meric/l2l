@@ -32,7 +32,50 @@ local function accessor_functioncall(car, cdr)
   end
 end
 
-local function expize(invariant, data, output)
+local expize
+
+local function statize_lua(invariant, data, output)
+  local stat = data:gsub(lua.lua_functioncall, function(value, parent, i)
+    if parent ~= data then
+      return lua.lua_nameize(invariant.lua[tostring(value.exp)].expize(
+        invariant,
+        list.cast(value.args.explist),
+        output))
+    else
+      return invariant.lua[tostring(value.exp)].statize(
+        invariant,
+        list.cast(value.args.explist),
+        output)
+    end
+  end, function(value)
+    return invariant.lua[tostring(value.exp)] and
+      invariant.lua[tostring(value.exp)].in_lua
+  end)
+  -- :gsub(list, function(value)
+  --   --return expize(invariant, value, output)
+  --   end)
+  return stat
+end
+
+local function expize_lua(invariant, data, output)
+  return lua.lua_nameize(data:gsub(lua.lua_functioncall,
+    function(value)
+      return lua.lua_nameize(invariant.lua[tostring(value.exp)].expize(
+        invariant,
+        list.cast(value.args.explist),
+        output))
+    end, function(value)
+      return invariant.lua[tostring(value.exp)] and
+        invariant.lua[tostring(value.exp)].in_lua
+    end)
+    -- :gsub(list, function(value)
+    --   return value
+    --   --return expize(invariant, value, output)
+    -- end)
+    )
+end
+
+expize = function(invariant, data, output)
   if utils.hasmetatable(data, list) then
     local car = data:car()
     if utils.hasmetatable(car, symbol) and invariant.lua[car[1]] then
@@ -56,9 +99,7 @@ local function expize(invariant, data, output)
   elseif utils.hasmetatable(data, symbol) then
     return lua.lua_name(data:mangle())
   elseif lua.lua_ast[getmetatable(data)] then
-    return data:gsub(list, function(value)
-      return expize(invariant, value, output)
-    end)
+    return expize_lua(invariant, data, output)
   elseif data == nil then
     return "nil"
   elseif data == reader.lua_none then
@@ -82,10 +123,11 @@ local function retstatize(invariant, data, output)
     return lua.lua_retstat.new(
       lua.lua_explist({expize(invariant, data, output)}))
   elseif not utils.hasmetatable(data[#data], lua.lua_retstat) then
-    data[#data] = retstatize(invariant, data[#data], output)
-    return data
+    data[#data] = retstatize(invariant,
+      expize_lua(invariant, data[#data], output), output)
+    return statize_lua(invariant, data, output)
   end
-  return data
+  return expize_lua(invariant, data, output)
 end
 
 local function statize(invariant, data, output, last)
@@ -109,15 +151,12 @@ local function statize(invariant, data, output, last)
       expize(invariant, car),
       lua.lua_args.new(lua.lua_explist(cdr)))
   elseif utils.hasmetatable(data, lua.lua_block) then
-    return data
+    return statize_lua(invariant, data, output)
   elseif lua.lua_ast[getmetatable(data)] then
     if not utils.hasmetatable(data, lua.lua_functioncall) then
       return to_stat(data)
     end
     return data
-    -- return data:gsub(list, function(value)
-    --   return expize(invariant, value, output)
-    -- end)
   elseif data == reader.lua_none then
     return
   end
@@ -321,8 +360,7 @@ local function compile(source, mod, extensions)
         "cond",
         "do",
         "set",
-        "let",
-        "iterator"
+        "let"
       }
     end
   end
@@ -377,6 +415,21 @@ local function macroize(invariant, f, output)
       and utils.hasmetatable(f.body.block[1], lua.lua_retstat),
       "only single line return lambda functions can be turned into macros")
   local exp = f.body.block[1].explist
+  local names = {}
+  for i, name in ipairs(f.body.namelist) do
+    names[name.value] = true
+  end
+  -- Manual quasiquote lua_names so they get compiled.
+  exp = exp:gsub(lua.lua_name, function(x)
+    if names[x.value] then
+      x = compile_exp(invariant, symbol(x.value), output)
+      function x:repr()
+        return x
+      end
+      return compile_exp(invariant, x, output)
+    end
+    return x
+  end)
   return lua.lua_lambda_function.new(
     lua.lua_funcbody.new(
       f.body.namelist,

@@ -1,6 +1,8 @@
 local compiler = require("l2l.compiler")
 
 local source = [==[
+@import iterator
+
 (local a b ((fn () \return 1, 2)))
 (print a b)
 (print (local c d 1))
@@ -18,6 +20,10 @@ local source = [==[
    (map (fn (x) (+ x 2))
      (filter (fn (x) (== (% x 2) 0))
         (map (fn (x) (+ x 1)) {1, 2, 3, 4}))))
+\
+map(function(x) return print(">>", x + 2) end,
+  filter(function(x) return x % 2 == 0 end,
+    map(function(x) return x + 1 end, {1, 2, 3, 4})));
 (let (
     (a b) (unpack {1, 2})
     c 1
@@ -92,6 +98,10 @@ end)
 (print (fn (a b) (print 1) \a + b))
 (print (fn () (print 1) 2))
 (assert (== 1 2 - 1))
+
+@import (iterator iterator)
+\
+iterator.map(print, iterator.map(function(x) return x + 2 end, {1, 2, 3}))
 ]==]
 
 local source2 = compiler.compile(source, "test")

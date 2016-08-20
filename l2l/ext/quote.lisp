@@ -7,7 +7,7 @@ local function compile_quote(invariant, cdr, output)
     cadr = cadr:repr()
   end
   if utils.hasmetatable(cadr, list) then
-    return tostring(cadr)
+    -- return cadr:repr()
   end
   return cadr
 end

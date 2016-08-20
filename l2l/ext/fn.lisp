@@ -10,6 +10,7 @@ Usage:
 local utils = require("leftry").utils
 
 local function stat_lua_function(invariant, name, parameters, body)
+  assert(utils.hasmetatable(parameters, list) or parameters == nil, "fn.lisp:stat_lua_function")
   local stats = {}
   for i, value in ipairs(body) do
     table.insert(stats, compiler.statize(invariant, value, stats, i == #body))
@@ -78,6 +79,11 @@ local function statize_fn(invariant, cdr, output)
     return to_stat(exp_lua_lambda_function(invariant, cadr, cdr:cdr()))
   end
 end
+
+
+-- if in_lua == true, then 
+--  \(fn(\'some_name, \'(a), print(a)))("hello")
+-- would work.
 
 {
   lua = {
