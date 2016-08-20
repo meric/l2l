@@ -1,176 +1,139 @@
-\--[[
-(map print
-  (map (fn (x i) (+ x 2))
-    (filter (fn (x i) (== (% x 2) 0))
-      (ipairs {1, 2, 3, 4})))
-
--- (mac (invariant i)
---     (cond
---       (<= ,i #,invariant)
---         \return \,i, \,invariant[i]))
-
-
-(list.map print @table {1, 2, 3, 4})
-(table.map print @list {1, 2, 3, 4})
-
-local next, invariant, i = ipairs({1, 2, 3, 4})
-while i do
-  local v
-  i, v = nil
-  if i <= #invariant then
-    i, v = i, invariant[i]
-  end
-  -- i, v = next(invariant, i)
-  if i then
-    if v % 2 == 0 then
-      v = v + 2
-      print(v, i)
-    end
-  end
-end
-
-(map print {1 2 3 4})
-]]
-
 @import fn
 @import local
 @import let
 @import do
 @import quasiquote
 @import set
+@import cond
+@import operators
+@import quote
+
+\
+--[[
+Usage:
+  (print
+    (map (fn (x) (+ x 2))
+      (filter (fn (x) (== (% x 2) 0))
+        (map (fn (x) (+ x 1)) {1, 2, 3, 4}))))
+]]
 
 (local utils (require "leftry.utils"))
 (local lua_iteration (utils.prototype "lua_iteration"
-  (fn (lua_iteration next invariant i)
+  (fn (lua_iteration iterable)
     (let
       (self (setmetatable {
-        args = {next, invariant, i},
-        invariant = lua_name:unique("_iter_invariant_"),
-        next = lua_name:unique("_iter_next_"),
-        i = lua_name:unique("_iter_i_"),
-        v = lua_name:unique("_iter_v_"),
-        values = lua_name:unique("_iter_values_")
+        iterable = iterable,
+        invariant = lua_name:unique("invariant"),
+        next = lua_name:unique("next"),
+        i = lua_name:unique("i"),
+        v = lua_name:unique("v"),
+        block = lua_block({}),
+        values = lua_name:unique("values")
       } lua_iteration))
       (set self.cursor self)
       self))))
 
-(fn lua_iteration:__tostring()
-  (tostring
-    `\
-    local \,self.next, \,self.invariant, \,self.i = \,(lua_namelist self.args);
+(fn lua_iteration:construct (suffix)
+  \
+  local origin = vector()
+  local block = origin
+  for i, f in ipairs(self) do
+    block = f(block) or block
+  end
+  block:insert(suffix)
+  return lua_block(vector.cast(origin)))
+
+(fn lua_iteration:statize()
+  (set self.block[1] `\
+    local \,self.next, \,self.invariant, \,self.i = ipairs(\,self.iterable)
     local \,self.values = \,vector()
     while \,self.i do
       local \,self.v
       \,self.i, \,self.v = \,self.next(\,self.invariant, \,self.i)
       if \,self.i then
-        \,(lua_block self);
-        (\,self.values):insert(\,self.v)
+        \,(self:construct `\(\,self.values):insert(\,self.v))
       end
-    end))
+    end)
+  (set self.block.n #self.block))
+
+(fn lua_iteration:__tostring()
+  (tostring self.values))
 
 (fn lua_iteration:insert (v)
-  (table.insert self v))
-
-(fn lua_iteration:shift (v block)
   (table.insert self v)
-  (set self.cursor (lua_block block)))
+  (set self.n #self))
 
-(fn lua_iteration:call (invariant f output)
+(fn lua_iteration:apply (invariant f output)
   (lua_inline_functioncall invariant f output self.v, self.i))
 
-
-(fn statize_map (invariant cdr output)
-  (local f next _invariant i (:unpack cdr))
-  (local block {})
-  (let (ctx (lua_iteration
-    (compile_exp invariant next block)
-    (compile_exp invariant _invariant block)
-    (compile_exp invariant i block)))
-    (ctx:insert (lua_assign.new
-      (lua_namelist {ctx.v})
-      (ctx:call invariant f block)))
-    (table.insert block ctx)
-    (lua_block block)))
+(fn compile_map (invariant cdr output insert create)
+  (let (
+    (f iterable) (:unpack cdr)
+    iterable (compile_exp invariant iterable output))
+    (cond
+      (utils.hasmetatable iterable lua_iteration)
+        (do
+          (iterable:insert (fn (block)
+            (block:insert (lua_assign.new
+              (lua_namelist {iterable.v})
+              (iterable:apply invariant f output)))))
+          (iterable:statize)
+          (insert iterable))
+      (let (iterable (lua_iteration iterable))
+        (iterable:insert (fn (block)
+          (block:insert (lua_assign.new
+              (lua_namelist {iterable.v})
+              (iterable:apply invariant f output)))))
+        (iterable:statize)
+        (create iterable)))))
 
 (fn expize_map (invariant cdr output)
-  (local f next _invariant i (:unpack cdr))
-  (let (ctx (lua_iteration
-    (compile_exp invariant next output)
-    (compile_exp invariant _invariant output)
-    (compile_exp invariant i output)))
-    (ctx:insert (lua_assign.new
-      (lua_namelist {ctx.v})
-      (ctx:call invariant f output)))
-    (table.insert output ctx)
-    ctx.values))
+  (compile_map invariant cdr output
+    (fn (iterable)
+      iterable)
+    (fn (iterable)
+      (table.insert output iterable.block)
+      iterable)))
 
-(fn filter (invariant cdr output)
-  (local f next _invariant i (:unpack cdr))
-  (print (compile_stat invariant next output))
+(fn statize_map (invariant cdr output)
+  (compile_map invariant cdr output
+    to_stat
+    (fn (iterable)
+      iterable.block)))
 
-  (compile_exp invariant next output))
+(fn compile_filter (invariant cdr output insert create)
+  (let (
+    (f iterable) (:unpack cdr)
+    iterable0 (compile_exp invariant iterable output)
+    creating (not (utils.hasmetatable iterable0 lua_iteration))
+    iterable (cond creating (lua_iteration iterable0) iterable0)
+    initialize (cond creating create insert)
+    condition (iterable:apply invariant f output))
+      (iterable:insert (fn (block)
+        (let (cursor (lua_block {}))
+          (block:insert
+            (lua_if.new condition cursor))
+          cursor)))
+      (iterable:statize)
+      (initialize iterable)))
+
+(fn expize_filter (invariant cdr output)
+  (compile_filter invariant cdr output
+    (fn (iterable)
+      iterable)
+    (fn (iterable)
+      (table.insert output iterable.block)
+      iterable)))
+
+(fn statize_filter (invariant cdr output)
+  (compile_filter invariant cdr output
+    to_stat
+    (fn (iterable)
+      iterable.block)))
 
 {
   lua = {
     map = {expize = expize_map, statize=statize_map},
-    filter = {expize = filter}
+    filter = {expize = expize_filter, statize=statize_filter}
   }
 }
-
-
--- --[[
-
--- (map print
---   (map (fn (x i) (+ x 2))
---     (filter (fn (x i) (== (% x 2) 0))
---       (ipairs {1, 2, 3, 4})))
-
-
--- ]]--
-
-
-
--- -- for i, v in ipairs({1, 2, 3, 4}) do
--- --   print(i, v)
--- -- end
-
--- source = [[
--- \
--- for i, v in
---   \(map (fn (x) (+ x 2))
---     (filter (fn (x) (== (% x 2) 0))
---       (ipairs {1, 2, 3, 4}))) do
---   print(i, v)
--- end
--- return 1
-
--- ]]
-
--- source = [[
--- @import local
-
--- (fn add (x) (+ x 1))
--- (local next invariant i (ipairs {1, 2, 3, 4}))
--- (print (filter (fn () true) (map (fn (x) (add x)) next invariant i)))
--- 1
--- ]]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

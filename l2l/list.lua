@@ -6,6 +6,8 @@
 
 local utils = require("leftry").utils
 local vector = require("l2l.vector")
+local lua = require("l2l.lua")
+
 local data = setmetatable({n=0, free=0}, {})
 local retains = {}
 

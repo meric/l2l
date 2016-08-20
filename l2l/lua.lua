@@ -25,21 +25,6 @@ local lua_name
 local lua_ast
 local lua_number
 
-local lua_nameize = function(proto)
-  local super = proto.new
-  function proto.new(...)
-    local reader = require("l2l.reader")
-    local t = table.pack(...)
-    for i, value in ipairs(t) do
-      if utils.hasmetatable(value, reader.symbol) then
-        t[i] = lua_name(value)
-      end
-    end
-    return super(table.unpack(t, 1, n))
-  end
-  return proto
-end
-
 local r
 r = each(function(v, k)
     -- Define the Lua syntax tree representations, and corresponding output
@@ -57,6 +42,9 @@ r = each(function(v, k)
         elseif type(value) == "string" then
           table.insert(parameters, reader.symbol(value))
         else
+          if getmetatable(value) == reader.symbol then
+            value = lua_name(value)
+          end
           table.insert(parameters, value)
         end
       end
@@ -64,7 +52,7 @@ r = each(function(v, k)
         r.lua_dot.new(lua_name(tostring(st)), lua_name("new")),
         r.lua_args.new(lua_explist(parameters)))
     end
-    return lua_nameize(st)
+    return st
   end, {
   lua_assign = {varlist=1, "=", explist=3},
   lua_dot = {prefix=1, ".", name=3},
@@ -158,23 +146,6 @@ function lua_local:repr()
     r.lua_dot.new(lua_name(tostring(lua_local)), lua_name("new")),
     r.lua_args.new(lua_explist(parameters)))
 end
--- function lua_local:repr()
---   local reader = require("l2l.reader")
---   local parameters = {}
---   for i, v in ipairs(self.arguments) do
---     local value = self[v[1]]
---     if lua_ast[getmetatable(value)] then
---       table.insert(parameters, value:repr())
---     elseif type(value) == "string" then
---       table.insert(parameters, reader.symbol(value))
---     else
---       table.insert(parameters, value)
---     end
---   end
---   return r.lua_functioncall.new(
---     r.lua_dot.new(lua_name(tostring(lua_local)), lua_name("new")),
---     r.lua_args.new(lua_explist(parameters)))
--- end
 
 local function _list(...)
   local st = ast.list(...)
@@ -260,7 +231,6 @@ local function ident(...)
     else
       parameters = {self.value}
     end
-
     return lua_functioncall.new(
       lua_name(tostring(st)),
       lua_args.new(lua_explist(parameters)))

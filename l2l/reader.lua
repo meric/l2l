@@ -96,7 +96,8 @@ local function mangle(text)
 end
 
 function symbol:__eq(sym)
-  return getmetatable(self) == getmetatable(sym) and self:mangle() == sym:mangle()
+  return getmetatable(self) == getmetatable(sym) and
+    self:mangle() == sym:mangle()
 end
 
 function symbol:__tostring()
@@ -365,6 +366,7 @@ local function read_dispatch(invariant, position)
 end
 
 local function expand(invariant, data)
+  -- assert(invariant, "missing invariant")
   local _expand = function(value) return expand(invariant, value) end
   local macro = invariant.macro
   if utils.hasmetatable(data, list) then
@@ -373,8 +375,19 @@ local function expand(invariant, data)
       data = expand(invariant, macro[car.name](
         vector.unpack(vector.cast(cdr, _expand))))
     else
+      if data:car()[1] == "quote" or data:car()[1] == "quasiquote" then
+        -- Wow, what a hack.
+        -- The problem is we expand macros before putting them into special
+        -- forms. Which means quote and quasiquote can't escape these.
+        -- We're hard coding it.
+        return data
+      end
       return list.cast(data, _expand)
     end
+  elseif lua.lua_ast[getmetatable(data)] then
+    return data:gsub(list, function(value)
+      return expand(invariant, value)
+    end)
   end
   return data
 end

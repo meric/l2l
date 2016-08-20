@@ -14,6 +14,10 @@ local source = [==[
 (print yy)
 (print (set xx "xxxx"))
 (print "len" #{1,2,3,4,5})
+(print
+   (map (fn (x) (+ x 2))
+     (filter (fn (x) (== (% x 2) 0))
+        (map (fn (x) (+ x 1)) {1, 2, 3, 4}))))
 (let (
     (a b) (unpack {1, 2})
     c 1
@@ -91,6 +95,7 @@ end)
 ]==]
 
 local source2 = compiler.compile(source, "test")
+print("--------------------------")
 print(source2)
 print("--------------------------")
 print(load(source2)())

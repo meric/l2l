@@ -56,7 +56,9 @@ local function expize(invariant, data, output)
   elseif utils.hasmetatable(data, symbol) then
     return lua.lua_name(data:mangle())
   elseif lua.lua_ast[getmetatable(data)] then
-    return data
+    return data:gsub(list, function(value)
+      return expize(invariant, value, output)
+    end)
   elseif data == nil then
     return "nil"
   elseif data == reader.lua_none then
@@ -113,6 +115,9 @@ local function statize(invariant, data, output, last)
       return to_stat(data)
     end
     return data
+    -- return data:gsub(list, function(value)
+    --   return expize(invariant, value, output)
+    -- end)
   elseif data == reader.lua_none then
     return
   end
@@ -120,10 +125,12 @@ local function statize(invariant, data, output, last)
 end
 
 local function compile_stat(invariant, data, output, ...)
+  -- assert(invariant, "missing invariant")
   return statize(invariant, reader.expand(invariant, data), output, ...)
 end
 
 local function compile_exp(invariant, data, output)
+  -- assert(invariant, "missing invariant")
   return expize(invariant, reader.expand(invariant, data), output)
 end
 
@@ -271,6 +278,7 @@ end
 
 local function import(mod, extends)
   local f, out = build(mod, extends)
+  local path = mod:gsub("[.]", "/")
   local ok, m
   if f then
     -- TODO: path here is undefined
@@ -314,7 +322,7 @@ local function compile(source, mod, extensions)
         "do",
         "set",
         "let",
-        -- "iterator"
+        "iterator"
       }
     end
   end
@@ -369,20 +377,6 @@ local function macroize(invariant, f, output)
       and utils.hasmetatable(f.body.block[1], lua.lua_retstat),
       "only single line return lambda functions can be turned into macros")
   local exp = f.body.block[1].explist
-  local names = {}
-  for i, name in ipairs(f.body.namelist) do
-    names[name.value] = true
-  end
-  exp = exp:gsub(lua.lua_name, function(x)
-    if names[x.value] then
-      x = compile_exp(invariant, symbol("x"), output)
-      function x:repr()
-        return x
-      end
-      return compile_exp(invariant, x, output)
-    end
-    return x
-  end)
   return lua.lua_lambda_function.new(
     lua.lua_funcbody.new(
       f.body.namelist,
