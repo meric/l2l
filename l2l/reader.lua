@@ -57,14 +57,16 @@ local function matchreadmacro(R, byte)
   return 1, R[1]
 end
 
-local symbol_cache = {}
+
 
 local symbol = utils.prototype("symbol", function(symbol, name)
-  if not symbol_cache[name] then
-    symbol_cache[name] = setmetatable({name}, symbol)
+  if not symbol.cache[name] then
+    symbol.cache[name] = setmetatable({name}, symbol)
   end
-  return symbol_cache[name]
+  return symbol.cache[name]
 end)
+
+symbol.cache = {}
 
 local function mangle(text)
   if text == "-" then
