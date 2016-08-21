@@ -23,7 +23,7 @@ local utils = require("leftry").utils
   end)
   names = lua_namelist(names)
   return names,
-    \`\local \,names = \,\compiler.compile_exp(invariant, val, output))
+    \`\local \,names = \,\compiler.expize(invariant, val, output))
 
 (fn statize_local (invariant cdr output)
   (select 2 (stat_local invariant cdr output)))

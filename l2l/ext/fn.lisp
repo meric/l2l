@@ -67,7 +67,6 @@ local function expize_fn(invariant, cdr, output)
 end
 
 local function statize_fn(invariant, cdr, output)
-
   local cadr = cdr:car()
   validate_function(cadr)
   if utils.hasmetatable(cadr, symbol) then

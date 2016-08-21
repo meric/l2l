@@ -104,6 +104,13 @@ iterator.map(print, iterator.map(function(x) return x + 2 end, {1, 2, 3}))
 ]==]
 
 
+-- source = [[(print ((fn (...) (/ 4 ...)) 1 2 3))]]
+
+
+-- source = [[
+-- (print (and (cond 1 2) false))
+-- (print (+ (cond 1 2) 3))
+-- ]]
 local source2 = compiler.compile(source, "test")
 print("--------------------------")
 print(source2)

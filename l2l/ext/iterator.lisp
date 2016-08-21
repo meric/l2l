@@ -70,7 +70,7 @@ Usage:
 (fn compile_map (invariant cdr output insert create)
   (let (
     (f iterable) (:unpack cdr)
-    iterable (compile_exp invariant iterable output))
+    iterable (expize invariant iterable output))
     (cond
       (utils.hasmetatable iterable lua_iteration)
         (do
@@ -103,7 +103,7 @@ Usage:
 (fn compile_filter (invariant cdr output insert create)
   (let (
     (f iterable) (:unpack cdr)
-    iterable0 (compile_exp invariant iterable output)
+    iterable0 (expize invariant iterable output)
     creating (not (utils.hasmetatable iterable0 lua_iteration))
     iterable (cond creating (lua_iteration iterable0) iterable0)
     initialize (cond creating create insert)

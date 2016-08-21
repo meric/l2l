@@ -24,12 +24,12 @@ Usage:
   \
   for i, value in ipairs(cdr) do
     if i < count then
-      local stat = compile_stat(invariant, value, block)
+      local stat = statize(invariant, value, block)
       if stat then
         table.insert(block, stat)
       end
     else
-      local exp = compile_exp(invariant, value, block)
+      local exp = expize(invariant, value, block)
       if utils.hasmetatable(exp, lua_block) then
         -- We have no choice, cannot assign lua_block into variable.
         table.insert(block, exp)
@@ -52,9 +52,9 @@ Usage:
   for i, value in ipairs(cdr) do
     local stat
     if i < count then
-      stat = compile_stat(invariant, value, block)
+      stat = statize(invariant, value, block)
     else
-      stat = to_stat(compile_exp(invariant, value, block))
+      stat = to_stat(expize(invariant, value, block))
     end
     if stat then
       table.insert(block, stat)

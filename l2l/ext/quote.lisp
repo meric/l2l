@@ -4,10 +4,10 @@ local function compile_quote(invariant, cdr, output)
   assert(list.__len(cdr) == 1, "quote only accepts one parameter.")
   local cadr = cdr:car()
   if lua_ast[getmetatable(cadr)] then
-    cadr = cadr:repr()
+    return cadr:repr()
   end
   if utils.hasmetatable(cadr, list) then
-    -- return cadr:repr()
+    return cadr:repr()
   end
   return cadr
 end

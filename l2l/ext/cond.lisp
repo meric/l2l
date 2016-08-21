@@ -23,7 +23,7 @@ Usage:
     \(table.insert block `\\,found = true)
   end
 
-  (local exp (compile_exp invariant action block))
+  (local exp (expize invariant action block))
   \
   if utils.hasmetatable(exp, lua_block) then
     -- We have no choice, cannot assign lua_block into variable.
@@ -36,7 +36,7 @@ Usage:
     \(table.insert rest (stat_cond invariant block value found ...))
   end
 
-  return \`\if \,(compile_exp invariant condition output) then
+  return \`\if \,(expize invariant condition output) then
       \,(unpack block)
     else
       \,(unpack rest)
@@ -44,7 +44,7 @@ Usage:
 
 (fn stat_else (invariant value found default)
   (local block {})
-  (table.insert block `\\,value = \,(compile_exp invariant default block))
+  (table.insert block `\\,value = \,(expize invariant default block))
   `\if not \,found then
     \,(unpack block)
   end)
@@ -53,7 +53,7 @@ Usage:
   (local clauses (vector.cast cdr))
   \
   if #clauses == 1 then
-    return compile_stat(invariant, cdr:car(), output)
+    return statize(invariant, cdr:car(), output)
   end
   (local value (lua_name:unique "_cond_value"))
   (local found (lua_name:unique "_cond_found"))
@@ -73,7 +73,7 @@ Usage:
   (local clauses (vector.cast cdr))
   \
   if #clauses == 1 then
-    return compile_exp(invariant, cdr:car(), output)
+    return expize(invariant, cdr:car(), output)
   end
   (local value (lua_name:unique "_cond_value"))
   (local found (lua_name:unique "_cond_found"))

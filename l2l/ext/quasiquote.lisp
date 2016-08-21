@@ -7,9 +7,14 @@ local function quasiquote_eval(invariant, car, output)
       local cdr = car:cdr()
       assert(list.__len(cdr) == 1,
         "quasiquote_eval only accepts one parameter.")
-      return compiler.compile_exp(invariant, cdr:car(), output)
+      return compiler.expize(invariant, cdr:car(), output)
     end
     return list.cast(car, function(value)
+      return quasiquote_eval(invariant, value, output)
+    end)
+  end
+  if lua_ast[getmetatable(car)] then
+    return car:gsub(list, function(value)
       return quasiquote_eval(invariant, value, output)
     end)
   end
@@ -18,7 +23,7 @@ end
 
 local function compile_quasiquote_eval(invariant, cdr, output)
   local cadr = cdr:car()
-  local exp = compiler.compile_exp(invariant,
+  local exp = compiler.expize(invariant,
     quasiquote_eval(invariant, cadr, output), output)
   if utils.hasmetatable(exp, lua_name) then
     function exp:repr()

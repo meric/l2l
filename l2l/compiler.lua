@@ -35,7 +35,11 @@ end
 local expize
 
 local function statize_lua(invariant, data, output)
-  local stat = data:gsub(lua.lua_functioncall, function(value, parent, i)
+  local stat = data:gsub(symbol, function(value)
+      return lua.lua_nameize(value)
+    end):gsub(list, function(value)
+      return expize(invariant, value, output)
+    end):gsub(lua.lua_functioncall, function(value, parent, i)
     if parent ~= data then
       return lua.lua_nameize(invariant.lua[tostring(value.exp)].expize(
         invariant,
@@ -51,14 +55,15 @@ local function statize_lua(invariant, data, output)
     return invariant.lua[tostring(value.exp)] and
       invariant.lua[tostring(value.exp)].in_lua
   end)
-  -- :gsub(list, function(value)
-  --   --return expize(invariant, value, output)
-  --   end)
   return stat
 end
 
 local function expize_lua(invariant, data, output)
-  return lua.lua_nameize(data:gsub(lua.lua_functioncall,
+  return data:gsub(symbol, function(value)
+      return lua.lua_nameize(value)
+    end):gsub(list, function(value, ...)
+      return expize(invariant, value, output)
+    end):gsub(lua.lua_functioncall,
     function(value)
       return lua.lua_nameize(invariant.lua[tostring(value.exp)].expize(
         invariant,
@@ -68,19 +73,34 @@ local function expize_lua(invariant, data, output)
       return invariant.lua[tostring(value.exp)] and
         invariant.lua[tostring(value.exp)].in_lua
     end)
-    -- :gsub(list, function(value)
-    --   return value
-    --   --return expize(invariant, value, output)
-    -- end)
-    )
 end
 
 expize = function(invariant, data, output)
+  local expanded
   if utils.hasmetatable(data, list) then
     local car = data:car()
     if utils.hasmetatable(car, symbol) and invariant.lua[car[1]] then
-      return invariant.lua[car[1]].expize(invariant, data:cdr(), output)
+      data, expanded = reader.expand(invariant,
+        invariant.lua[car[1]].expize(invariant, data:cdr(), output))
+      if utils.hasmetatable(data, lua.lua_lambda_function) then
+        data = lua.lua_paren_exp.new(data)
+      end
+      if expanded then
+        return expize(invariant, data, output)
+      else
+        return data
+      end
     end
+    data, expanded = reader.expand(invariant, data)
+    if expanded then
+      return expize(invariant, data, output)
+    end
+  end
+  if lua.lua_ast[getmetatable(data)] then
+    return expize_lua(invariant, data, output)
+  end
+  if utils.hasmetatable(data, list) then
+    local car = data:car()
     local cdr = vector.cast(data:cdr(), function(value)
       return expize(invariant, value, output)
     end)
@@ -89,17 +109,11 @@ expize = function(invariant, data, output)
     if accessor then
       return accessor
     end
-    local func = expize(invariant, car)
-    if utils.hasmetatable(func, lua.lua_lambda_function) then
-      func = lua.lua_paren_exp.new(func)
-    end
     return lua.lua_functioncall.new(
-      func,
+      expize(invariant, car),
       lua.lua_args.new(lua.lua_explist(cdr)))
   elseif utils.hasmetatable(data, symbol) then
     return lua.lua_name(data:mangle())
-  elseif lua.lua_ast[getmetatable(data)] then
-    return expize_lua(invariant, data, output)
   elseif data == nil then
     return "nil"
   elseif data == reader.lua_none then
@@ -134,11 +148,33 @@ local function statize(invariant, data, output, last)
   if last then
     return retstatize(invariant, data, output)
   end
+  local expanded
   if utils.hasmetatable(data, list) then
     local car = data:car()
     if utils.hasmetatable(car, symbol) and invariant.lua[car[1]] then
-      return invariant.lua[car[1]].statize(invariant, data:cdr(), output)
+      data, expanded = reader.expand(invariant,
+        invariant.lua[car[1]].statize(invariant, data:cdr(), output))
+      if expanded then
+        return statize(invariant, data, output, last)
+      else
+        return data
+      end
     end
+    data, expanded = reader.expand(invariant, data)
+    if expanded then
+      return statize(invariant, data, output, last)
+    end
+  end
+  if lua.lua_ast[getmetatable(data)] then
+    if utils.hasmetatable(data, lua.lua_functioncall) or
+        utils.hasmetatable(data, lua.lua_block) then
+      return statize_lua(invariant, data, output)
+    else
+      return to_stat(data)
+    end
+  end
+  if utils.hasmetatable(data, list) then
+    local car = data:car()
     local cdr = vector.cast(data:cdr(), function(value)
       return expize(invariant, value, output)
     end)
@@ -150,27 +186,10 @@ local function statize(invariant, data, output, last)
     return lua.lua_functioncall.new(
       expize(invariant, car),
       lua.lua_args.new(lua.lua_explist(cdr)))
-  elseif utils.hasmetatable(data, lua.lua_block) then
-    return statize_lua(invariant, data, output)
-  elseif lua.lua_ast[getmetatable(data)] then
-    if not utils.hasmetatable(data, lua.lua_functioncall) then
-      return to_stat(data)
-    end
-    return data
   elseif data == reader.lua_none then
     return
   end
   error("cannot not statize.."..tostring(data))
-end
-
-local function compile_stat(invariant, data, output, ...)
-  -- assert(invariant, "missing invariant")
-  return statize(invariant, reader.expand(invariant, data), output, ...)
-end
-
-local function compile_exp(invariant, data, output)
-  -- assert(invariant, "missing invariant")
-  return expize(invariant, reader.expand(invariant, data), output)
 end
 
 local exports
@@ -375,7 +394,7 @@ local function compile(source, mod, extensions)
   for rest, values in reader.read, invariant do
     for _, value in ipairs(values) do
       ret, index = value, #output
-      local stat = compile_stat(invariant, value, output)
+      local stat = statize(invariant, value, output)
       if stat then
         table.insert(output, stat)
       end
@@ -391,7 +410,7 @@ local function compile(source, mod, extensions)
   if #output > 0 then
     output = vector.sub(output, 1, index)
     setmetatable(output, nil)
-    local stat = compile_stat(invariant, ret, output, true)
+    local stat = statize(invariant, ret, output, true)
     if stat then
       table.insert(output, stat)
     end
@@ -422,11 +441,11 @@ local function macroize(invariant, f, output)
   -- Manual quasiquote lua_names so they get compiled.
   exp = exp:gsub(lua.lua_name, function(x)
     if names[x.value] then
-      x = compile_exp(invariant, symbol(x.value), output)
+      x = expize(invariant, symbol(x.value), output)
       function x:repr()
         return x
       end
-      return compile_exp(invariant, x, output)
+      return expize(invariant, x, output)
     end
     return x
   end)
@@ -440,7 +459,7 @@ local function macroize(invariant, f, output)
 end
 
 local function lua_inline_functioncall(invariant, f, output, ...)
-  f = compile_exp(invariant, f, output)
+  f = expize(invariant, f, output)
   if utils.hasmetatable(f, lua.lua_lambda_function)
       and #f.body.block == 1
       and utils.hasmetatable(f.body.block[1], lua.lua_retstat) then
@@ -508,8 +527,6 @@ exports = {
   mangle = reader.mangle,
   statize = statize,
   expize = expize,
-  compile_stat = compile_stat,
-  compile_exp = compile_exp,
   to_stat = to_stat,
   expand = reader.expand,
 }

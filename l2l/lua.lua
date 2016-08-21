@@ -52,9 +52,6 @@ r = each(function(v, k)
         elseif type(value) == "string" then
           table.insert(parameters, reader.symbol(value))
         else
-          if getmetatable(value) == reader.symbol then
-            value = lua_name(value)
-          end
           table.insert(parameters, value)
         end
       end
@@ -486,13 +483,7 @@ LispStat = function(invariant, position, peek)
     error("Could not compile Lisp expression embedded in Lua."..
       invariant.source:sub(position, position+10))
   end
-  local output = {}
-  local stat = compiler.compile_stat(invariant, values[1], output)
-  table.insert(output, stat)
-  if #output > 0 then
-    return rest, lua_block(output)
-  end
-  return rest
+  return rest, values[1]
 end
 LispExp = function(invariant, position, peek)
   local reader = require("l2l.reader")
@@ -509,18 +500,8 @@ LispExp = function(invariant, position, peek)
     error("Could not compile Lisp expression embedded in Lua."..
       invariant.source:sub(position, position+10))
   end
-  local expr = compiler.compile_exp(invariant, values[1], output)
-  if #output == 0 then
-    return rest, expr
-  else
-    table.insert(output, lua_retstat.new(lua_explist({expr})))
-    return rest, lua_functioncall.new(
-      lua_paren_exp.new(
-        lua_lambda_function.new(
-          lua_funcbody.new(lua_namelist({}),
-            lua_block(output)))),
-      lua_args.new(lua_explist({})))
-  end
+  local expr = values[1]
+  return rest, expr
 end
 FunctionCall = factor("FunctionCall", function() return
   span(PrefixExp, Args) % lua_functioncall,

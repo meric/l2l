@@ -369,29 +369,31 @@ end
 
 local function expand(invariant, data)
   -- assert(invariant, "missing invariant")
-  local _expand = function(value) return expand(invariant, value) end
+  local expanded = false
+  local _expand = function(value)
+    local d, x = expand(invariant, value)
+    expanded = expanded or x
+    return d
+  end
   local macro = invariant.macro
   if utils.hasmetatable(data, list) then
     local car, cdr = data:car(), data:cdr()
     if utils.hasmetatable(car, symbol) and macro[car.name] then
-      data = expand(invariant, macro[car.name](
-        vector.unpack(vector.cast(cdr, _expand))))
+      return expand(invariant, macro[car.name](
+        vector.unpack(vector.cast(cdr, _expand)))), true
     else
-      if data:car()[1] == "quote" or data:car()[1] == "quasiquote" then
-        -- Wow, what a hack.
-        -- The problem is we expand macros before putting them into special
-        -- forms. Which means quote and quasiquote can't escape these.
-        -- We're hard coding it.
-        return data
-      end
-      return list.cast(data, _expand)
+      data = list.cast(data, _expand)
+      return data, expanded
     end
   elseif lua.lua_ast[getmetatable(data)] then
-    return data:gsub(list, function(value)
-      return expand(invariant, value)
+    data = data:gsub(list, function(value)
+      local d, x = expand(invariant, value)
+      expanded = expanded or x
+      return d
     end)
+    return data, expanded
   end
-  return data
+  return data, expanded
 end
 
 local function inherit(invariant, source)
