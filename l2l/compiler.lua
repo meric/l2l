@@ -5,7 +5,7 @@ local reader = require("l2l.reader")
 local vector = require("l2l.vector")
 local symbol = reader.symbol
 
-local unpack = table.unpack or unpack
+local unpack = table.unpack or _G["unpack"]
 
 local function validate_functioncall(car)
   assert(
@@ -39,7 +39,7 @@ local function statize_lua(invariant, data, output)
       return lua.lua_nameize(value)
     end):gsub(list, function(value)
       return expize(invariant, value, output)
-    end):gsub(lua.lua_functioncall, function(value, parent, i)
+    end):gsub(lua.lua_functioncall, function(value, parent)
     if parent ~= data then
       return lua.lua_nameize(invariant.lua[tostring(value.exp)].expize(
         invariant,
@@ -61,7 +61,7 @@ end
 local function expize_lua(invariant, data, output)
   return data:gsub(symbol, function(value)
       return lua.lua_nameize(value)
-    end):gsub(list, function(value, ...)
+    end):gsub(list, function(value)
       return expize(invariant, value, output)
     end):gsub(lua.lua_functioncall,
     function(value)
@@ -436,14 +436,14 @@ local function macroize(invariant, f, output)
       "only single line return lambda functions can be turned into macros")
   local exp = f.body.block[1].explist
   local names = {}
-  for i, name in ipairs(f.body.namelist) do
+  for _, name in ipairs(f.body.namelist) do
     names[name.value] = true
   end
   -- Manual quasiquote lua_names so they get compiled.
   exp = exp:gsub(lua.lua_name, function(x)
     if names[x.value] then
       x = expize(invariant, symbol(x.value), output)
-      function x:repr()
+      function x.repr()
         return x
       end
       return expize(invariant, x, output)

@@ -335,7 +335,7 @@ local concat = reducers.concat
 local Chunk, Block, Stat, RetStat, Label, FuncName, VarList, Var, NameList,
       ExpList, Exp, PrefixExp, FunctionCall, Args, FunctionDef, FuncBody,
       ParList, TableConstructor, FieldList, Field, FieldSep, BinOp, UnOp,
-      numeral, Numeral, LiteralString, Name, Space, Comment, LongString,
+      numeral, Numeral, LiteralString, Name, Comment, LongString,
       LispExp, LispStat, NameOrLispExp
 
 local dquoted, squoted
@@ -471,7 +471,6 @@ Exp = factor("Exp", function(Exp2) return
   span(UnOp, Exp2) % lua_unop_exp end)
 LispStat = function(invariant, position, peek)
   local reader = require("l2l.reader")
-  local compiler = require("l2l.compiler")
   local ok, rest, values = pcall(reader.read, invariant, position)
   if not ok then
     return
@@ -487,7 +486,6 @@ LispStat = function(invariant, position, peek)
 end
 LispExp = function(invariant, position, peek)
   local reader = require("l2l.reader")
-  local compiler = require("l2l.compiler")
   local ok, rest, values = pcall(reader.read, invariant, position)
   if not ok then
     return
@@ -495,7 +493,6 @@ LispExp = function(invariant, position, peek)
   if peek then
     return rest
   end
-  local output = {}
   if not rest then
     error("Could not compile Lisp expression embedded in Lua."..
       invariant.source:sub(position, position+10))
@@ -776,7 +773,6 @@ local exports = {
   LiteralString=LiteralString,
   Name=Name,
   NameOrLispExp=NameOrLispExp,
-  Space=Space, -- TODO: this is never set
   Comment=Comment,
   LongString=LongString,
   span=span,
