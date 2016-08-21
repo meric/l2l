@@ -82,9 +82,6 @@ expize = function(invariant, data, output)
     if utils.hasmetatable(car, symbol) and invariant.lua[car[1]] then
       data, expanded = reader.expand(invariant,
         invariant.lua[car[1]].expize(invariant, data:cdr(), output))
-      if utils.hasmetatable(data, lua.lua_lambda_function) then
-        data = lua.lua_paren_exp.new(data)
-      end
       if expanded then
         return expize(invariant, data, output)
       else
@@ -109,8 +106,12 @@ expize = function(invariant, data, output)
     if accessor then
       return accessor
     end
+    local func = expize(invariant, car)
+    if utils.hasmetatable(func, lua.lua_lambda_function) then
+      func = lua.lua_paren_exp.new(func)
+    end
     return lua.lua_functioncall.new(
-      expize(invariant, car),
+      func,
       lua.lua_args.new(lua.lua_explist(cdr)))
   elseif utils.hasmetatable(data, symbol) then
     return lua.lua_name(data:mangle())
