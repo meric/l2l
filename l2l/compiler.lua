@@ -35,26 +35,26 @@ end
 local expize
 
 local function statize_lua(invariant, data, output)
-  local stat = data:gsub(symbol, function(value)
-      return lua.lua_nameize(value)
-    end):gsub(list, function(value)
-      return expize(invariant, value, output)
-    end):gsub(lua.lua_functioncall, function(value, parent)
-    if parent ~= data then
-      return lua.lua_nameize(invariant.lua[tostring(value.exp)].expize(
-        invariant,
-        list.cast(value.args.explist),
-        output))
-    else
-      return invariant.lua[tostring(value.exp)].statize(
-        invariant,
-        list.cast(value.args.explist),
-        output)
-    end
-  end, function(value)
-    return invariant.lua[tostring(value.exp)] and
-      invariant.lua[tostring(value.exp)].in_lua
-  end)
+  local stat = data:copy()
+    :gsub(symbol, function(value) return lua.lua_nameize(value) end)
+    :gsub(list, function(value) return expize(invariant, value, output) end)
+    :gsub(lua.lua_functioncall,
+      function(value, parent)
+        if parent ~= data then
+          return lua.lua_nameize(invariant.lua[tostring(value.exp)].expize(
+            invariant,
+            list.cast(value.args.explist),
+            output))
+        else
+          return invariant.lua[tostring(value.exp)].statize(
+            invariant,
+            list.cast(value.args.explist),
+            output)
+        end
+      end, function(value)
+        return invariant.lua[tostring(value.exp)] and
+          invariant.lua[tostring(value.exp)].in_lua
+      end)
   return stat
 end
 
