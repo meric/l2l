@@ -35,7 +35,7 @@ end
 local expize
 
 local function statize_lua(invariant, data, output)
-  local stat = data:copy()
+  local stat = data
     :gsub(symbol, function(value) return lua.lua_nameize(value) end)
     :gsub(list, function(value) return expize(invariant, value, output) end)
     :gsub(lua.lua_functioncall,
@@ -390,35 +390,22 @@ local function compile(source, mod, extensions)
       reader.import_extension(invariant, e))
   end
 
-  local output, ret, index = {}
+  local output = {}
   local ending
+  local length = #source
   for rest, values in reader.read, invariant do
     for _, value in ipairs(values) do
-      ret, index = value, #output
-      local stat = statize(invariant, value, output)
-      if stat then
-        table.insert(output, stat)
-      end
+      table.insert(output, statize(invariant, value, output, rest > length))
     end
     ending = rest
   end
-  if ending < #source then
+
+  if ending < length then
     error("syntax error in module `"..tostring(mod).."`:\n"
       ..source:sub(ending, ending + 100))
   end
 
-  -- Convert final stat into a retstat.
-  if #output > 0 then
-    output = vector.sub(output, 1, index)
-    setmetatable(output, nil)
-    local stat = statize(invariant, ret, output, true)
-    if stat then
-      table.insert(output, stat)
-    end
-  end
-
   local references = {}
-
   for i, value in ipairs(output) do
     output[i] = tostring(value)
     analyse_chunk(references, output[i])
