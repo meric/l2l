@@ -1,6 +1,6 @@
 local utils = require("leftry").utils
 
-local unpack = table.unpack or unpack
+local unpack = table.unpack or _G["unpack"]
 
 local vector = utils.prototype("vector", function(vector, ...)
   return setmetatable(table.pack(...), vector)

@@ -6,8 +6,8 @@ local compiler = require("l2l.compiler")
 local lua = require("l2l.lua")
 
 local function assert_exec_equal(source, ...)
-  local lua = compiler.compile(source, "test")
-  local ret = {load(lua)()}
+  local src = compiler.compile(source, "test")
+  local ret = {load(src)()}
   for i=1, math.max(select("#", ...), #ret) do
     t.assert_equal(ret[i], select(i, ...))
   end
