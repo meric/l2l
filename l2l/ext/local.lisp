@@ -8,8 +8,7 @@ Usage:
   (local x y ...)
 ]]
 
-local utils = require("leftry").utils
-\
+local utils = require("leftry").utils;
 
 (fn stat_local (invariant cdr output)
   \
