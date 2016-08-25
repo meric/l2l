@@ -106,7 +106,7 @@ expize = function(invariant, data, output)
     if accessor then
       return accessor
     end
-    local func = expize(invariant, car)
+    local func = expize(invariant, car, output)
     if utils.hasmetatable(func, lua.lua_lambda_function) then
       func = lua.lua_paren_exp.new(func)
     end
@@ -120,7 +120,7 @@ expize = function(invariant, data, output)
   elseif data == reader.lua_none then
     return
   elseif type(data) == "number" then
-    return lua.lua_number(data)
+    return data
   end
   error("cannot not expize.."..tostring(data))
 end
@@ -366,6 +366,8 @@ end
 
 local function compile(source, mod, extensions)
   local invariant = reader.environ(source, 1)
+
+  source = invariant.source
 
   if not extensions then
     if mod and string.match(mod, "^l2l[.]lib") then

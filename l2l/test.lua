@@ -1,119 +1,186 @@
+local t = require("lunatest")
+
+local vector = require("l2l.vector")
+local list = require("l2l.list")
 local compiler = require("l2l.compiler")
+local lua = require("l2l.lua")
 
-local source = [==[
-@import iterator
+local function assert_exec_equal(source, ...)
+  local lua = compiler.compile(source, "test")
+  local ret = {load(lua)()}
+  for i=1, math.max(select("#", ...), #ret) do
+    t.assert_equal(ret[i], select(i, ...))
+  end
+end
 
-(local a b ((fn () \return 1, 2)))
-(print a b)
-(print (local c d 1))
-(print "hello")
-(print (+ 1 2 3 4))
-(print (- 100 5 3 1))
-(print ((fn (...) \return \(- ...)) 1))
-(print ((fn (...) (/ 4 ...)) 1 2 3))
-(print (- 10))
-(set yy "yyyy")
-(print yy)
-(print (set xx "xxxx"))
-(print "len" #{1,2,3,4,5})
-(print
-   (map (fn (x) (+ x 2))
-     (filter (fn (x) (== (% x 2) 0))
-        (map (fn (x) (+ x 1)) {1, 2, 3, 4}))))
-\
-map(function(x) return print(">>", x + 2) end,
-  filter(function(x) return x % 2 == 0 end,
-    map(function(x) return x + 1 end, {1, 2, 3, 4})));
-(let (
-    (a b) (unpack {1, 2})
-    c 1
-    d 2)
-    (print c)
-    (print d)
-    (set x 1))
-
-
-(print (and 1 (+ 1 2)))
-(print (+ 1 (+ 1 2)))
-(print (do ">>"))
-
-
---   (^each (v i) (set x (+ x i v))
---     (^filter (v i) (< v 5)
---       (ipairs values))))
-
---   (each print
---     (filter my-function
---       (ipairs values))))
-
-
-(print (do
-    (print 1)
-    (print 2)
-    1))
-
-(cond (do (local x 1) 7 + x)
-    (local a 2)
-    3 4
+function test_local()
+  assert_exec_equal(
+    [[(local a b ((fn () \return 1, 2)))]],
+    1, 2)
+  assert_exec_equal(
+    [[(local c d 1)]],
     1)
+end
 
-(print (cond 1
-    (local a 2)
-    3 4
-    1))
-(cond 1)
-(print (cond 1))
+function test_string()
+  assert_exec_equal(
+    [["hello"]],
+    "hello")
+end
 
-(fn add (...) (+ 1 2 3 4 ...))
+function test_math()
+  assert_exec_equal(
+    [[(+ 1 2 3 4)]],
+    10)
+  assert_exec_equal(
+    [[(- 100 5 3 1)]],
+    91)
+  assert_exec_equal(
+    [[((fn (...) \return \(- ...)) 1)]],
+    -1)
+  assert_exec_equal(
+    [[((fn (...) (/ 4 ...)) 1 2 3)]],
+    4/6)
+  assert_exec_equal(
+    [[(- 10)]],
+    -10)
+  assert_exec_equal(
+    [[-10]],
+    -10)
+  assert_exec_equal(
+    [[(+ 1 (+ 1 2))]],
+    4)
+  assert_exec_equal(
+    [[(== 1 2 - 1)]],
+    true)
+end
 
-(print `(1 2 3))
-(print `(1 (1) ,(print 1 2)))
-(print "apply test 1" (apply + (list 1 2)))
-(print "apply test 2" (apply + 1 2 (list 3 4)))
-(print "apply test 3" (apply + 1 2 (list)))
+function test_set()
+  assert_exec_equal(
+    [[(set yy "yyyy") yy]],
+    "yyyy")
+end
 
--- Use Lua expressions in Lisp S-Expressions with backslash.
-(print \function(x) print(x, \'(1 2 3 (a 1) \b(1))) end)
+function test_length()
+  assert_exec_equal(
+    [[#{1,2,3,4,5}]],
+    5)
+end
 
-(print \{a=1, b=2, 3, 4} \function()
-    for i=1, 3 do print(i) end return 9
-end)
+function test_iterator()
+  assert_exec_equal([[
+    @import iterator
+    (map (fn (x) (+ x 2))
+     (filter (fn (x) (== (% x 2) 0))
+        (map (fn (x) (+ x 1)) {1, 2, 3, 4})))]],
+    vector(4, 6))
+  assert_exec_equal([[
+    @import iterator
+    \
+    map(function(x) return x + 2 end,
+      filter(function(x) return x % 2 == 0 end,
+        map(function(x) return x + 1 end, {1, 2, 3, 4})))]],
+    vector(4, 6))
+end
 
--- Infix maths when starting with a number.
-(print 1 + 1 * 2; 4)
+function test_let()
+  assert_exec_equal([[
+    (let (
+      (a b) (unpack {1, 2})
+      c 3
+      d 4)
+      \return a, b, c, d)
+    ]],
+    1, 2, 3, 4)
+end
 
+function test_and()
+  assert_exec_equal(
+    [[(and 1 (+ 1 2))]], 
+    3)
+end
 
--- Function definition
-(fn add (a b)  \a + b 2)
+function test_do()
+  assert_exec_equal(
+    [[(do ">>")]],
+    ">>")
+  assert_exec_equal(
+    [[(do (local x 1) 7 + x)]],
+    8)
+  assert_exec_equal([[
+    (do
+      (local x 1)
+      (set x 7 + x)
+      (set x 8 + x)
+      (set x 9 + x))]],
+    25)
+end
 
--- The following is broken.
--- \if (\\local x = 0
---              for i=1, 10 do
---                 x = x + 1
---              end
---              return x) > 0 then
---     print("hello")
--- end
+function test_cond()
+  assert_exec_equal([[
+    (cond 1
+      (local a 2)
+      3 4
+      1)]],
+    2)
+  assert_exec_equal(
+    [[(cond 1)]],
+    1)
+end
 
-(print (fn (a b) (print 1) \a + b))
-(print (fn () (print 1) 2))
-(assert (== 1 2 - 1))
-@import (iterator iterator)
-\
-iterator.map(print, iterator.map(function(x) return x + 2 end, {1, 2, 3}))
-]==]
+function test_fn()
+  assert_exec_equal(
+    [[((fn (...) (+ 1 2 3 4 ...)) 5)]],
+    15)
+  assert_exec_equal(
+    [[((fn add (...) (+ 1 2 3 4 ...)) 5)]],
+    15)
+end
 
+function test_quasiquote()
+  assert_exec_equal(
+    [[`(1 2 3)]],
+    list.cast({1, 2, 3}, lua.lua_number))
+  assert_exec_equal(
+    [[`(1 (2) ,(+ 2 1))]],
+    list(1, list(2), 3))
+end
 
--- source = [[(print ((fn (...) (/ 4 ...)) 1 2 3))]]
+function test_apply()
+  assert_exec_equal(
+    [[(apply + (list 1 2))]],
+    3)
+  assert_exec_equal(
+    [[(apply + 1 2 (list 3 4))]],
+    10)
+  assert_exec_equal(
+    [[(apply + 1 2 (list))]],
+    3)
+end
 
+function test_backslash()
+  assert_exec_equal(
+    [[(\function(x) return x + 1 + \(+ 2 3) end 1)]],
+    7)
+  assert_exec_equal(
+    [[(vector.cast \{1, 2, 3, 4})]],
+    vector(1, 2, 3, 4))
+end
 
--- source = [[
--- (print (and (cond 1 2) false))
--- (print (+ (cond 1 2) 3))
--- ]]
-local source2 = compiler.compile(source, "test")
-print("--------------------------")
-print(source2)
-print("--------------------------")
-print(load(source2)())
-print("done")
+function test_infix()
+  -- Infix maths when starting with a number.
+  assert_exec_equal(
+    [[1 + 1 * 2]],
+    3)
+end
+
+function test_extension_alias()
+  assert_exec_equal([[
+    @import (iterator iterator)
+    \
+    iterator.map(function(x) return x * 2 end,
+      iterator.map(function(x) return x + 2 end, {1, 2, 3}))]],
+    vector(6,8,10))
+end
+
+t.run(nil, {"--verbose"})

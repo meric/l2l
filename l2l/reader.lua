@@ -442,7 +442,7 @@ local function environ(source)
       -- Default read macro.
       {read_symbol}
     },
-    source = source
+    source = source:match("^(.-)%s*$")
   }
 end
 

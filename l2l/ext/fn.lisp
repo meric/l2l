@@ -59,7 +59,7 @@ local function expize_fn(invariant, cdr, output)
     local stat = stat_lua_function(invariant,
       cadr, cdr:cdr():car(), cdr:cdr():cdr())
     table.insert(output, stat)
-    return cadr
+    return lua_name(cadr)
   else
     assert(#cdr >= 2, "function missing parameters or body")
     return exp_lua_lambda_function(invariant, cadr, cdr:cdr())

@@ -23,7 +23,6 @@ local lua_fieldlist
 
 local lua_name
 local lua_ast
-local lua_number
 
 local function lua_nameize(x)
   local reader = require("l2l.reader")
@@ -234,7 +233,7 @@ local function ident(...)
     if type(self.value) == "string" then
       parameters = {utils.escape(self.value)}
     elseif type(self.value) == "number" then
-      parameters = {lua_number(self.value)}
+      parameters = {self.value}
     else
       parameters = {self.value}
     end
@@ -262,7 +261,6 @@ function lua_name:unique(prefix)
   return self(prefix)
 end
 
-lua_number = ident("lua_number")
 local lua_string = ident("lua_string", "value", function(self)
   return utils.escape(self.value)
 end)
@@ -624,11 +622,7 @@ numeral = function(invariant, position, peek)
 end
 
 Numeral = function(invariant, position, peek)
-  local rest, value = numeral(invariant, position, peek)
-  if value then
-    value = lua_number(value)
-  end
-  return rest, value
+  return numeral(invariant, position, peek)
 end
 
 local keywords = {
@@ -731,7 +725,6 @@ lua_ast = {
   [lua_break] = lua_break,
   [lua_vararg] = lua_vararg,
   [lua_semicolon] = lua_semicolon,
-  [lua_number] = lua_number,
   [lua_string] = lua_string,
   [lua_chunk] = lua_chunk,
   [lua_binop] = lua_binop,
@@ -823,7 +816,6 @@ local exports = {
   lua_break = lua_break,
   lua_vararg = lua_vararg,
   lua_semicolon = lua_semicolon,
-  lua_number = lua_number,
   lua_string = lua_string,
   lua_chunk = lua_chunk,
   lua_binop = lua_binop,

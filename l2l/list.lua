@@ -134,6 +134,11 @@ function list:cdr()
   end
 end
 
+function list:__eq(l)
+  return getmetatable(self) == getmetatable(l) and
+    self:car() == l:car() and self:cdr() == l:cdr()
+end
+
 function list:unpack()
   if not self then
     return

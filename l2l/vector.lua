@@ -64,6 +64,18 @@ function vector.sub(t, from, to)
   end)
 end
 
+function vector:__eq(v)
+  if not (getmetatable(v) == getmetatable(self) and self.n == v.n) then
+    return false
+  end
+  for i=1, self.n do
+    if self[i] ~= v[i] then
+      return false
+    end
+  end
+  return true
+end
+
 function vector.cast(t, f, g)
   if not t then
     return setmetatable({n=0}, vector)
