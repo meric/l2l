@@ -91,6 +91,14 @@ function test_reduce()
   ]], 7)
 end
 
+function test_lua_quote()
+  assert_exec_equal([[
+    @import lua_quote
+    \
+    return #(lua_quote(\\local x = 1; print(x)))
+  ]], 3)
+end
+
 function test_let()
   assert_exec_equal([[
     (let (
