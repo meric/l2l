@@ -83,6 +83,14 @@ function test_iterator()
     vector(4, 6))
 end
 
+function test_reduce()
+  assert_exec_equal([[
+    @import iterator
+    (set z 1)
+    (reduce (fn (x y) (+ x y)) z {1, 2, 3})
+  ]], 7)
+end
+
 function test_let()
   assert_exec_equal([[
     (let (

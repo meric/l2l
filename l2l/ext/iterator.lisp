@@ -62,6 +62,9 @@ Usage:
 (fn lua_iteration:apply (invariant f output)
   (lua_inline_functioncall invariant f output self.v, self.i))
 
+(fn lua_iteration:reduce (invariant f r output)
+  (lua_inline_functioncall invariant f output r self.v))
+
 (fn lua_iteration:gsub ()
   self)
 
@@ -70,21 +73,15 @@ Usage:
 (fn compile_map (invariant cdr output insert create)
   (let (
     (f iterable) (:unpack cdr)
-    iterable (expize invariant iterable output))
-    (cond
-      (utils.hasmetatable iterable lua_iteration)
-        (do
-          (iterable:insert (fn (block)
-            (block:insert (lua_assign.new
-              (lua_namelist {iterable.v})
-              (iterable:apply invariant f output)))))
-          (insert iterable))
-      (let (iterable (lua_iteration iterable))
-        (iterable:insert (fn (block)
-          (block:insert (lua_assign.new
-              (lua_namelist {iterable.v})
-              (iterable:apply invariant f output)))))
-        (create iterable)))))
+    iterable0 (expize invariant iterable output)
+    creating (not (utils.hasmetatable iterable0 lua_iteration))
+    iterable (cond creating (lua_iteration iterable0) iterable0)
+    initialize (cond creating create insert))
+    (iterable:insert (fn (block)
+      (block:insert (lua_assign.new
+        (lua_namelist {iterable.v})
+        (iterable:apply invariant f output)))))
+    (initialize iterable)))
 
 (fn expize_map (invariant cdr output)
   (compile_map invariant cdr output
@@ -129,9 +126,41 @@ Usage:
     (fn (iterable)
       iterable.block)))
 
+(fn compile_reduce (invariant cdr output insert create)
+  (let (
+    (f initial iterable) (:unpack cdr)
+    reduction (lua_name:unique "reduction")
+    iterable0 (expize invariant iterable output)
+    creating (not (utils.hasmetatable iterable0 lua_iteration))
+    iterable (cond creating (lua_iteration iterable0) iterable0)
+    initialize (cond creating create insert))
+    (table.insert output
+      `\local \,reduction = \,(expize invariant initial output))
+    (iterable:insert (fn (block)
+      (block:insert (lua_assign.new
+        (lua_namelist {reduction})
+        (iterable:reduce invariant f reduction output)))))
+    (initialize iterable reduction)))
+
+(fn expize_reduce (invariant cdr output)
+  (compile_reduce invariant cdr output
+    (fn (iterable reduction)
+      reduction)
+    (fn (iterable reduction)
+      (table.insert output iterable.block)
+      reduction)))
+
+(fn statize_reduce (invariant cdr output)
+  (compile_reduce invariant cdr output
+    (fn (iterable reduction)
+      (to_stat reduction))
+    (fn (iterable reduction)
+      iterable.block)))
+
 {
   lua = {
     map = {expize = expize_map, statize=statize_map, in_lua=true},
-    filter = {expize = expize_filter, statize=statize_filter, in_lua=true}
+    filter = {expize = expize_filter, statize=statize_filter, in_lua=true},
+    reduce = {expize = expize_reduce, statize=statize_reduce, in_lua=true}
   }
 }

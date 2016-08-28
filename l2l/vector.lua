@@ -68,7 +68,7 @@ function vector:__eq(v)
   if not (getmetatable(v) == getmetatable(self) and self.n == v.n) then
     return false
   end
-  for i=1, self.n do
+  for i=1, math.max(self.n, v.n) do
     if self[i] ~= v[i] then
       return false
     end
