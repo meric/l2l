@@ -582,8 +582,7 @@ local function stringcontent(quotechar)
         return i, table.concat(value)
       end
     end
-    -- TODO: raise and UnmatchedQuoteException are undefined
-    raise(UnmatchedQuoteException(src, limit))
+    error("unmatched quote: " .. src)
   end
 end
 

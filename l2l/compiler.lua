@@ -456,7 +456,7 @@ local function lua_inline_functioncall(invariant, f, output, ...)
     local src = "return "..tostring(macroize(invariant, f, output))
     local references = {}
     analyse_chunk(references, src)
-    local g = load(header(references, mod).."\n"..src)
+    local g = load(header(references, nil).."\n"..src)
     if g then
       local ok, h = pcall(g)
       local value

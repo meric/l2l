@@ -1,9 +1,10 @@
 local utils = require("leftry").utils
 
 local unpack = table.unpack or _G["unpack"]
+local pack = table.pack or function(...) return {...} end
 
 local vector = utils.prototype("vector", function(vector, ...)
-  return setmetatable(table.pack(...), vector)
+  return setmetatable(pack(...), vector)
 end)
 
 function vector:insert(value)
