@@ -4,6 +4,9 @@ local lua = require("l2l.lua")
 local reader = require("l2l.reader")
 local vector = require("l2l.vector")
 local symbol = reader.symbol
+local len = require("l2l.len")
+local loadstring = _G["loadstring"] or _G["load"]
+local ipairs = require("l2l.iterator")
 
 local unpack = table.unpack or _G["unpack"]
 
@@ -204,6 +207,8 @@ local function initialize_dependencies()
       ["reader"] = {{'require("l2l.reader")'}},
       ["list"] = {{'require("l2l.list")', nil}},
       ["vector"] = {{'require("l2l.vector")', nil}},
+      ["ipairs"] = {{'require("l2l.iterator")', nil}},
+      ["len"] = {{'require("l2l.len")', nil}},
       [symbol("%"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
       [symbol(".."):mangle()] = {
@@ -325,7 +330,7 @@ local function build(mod, extends)
   local source = file:read("*a")
   file:close()
   local out = compile_or_cached(source, mod, extends, prefix..".lua")
-  local f, err = load(out)
+  local f, err = loadstring(out)
   if f then
     build_cache[path] = {f, out}
     return f, out
@@ -451,12 +456,12 @@ end
 local function lua_inline_functioncall(invariant, f, output, ...)
   f = expize(invariant, f, output)
   if utils.hasmetatable(f, lua.lua_lambda_function)
-      and #f.body.block == 1
+      and len(f.body.block) == 1
       and utils.hasmetatable(f.body.block[1], lua.lua_retstat) then
     local src = "return "..tostring(macroize(invariant, f, output))
     local references = {}
     analyse_chunk(references, src)
-    local g = load(header(references, nil).."\n"..src)
+    local g = loadstring(header(references, nil).."\n"..src)
     if g then
       local ok, h = pcall(g)
       local value
@@ -474,7 +479,7 @@ local function lua_inline_functioncall(invariant, f, output, ...)
 end
 
 local function _loadstring(source)
-  return load(compile(source))
+  return loadstring(compile(source))
 end
 
 local function hash_mod(source)

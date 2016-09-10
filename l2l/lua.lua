@@ -3,7 +3,7 @@
 
 local utils = require("leftry.utils")
 local ast = require("leftry.ast")
-
+local ipairs = require("l2l.iterator")
 local map = utils.map
 local each =  utils.each
 

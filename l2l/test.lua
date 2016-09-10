@@ -4,10 +4,11 @@ local vector = require("l2l.vector")
 local list = require("l2l.list")
 local compiler = require("l2l.compiler")
 local lua = require("l2l.lua")
+local loadstring = _G["loadstring"] or _G["load"]
 
 local function assert_exec_equal(source, ...)
   local src = compiler.compile(source, "test")
-  local ret = {load(src)()}
+  local ret = {loadstring(src)()}
   for i=1, math.max(select("#", ...), #ret) do
     t.assert_equal(ret[i], select(i, ...))
   end

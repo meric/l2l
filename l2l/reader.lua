@@ -2,6 +2,7 @@ local utils = require("leftry").utils
 local lua = require("l2l.lua")
 local list = require("l2l.list")
 local vector = require("l2l.vector")
+local ipairs = require("l2l.iterator")
 
 local lua_keyword = {
   ["and"] = true,

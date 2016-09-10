@@ -1,7 +1,8 @@
 local utils = require("leftry").utils
+local ipairs = require("l2l.iterator")
 
 local unpack = table.unpack or _G["unpack"]
-local pack = table.pack or function(...) return {...} end
+local pack = table.pack or function(...) return {..., n=select("#", ...)} end
 
 local vector = utils.prototype("vector", function(vector, ...)
   return setmetatable(pack(...), vector)
