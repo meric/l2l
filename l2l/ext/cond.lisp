@@ -52,14 +52,14 @@ Usage:
 (fn statize_cond (invariant cdr output)
   (local clauses (vector.cast cdr))
   \
-  if #clauses == 1 then
+  if len(clauses) == 1 then
     return statize(invariant, cdr:car(), output)
   end
   (local value (lua_name:unique "_cond_value"))
   (local found (lua_name:unique "_cond_found"))
   (table.insert output `\local \,value)
   \
-  if #clauses % 2 == 0 then
+  if len(clauses) % 2 == 0 then
     return \(stat_cond invariant output value nil (vector.unpack clauses))
   end
   (table.insert output `\local \,found)
@@ -72,14 +72,14 @@ Usage:
 (fn expize_cond (invariant cdr output)
   (local clauses (vector.cast cdr))
   \
-  if #clauses == 1 then
+  if len(clauses) == 1 then
     return expize(invariant, cdr:car(), output)
   end
   (local value (lua_name:unique "_cond_value"))
   (local found (lua_name:unique "_cond_found"))
   (table.insert output `\local \,value)
   \
-  if #clauses % 2 == 0 then
+  if len(clauses) % 2 == 0 then
     \(table.insert output
       (stat_cond invariant output value nil (vector.unpack clauses)))
     return value

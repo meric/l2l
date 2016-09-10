@@ -153,7 +153,7 @@ function list:unpack()
 end
 
 function list.sub(t, from, to)
-  to = to or #t
+  to = to or len(t)
   from = from or 1
   return list.cast(t, function(i)
     return i >= from and i <= to
@@ -162,12 +162,13 @@ end
 
 function list.cast(t, f)
   -- Cast an ipairs-enumerable object into a list.
-  if not t or #t == 0 then
+  local count = len(t)
+  if not t or count == 0 then
     return nil
   end
   local self = setmetatable({position = data.n + 1}, list)
   local n = data.n
-  data.n = data.n + #t * 2
+  data.n = data.n + count * 2
   for i, v in ipairs(t) do
     n = n + 1
     if f then
@@ -176,7 +177,7 @@ function list.cast(t, f)
       data[n] = v
     end
     n = n + 1
-    if i < #t then
+    if i < count then
       data[n] = n + 1
     end
   end

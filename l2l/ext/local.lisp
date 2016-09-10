@@ -13,7 +13,7 @@ local utils = require("leftry").utils
 (fn stat_local (invariant cdr output)
   \
   local val
-  local count = #cdr
+  local count = len(cdr)
   local names = vector.cast(cdr, nil, function(i, v)
     if i == count then
       val = v

@@ -3,6 +3,7 @@ local lua = require("l2l.lua")
 local list = require("l2l.list")
 local vector = require("l2l.vector")
 local ipairs = require("l2l.iterator")
+local len = require("l2l.len")
 
 local lua_keyword = {
   ["and"] = true,
@@ -338,7 +339,7 @@ local function dispatch_import(invariant, position)
   else
     rest, values = read_list(invariant, position+1)
     sym = values[1]:car()
-    if #values[1] > 1 then
+    if len(values[1]) > 1 then
       alias = values[1]:cdr():car().name
     end
   end

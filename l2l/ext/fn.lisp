@@ -10,10 +10,11 @@ Usage:
 local utils = require("leftry").utils
 
 local function stat_lua_function(invariant, name, parameters, body)
-  assert(utils.hasmetatable(parameters, list) or parameters == nil, "fn.lisp:stat_lua_function")
+  assert(utils.hasmetatable(parameters, list) or parameters == nil,
+    "fn.lisp:stat_lua_function")
   local stats = {}
   for i, value in ipairs(body) do
-    table.insert(stats, compiler.statize(invariant, value, stats, i == #body))
+    table.insert(stats, compiler.statize(invariant, value, stats, i == len(body)))
   end
   local constructor = lua_local_function
 
@@ -36,7 +37,7 @@ end
 local function exp_lua_lambda_function(invariant, parameters, body)
   local stats = {}
   for i, value in ipairs(body) do
-    table.insert(stats, compiler.statize(invariant, value, stats, i == #body))
+    table.insert(stats, compiler.statize(invariant, value, stats, i == len(body)))
   end
   return lua_lambda_function.new(lua_funcbody.new(
     lua_namelist(vector.cast(parameters, function(value)
@@ -55,13 +56,13 @@ local function expize_fn(invariant, cdr, output)
   local cadr = cdr:car()
   validate_function(cadr)
   if utils.hasmetatable(cadr, symbol) then
-    assert(#cdr >= 3, "function missing parameters or body")
+    assert(len(cdr) >= 3, "function missing parameters or body")
     local stat = stat_lua_function(invariant,
       cadr, cdr:cdr():car(), cdr:cdr():cdr())
     table.insert(output, stat)
     return lua_name(cadr)
   else
-    assert(#cdr >= 2, "function missing parameters or body")
+    assert(len(cdr) >= 2, "function missing parameters or body")
     return exp_lua_lambda_function(invariant, cadr, cdr:cdr())
   end
 end
@@ -70,11 +71,11 @@ local function statize_fn(invariant, cdr, output)
   local cadr = cdr:car()
   validate_function(cadr)
   if utils.hasmetatable(cadr, symbol) then
-    assert(#cdr >= 3, "function missing parameters or body")
+    assert(len(cdr) >= 3, "function missing parameters or body")
     return stat_lua_function(invariant,
       cadr, cdr:cdr():car(), cdr:cdr():cdr())
   else
-    assert(#cdr >= 2, "function missing parameters or body")
+    assert(len(cdr) >= 2, "function missing parameters or body")
     return to_stat(exp_lua_lambda_function(invariant, cadr, cdr:cdr()))
   end
 end

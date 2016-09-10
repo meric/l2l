@@ -32,7 +32,7 @@ Usage:
     (assign names values)))
 
 (fn let (vars ...)
-  (cond \#vars > 0
+  (cond \(len(vars)) > 0
     `(do ,(vector.unpack
       (:append
         (vector (locals (list.unpack vars)))

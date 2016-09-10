@@ -425,7 +425,7 @@ end
 
 local function macroize(invariant, f, output)
   assert(utils.hasmetatable(f, lua.lua_lambda_function)
-      and #f.body.block == 1
+      and len(f.body.block) == 1
       and utils.hasmetatable(f.body.block[1], lua.lua_retstat),
       "only single line return lambda functions can be turned into macros")
   local exp = f.body.block[1].explist

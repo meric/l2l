@@ -18,7 +18,7 @@ Usage:
     return lua_nil()
   end
   (local block {})
-  (local count \#cdr)
+  (local count (len cdr))
   (local var (lua_name:unique "_do"))
   (table.insert output `\local \,var)
   \
@@ -47,7 +47,7 @@ Usage:
     return
   end
   (local block {})
-  (local count \#cdr)
+  (local count (len cdr))
   \
   for i, value in ipairs(cdr) do
     local stat

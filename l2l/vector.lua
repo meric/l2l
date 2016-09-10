@@ -1,8 +1,9 @@
 local utils = require("leftry").utils
 local ipairs = require("l2l.iterator")
+local len = require("l2l.len")
 
 local unpack = table.unpack or _G["unpack"]
-local pack = table.pack or function(...) return {..., n=select("#", ...)} end
+local pack = table.pack or function(...) return {n=select("#", ...), ...} end
 
 local vector = utils.prototype("vector", function(vector, ...)
   return setmetatable(pack(...), vector)
@@ -16,7 +17,7 @@ end
 
 function vector:append(t, f)
   local n = self.n
-  self.n = n + #t
+  self.n = n + len(t)
   for i, v in ipairs(t) do
     n = n + 1
     if f then
@@ -60,7 +61,7 @@ end
 
 function vector.sub(t, from, to)
   from = from or 1
-  to = to or #t
+  to = to or len(t)
   return vector.cast(t, nil, function(i)
     return i >= from and i <= to
   end)
@@ -100,7 +101,7 @@ function vector.cast(t, f, g)
 end
 
 function vector:unpack()
-  return unpack(self, 1, #self)
+  return unpack(self, 1, len(self))
 end
 
 function vector:__len()
