@@ -20,16 +20,6 @@
 > now writing Lisp, inside of Lua. I have put duality away, I have seen that
 > the two languages are one. One I read. One I write. One I compile. One I run.
 
-*Obligatory*
-
-> I am the servant of the Qur'an as long as I have life.
-> I am the dust on the path of Muhammad, the Chosen one.
-> If anyone quotes anything except this from my sayings,
-> I am quit of him and outraged by these words.
-
-*[Jalaluddin Rumi](https://en.wikipedia.org/wiki/Rumi)*
-
-
 ## Quick Start ##
 
 ```bash
@@ -168,3 +158,12 @@ make repl
 }
 ```
 
+
+*Obligatory*
+
+> I am the servant of the Qur'an as long as I have life.
+> I am the dust on the path of Muhammad, the Chosen one.
+> If anyone quotes anything except this from my sayings,
+> I am quit of him and outraged by these words.
+
+*[Jalaluddin Rumi](https://en.wikipedia.org/wiki/Rumi)*
