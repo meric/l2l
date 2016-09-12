@@ -1,86 +1,75 @@
+Hybrid Lisp, Lua language.
+
 Requires https://github.com/meric/leftry cloned as a sibling to this repo.
 
 ```bash
-lua l2l/test.lua
+make test
 ```
 
-See [do.lisp](/l2l/ext/do.lisp) for an example.
+[boolean.lisp](/l2l/ext/boolean.lisp), implements `and`, `or` special forms:
 
-`do.lisp` implements the `(do ...)` special form.
+```
+@import quasiquote
+@import quote
+@import fn
+@import local
+@import do
+@import let
+@import cond
 
-`do.lisp` compiles into (formatted by hand):
+(fn circuit_and (invariant cdr output truth)
+  (cond cdr
+    (let (
+      car (:car cdr)
+      ref (lua_name:unique "_and_value"))
+      `\
+        local \,ref = \,\(expize(invariant, car, output))
+        if \,ref then
+          \,(cond (:cdr cdr)
+              (circuit_and invariant (:cdr cdr) output truth)
+              `\\,truth = \,ref)
+        else
+          \,truth = false
+        end)))
 
-```lua
---4027068.2
-local lua = require("l2l.lua")
-local lua_namelist = lua.lua_namelist
-local compiler = require("l2l.compiler")
-local compile_exp = compiler.compile_exp
-local lua_block = lua.lua_block
-local lua_do = lua.lua_do
-local lua_explist = lua.lua_explist
-local lua_nil = lua.lua_nil
-local compile_stat = compiler.compile_stat
-local lua_varlist = lua.lua_varlist
-local lua_name = lua.lua_name
-local lua_assign = lua.lua_assign
-local lua_local = lua.lua_local
+(fn expize_and (invariant cdr output)
+  (let (ref (lua_name:unique "_and_bool"))
+    (table.insert output `\local \,ref = true)
+    (table.insert output (circuit_and invariant cdr output ref))
+    ref))
 
-local function expize_do(invariant,cdr,output)
-  if not cdr then return lua_nil() end
-  local block = {};
-  local len =  # cdr;
-  local var = lua_name:unique("_do");
-  table.insert(output,
-    lua_block({
-      lua_local.new(
-        lua_namelist({var}))
-      }));
-  for i, value in ipairs(cdr) do
-    if i < len then
-      local stat = compile_stat(invariant,value,block);
-      if stat then
-        table.insert(block,stat)
-      end
-    else
-      table.insert(block,
-        lua_block({
-          lua_assign.new(
-            lua_varlist({var}),
-              lua_explist({
-                compile_exp(invariant,value,block)
-              }))
-        }))
-    end
-  end;
-  table.insert(output,
-    lua_block({
-      lua_do.new(
-        lua_block({
-          lua_block({unpack(block)})
-        }))
-    }));
-  return var
-end
+(fn statize_and (invariant cdr output)
+  (to_stat (expize_and invariant cdr output)))
 
-local function statize_do(invariant,cdr,output)
-  if not cdr then return  end;
-  local block = {};
-  for i,value in ipairs(cdr) do
-    local stat = compile_stat(invariant,value,block);
-    if stat then table.insert(block,stat) end
-  end;
-  return lua_block({
-    lua_do.new(
-      lua_block({
-        lua_block({unpack(block)})
-      }))
-  })
-end
+(fn circuit_or (invariant cdr output truth)
+  (cond cdr
+    (let (
+      car (:car cdr)
+      ref (lua_name:unique "_or_value"))
+      `\
+        if not \,truth then
+          local \,ref = \,\(expize(invariant, car, output))
+          if \,ref then
+            \,truth = \,ref
+          end
+        end
+        \,(cond (:cdr cdr)
+            (circuit_or invariant (:cdr cdr) output truth)))))
 
-return {
-  lua={
-    ["do"]={expize=expize_do,statize=statize_do}
+(fn expize_or (invariant cdr output)
+  (let (ref (lua_name:unique "_or_bool"))
+    (table.insert output `\local \,ref = false)
+    (table.insert output (circuit_or invariant cdr output ref))
+    ref))
+
+(fn statize_or (invariant cdr output)
+  (to_stat (expize_or invariant cdr output)))
+
+{
+  lua = {
+    ["and"] = {expize=expize_and, statize=statize_and},
+    ["or"] = {expize=expize_or, statize=statize_or}
   }
 }
 ```
+
