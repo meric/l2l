@@ -4,12 +4,12 @@
 
 > The Tao begot one. One begot two.
 
-*[Lao Tzu](http://terebess.hu/english/tao/gia.html#Kap42)*
+*[Laozi](http://terebess.hu/english/tao/gia.html#Kap42)*
 
 > Now I do not know whether I was then a man dreaming
 > I was a butterfly, or whether I am now a butterfly, dreaming I am a man.
 
-*[Zhuang Zhou](http://ctext.org/zhuangzi/adjustment-of-controversies?searchu=butterfly&searchmode=showall#result)*
+*[Zhuangzi](http://ctext.org/zhuangzi/adjustment-of-controversies?searchu=butterfly&searchmode=showall#result)*
 
 > I have put duality away, I have seen that the two worlds are one;
 > One I seek, One I know, One I see, One I call.
