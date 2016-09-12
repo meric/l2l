@@ -32,7 +32,7 @@ make repl
   (table.insert output `\local \,ref = false)
   ```
 
-* Macro aliasing.
+* Macro and special form aliasing.
 * Macro as modules.
 
   ```lisp
