@@ -18,7 +18,7 @@
 
 > Now I do not know whether I was writing Lua inside of Lisp, or whether I am
 > now writing Lisp, inside of Lua. I have put duality away, I have seen that
-> the two languages are one. One I write. One I compile. One I run.
+> the two languages are one. One I read. One I write. One I compile. One I run.
 
 ## Quick Start ##
 
