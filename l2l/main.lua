@@ -2,6 +2,8 @@ local compiler = require("l2l.compiler")
 
 local version = "0.0.2-pre"
 
+local loadstring = _G["loadstring"] or _G["load"]
+
 local paired_options = {eval=true, load=true, compile=true}
 local single_options = {repl=true, help=true, version=true}
 local aliases = {r="repl", e="eval", l="load", c="compile",
