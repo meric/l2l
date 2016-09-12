@@ -115,6 +115,18 @@ function test_and()
   assert_exec_equal(
     [[(and 1 (+ 1 2))]], 
     3)
+  assert_exec_equal(
+    [[(and true true)]],
+    true)
+end
+
+function test_or()
+  assert_exec_equal(
+    [[(or 1 (+ 1 2))]],
+    1)
+  assert_exec_equal(
+    [[(or false true)]],
+    true)
 end
 
 function test_do()

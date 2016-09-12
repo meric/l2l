@@ -387,7 +387,8 @@ local function compile(source, mod, extensions)
         "cond",
         "do",
         "set",
-        "let"
+        "let",
+        "boolean"
       }
     end
   end

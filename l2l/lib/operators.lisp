@@ -47,7 +47,7 @@
         \not a 0
         \not ... \1/a
         \a / \(* ...))),
-  [(\'and)] = \
+  [(\'and_)] = \
     (fn (...)
       (local args (vector ...))
       (local x true)
