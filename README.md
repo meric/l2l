@@ -2,6 +2,8 @@
 
 "l2l" is a superset of Lisp and Lua.
 
+## Philosophy ##
+
 > The Tao begot one. One begot two.
 
 *[Laozi](http://terebess.hu/english/tao/gia.html#Kap42)*
@@ -159,7 +161,7 @@ make repl
 ```
 
 
-*Obligatory*
+#### Obligatory ####
 
 > I am the servant of the Qur'an as long as I have life.
 > I am the dust on the path of Muhammad, the Chosen one.
