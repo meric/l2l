@@ -1,5 +1,7 @@
 # l2l #
 
+"l2l" is a superset of Lisp and Lua.
+
 > The Tao begot one. One begot two.
 
 *[Lao Tzu](http://terebess.hu/english/tao/gia.html#Kap42)*
@@ -17,8 +19,6 @@
 > Now I do not know whether I was writing Lua inside of Lisp, or whether I am
 > now writing Lisp, inside of Lua. I have put duality away, I have seen that
 > the two languages are one. One I write. One I compile. One I run.
-
-"l2l" is a language that is the superset of Lisp and Lua.
 
 ## Quick Start ##
 
