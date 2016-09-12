@@ -48,11 +48,11 @@ make repl
 * Special forms in Lua.
 
   ```lua
-  @import iterator
-    \
-    map(function(x) return x + 2 end,
-      filter(function(x) return x % 2 == 0 end,
-        map(function(x) return x + 1 end, {1, 2, 3, 4})))
+@import iterator
+\
+map(function(x) return x + 2 end,
+  filter(function(x) return x % 2 == 0 end,
+    map(function(x) return x + 1 end, {1, 2, 3, 4})))
   ```
 
   Compiles into (nested loops collapsed into a single pass):
