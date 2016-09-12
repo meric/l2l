@@ -1,8 +1,8 @@
 # l2l #
 
-> The Tao gave birth to the One. The One gave birth to the Two.
+> The Tao begot one. One begot two.
 
-*[Lao Tzu](http://www.mobilewords.pro/Tao/wu.htm#42)*
+*[Lao Tzu](http://terebess.hu/english/tao/gia.html#Kap42)*
 
 > Now I do not know whether I was then a man dreaming
 > I was a butterfly, or whether I am now a butterfly, dreaming I am a man.
@@ -14,8 +14,9 @@
 
 *[Jalaluddin Rumi](http://thefoggiestnotion.com/rumi.htm)*
 
-> Lisp is Lisp. Lua is Lua. Lisp and Lua as One.
-
+> Now I do not know whether I was writing Lua inside of Lisp, or whether I am
+> now writing Lisp, inside of Lua. I have put duality away, I have seen that
+> the two languages are one. One I write. One I compile. One I run.
 
 "l2l" is a language that is the superset of Lisp and Lua.
 
