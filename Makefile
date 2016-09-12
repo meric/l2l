@@ -1,17 +1,15 @@
-.PHONY: samples
-
-all: check samples test
-
-repl:
-	./bin/l2l
-
+# luarocks install --local luacheck
 check:
-	luacheck --no-color --exclude-files compat.lua sample* \
-	  --new-globals TypeException _R _C _D _M symbol resolve setfenv \
-	  -- l2l/*.lua
+	luacheck --exclude-files l2l/ext/*.lua l2l/lib/*.lua l2l/test.lua -- l2l/
 
-samples:
-	bash ./bin/build samples/sample04/main.lisp samples/sample0*.lisp
+clean:
+	rm l2l/ext/*.lua; rm l2l/lib/*.lua
 
-test: tests/*.lisp tests/init.lua *.lua
-	lua tests/init.lua
+test:
+	lua -l luarocks.loader l2l/test.lua
+
+test_luajit:
+	luajit -l luarocks.loader l2l/test.lua
+
+count:
+	cloc l2l/*.lua l2l/ext/*.lisp l2l/lib/*.lisp

@@ -1,429 +1,473 @@
-local module_path = (...):gsub('reader$', '')
-local exception = require(module_path .. "exception")
-local raise = exception.raise
+local utils = require("leftry").utils
+local lua = require("l2l.lua")
+local list = require("l2l.list")
+local vector = require("l2l.vector")
+local ipairs = require("l2l.iterator")
+local len = require("l2l.len")
 
-local itertools = require(module_path .. "itertools")
-local pack, pair, tolist = itertools.pack, itertools.pair, itertools.tolist
+local lua_keyword = {
+  ["and"] = true,
+  ["break"] = true,
+  ["do"] = true,
+  ["else"] = true,
+  ["elseif"] = true,
+  ["end"] = true,
+  ["for"] = true,
+  ["function"] = true,
+  ["if"] = true,
+  ["in"] = true,
+  ["local"] = true,
+  ["not"] = true,
+  ["or"] = true,
+  ["repeat"] = true,
+  ["return"] = true,
+  ["then"] = true,
+  ["until"] = true,
+  ["while"] = true
+}
 
+local read, readifnot
 
--- Create a new type `symbol`.
-symbol = setmetatable({
-  __tostring = function(self)
-    return tostring(self[1])
-  end,
-  __eq = function(self, other)
-    return getmetatable(self) == getmetatable(other) and
-      tostring(self) == tostring(other)
+local lua_none = setmetatable({}, {__tostring = function()
+  return "lua_none"
+end})
+
+local function matchreadmacro(R, byte)
+  if not byte or not R then
+    return nil
   end
-}, {__call = function(_, name)
-    return setmetatable({name}, symbol)
-  end})
-symbol.__index = symbol
-
-local function tofile(data)
-  local tmpfile = io.tmpfile()
-  tmpfile:write(tostring(data))
-  tmpfile:seek("set")
-  return tmpfile
-end
-
-local EOFException =
-  exception.exception("End of file")
-
-local UnmatchedRightBracketException =
-  exception.exception("Unmatched right bracket.")
-
-local UnmatchedRightBraceException =
-  exception.exception("Unmatched right brace.")
-
-local UnmatchedLeftBracketException =
-  exception.exception("Unmatched left bracket.")
-
-local UnmatchedLeftBraceException =
-  exception.exception("Unmatched left brace.")
-
-local UnmatchedRightParenException =
-  exception.exception("Unmatched right parenthesis.")
-
-local UnmatchedLeftParenException = 
-  exception.exception(
-    function(_, stream, position)
-      local index = stream:seek("cur")
-      local src = stream:seek("set", 0) and stream:read("*all")
-      stream:seek("set", index)
-      local messages = exception.formatsource(src,
-        "Unmatched left parenthesis.\nLeft parenthesis", position)
-      table.insert(messages, "")
-      return table.concat(messages, "\n").."Missing right parenthesis detected"
-    end)
-
-local UnmatchedDoubleQuoteException =
-  exception.exception("Unmatched double quote.")
-
-local UndefinedDispatchMacroException =
-  exception.exception("Undefined dispatch macro.")
-
-
-local function read_number(stream, byte)
-  local number = ""
-  repeat
-    number = number..byte
-    byte = stream:read(1)
-  until not byte or byte:match("%s") or not tonumber(number..tostring(byte))
-  if byte then    
-    stream:seek("cur", -1)
-  end
-  return tonumber(number)
-end
-
-local function read_symbol(stream, byte)
-  local sym = ""
-  repeat
-    sym = sym..byte
-    byte = stream:read(1)
-  until (_R[byte] and byte ~= ".") or not byte or byte:match("%s")
-  if byte then
-    stream:seek("cur", -1)
-  end
-  return symbol(sym)
-end
-
---- Reads a lisp expression from string.
--- @param input (Optional) An input stream, by default the current stream.
-local function read(input, suppress_eof_error)
-  input = input or io.input()
-  local byte
-  repeat
-    byte = input:read(1)
-    local count, objs
-    if _R[byte] then
-      objs, count = pack(_R[byte](input, byte))
-    elseif byte then
-      if byte:match('-') then
-        if input:read(1):match('[0-9]') then
-          input:seek("cur", -1)
-          objs, count = pack(read_number(input, byte))
-        else
-          input:seek("cur", -1)
-          objs, count = pack(read_symbol(input, byte))
-        end
-      elseif byte:match('[0-9]') then
-        objs, count = pack(read_number(input, byte))
-      elseif not byte:match('%s') then
-        objs, count = pack(read_symbol(input, byte))
+  if R[byte] then
+    for i=1, #R[byte] do
+      if R[byte][i] then
+        return byte, R[byte]
       end
     end
-    if count and count > 0 then
-      return table.unpack(objs, 1, count)
-    end
-  until byte == nil
-  input:seek("cur", -1)
-  if suppress_eof_error then
-    return
-  end
-  raise(EOFException(input))
-end 
-
-local function _read(stream, exceptions)
-  local objs, count = pack(pcall(read, stream))
-  local ok = table.remove(objs, 1)
-  if ok then
-    return table.unpack(objs, 1, count - 1)
   else
-    local except = objs[1]
-    if exceptions[getmetatable(except)] then
-      exceptions[getmetatable(except)](except)
-    elseif type(except) ~= "string" then
-      raise(except)
+    -- O(N) Pattern macros; N = number of read macro indices.
+    for pattern, _ in pairs(R) do
+      if type(pattern) == "string"  -- Ignore default macro.
+          and #pattern > 1          -- Ignore single byte macro.
+          and string.char(byte):match(pattern)   -- Matches pattern.
+          and R[pattern]           -- Is not `false`.
+          and #R[pattern] > 0 then -- Pattern has read macros.
+        return pattern
+      end
+    end
+  end
+
+  -- O(N) Default macros; N = number of read macro indices.
+  return 1, R[1]
+end
+
+
+
+local symbol = utils.prototype("symbol", function(symbol, name)
+  if not symbol.cache[name] then
+    symbol.cache[name] = setmetatable({name}, symbol)
+  end
+  return symbol.cache[name]
+end)
+
+symbol.cache = {}
+
+local function mangle(text)
+  if text == "-" then
+    return "_45"
+  end
+  if utils.hasmetatable(text, symbol) then
+    text = text[1]
+  end
+  local prefix, pattern = ""
+  if text == "..." then
+    return "..."
+  end
+  if lua_keyword[text] then
+    pattern = "(.)"
+    prefix = text
+  else
+    pattern = "[^:_a-zA-Z0-9.%[%]]"
+  end
+  text = text:gsub("[.][.]", "_dot_dot")
+  return prefix..text:gsub(pattern, function(char)
+    if char == "-" then
+      return "_"
+    elseif char == "!" then
+      return "_bang"
     else
-      error(except)
-    end
-  end
-end
-
-local function with_R(newR, f, ...)
-  local R = _R
-  _G._R = setmetatable(newR, {__index = R})
-  local objs, count = pack(f(...))
-  _G._R = R
-  return table.unpack(objs, 1, count)
-end
-
-local function read_hash_literal(_)
-  return symbol("#")
-end
-
-local function read_comment(stream)
-  repeat
-    local byte = stream:read(1)
-  until not byte or byte == "\n"
-end
-
-local function read_right_paren(stream)
-  raise(UnmatchedRightParenException(stream))
-end
-
-local function read_right_brace(stream)
-  raise(UnmatchedRightBraceException(stream))
-end
-
-local function read_right_bracket(stream)
-  raise(UnmatchedRightBracketException(stream))
-end
-
-local function read_string(stream)
-  local str, byte = "", ""
-  local escaped = false
-  repeat
-    if not escaped and byte == '\\' then
-      escaped = true
-    else
-      if escaped and byte == "n" then
-        byte = "\n"
-      end
-      str = str..byte  
-      escaped = false
-    end
-    byte = stream:read(1)
-  until not byte or (byte:match('"') and not escaped)
-  if not byte then
-    raise(UnmatchedDoubleQuoteException(stream:seek("cur", -1) and stream))
-  end
-  return str
-end
-
-local function read_attribute(stream, byte)
-  local position = stream:seek("cur")
-  local char = stream:read(1)
-  stream:seek("set", position)
-
-  if char and (char:match("%s") or char:match("[.]")) then
-    stream:seek("set", position)
-    return with_R({["."] = false}, read_symbol, stream, byte)
-  end
-
-  local act = nil
-  local attr = _read(stream, {
-      [UnmatchedRightParenException] = function(_)
-        act = false
-      end
-    })
-
-  if act == false then
-    stream:seek("set", position)
-    return read_symbol(stream, byte)
-  end
-  
-  local obj = _read(stream, {
-      [UnmatchedRightParenException] = function(_)
-        act = false
-        stream:seek("set", position)
-      end
-    })
-
-  if act == false then
-    stream:seek("set", position)
-    return read_symbol(stream, byte)
-  end
-  return symbol(byte), tostring(attr), obj
-end
-
-local read_method = read_attribute
-
-
-local function read_vector(stream)
-  local parameters = {}
-  while true do
-    local rightbracket = false
-    local append, count = pack(_read(stream, {
-      [UnmatchedRightBracketException] = function(_)
-        rightbracket = true
-      end,
-      [EOFException] = function()
-        raise(UnmatchedLeftBracketException(stream))
-      end
-    }))
-    for i=1, count, 2 do
-      local obj = append[i]
-      table.insert(parameters, obj)
-    end
-    if rightbracket then
-      return pair({symbol("vector"), tolist(parameters)})
-    end
-  end
-end
-
-local function read_table(stream)
-  local parameters = {}
-  while true do
-    local rightbrace = false
-    local append, count = pack(_read(stream, {
-      [UnmatchedRightBraceException] = function(_)
-        rightbrace = true
-      end,
-      [EOFException] = function(_)
-        raise(UnmatchedLeftBraceException(stream))
-      end
-    }))
-    for i=1, count, 2 do
-      local obj = append[i]
-      table.insert(parameters, obj)
-    end
-    if rightbrace then
-      return pair({symbol("dict"), tolist(parameters)})
-    end
-  end
-end
-
-local function read_list(stream)
-  local objs = nil -- last 
-
-  -- Keep track of second to last and third to last, to implement 
-  -- the '. in '(1 2 . 3).
-  local pre1 = nil -- second to last
-  local pre2 = nil -- third to last
-  local orig = nil
-  local position = stream:seek("cur")
-
-  -- local R = _R
-  local index = 1
-
-  return with_R({
-    ["."] = read_attribute,
-    [":"] = read_method,
-  }, function()
-    while true do
-      local rightparen = false
-      local append, count = pack(_read(stream, {
-        [UnmatchedRightParenException] = function(_)
-          rightparen = true
-        end,
-        [EOFException] = function(_)
-          raise(UnmatchedLeftParenException(stream, position))
-        end
-      }))
-      local _position = stream:seek("cur")
-      for i=1, count do
-        local obj = append[i]
-        if objs == nil then
-          orig = pair({obj, nil})
-          pre2 = pre1
-          pre1 = objs
-          objs = orig
-          _R.META[orig] = {
-            [0] = _position,
-            [index] = _position
-          }
-        else
-          objs[2] = pair({obj, nil})
-          pre2 = pre1
-          pre1 = objs
-          objs = objs[2]
-          _R.META[orig][index] = _position
-        end
-        index = index + 1
-      end
-      if rightparen then
-        if pre1 and pre1[1] == symbol(".") then
-          pre2[2] = pre1[2][1]
-        end
-        return orig
-      end
+      return "_"..char:byte()
     end
   end)
 end
 
-local function read_table_quote(stream)
-  return pair({symbol('table-quote'), tolist({read(stream)})})
+function symbol:__eq(sym)
+  return getmetatable(self) == getmetatable(sym) and
+    self:mangle() == sym:mangle()
 end
 
-local function read_quote(stream)
-  return pair({symbol('quote'), tolist({read(stream)})})
+function symbol:__tostring()
+  return "symbol("..utils.escape(tostring(self[1]))..")"
 end
 
-local function read_quasiquote(stream)
-  return pair({symbol('quasiquote'), tolist({read(stream)})})
+function symbol:mangle()
+  return mangle(self[1])
 end
 
-local function read_quasiquote_eval(stream)
-  return pair({symbol('quasiquote-eval'), tolist({read(stream)})})
+function symbol:__index(k)
+  if k == "name" then
+    return self[1]
+  end
+  return symbol[k]
 end
 
-local function read_dispatch_macro(stream)
-  local byte = stream:read(1)
-  if not byte then
-    raise(EOFException(stream:seek("cur", -1) and stream))
-  elseif not _D[byte] then
-    raise(UndefinedDispatchMacroException(stream))
-  else
-    local objs, count = pack(_D[byte](stream, byte))
-    if count > 0 then
-      return table.unpack(objs, 1, count)
+local function read_symbol(invariant, position)
+  local source, rest = invariant.source
+  local R = invariant.read
+  local dot, zero, nine, minus = 46, 48, 57, 45
+  for i=position, #source do
+    local byte = source:byte(i)
+    rest = i + 1
+    if not byte or (matchreadmacro(R, byte) ~= 1
+        and byte ~= dot and byte ~= minus
+        and not (byte >= zero and byte <= nine)) then
+      rest = rest - 1
+      break
+    end
+  end
+
+  if not rest or rest == position then
+    return
+  end
+
+  return rest, {symbol(source:sub(position, rest-1))}
+end
+
+local function read_right_paren()
+  error("unmatched right parenthesis")
+end
+
+local function read_length(invariant, position)
+  local rest, values = read(invariant, position + 1)
+  if rest then
+    if not values[1] then
+      error('nothing to length')
+    end
+    values[1] = list(symbol("length"), values[1])
+    return rest, values
+  end
+end
+
+local function read_quote(invariant, position)
+  local rest, values = read(invariant, position + 1)
+  if rest then
+    if not values[1] then
+      error('nothing to quote')
+    end
+    values[1] = list(symbol("quote"), values[1])
+    return rest, values
+  end
+end
+
+local function read_list(invariant, position)
+  local size = #invariant.source
+  local t = vector()
+  local ok, rest, values = true, position + 1
+  while ok do
+    if rest > size then
+      error("no bytes")
+    end
+    ok, rest, values = readifnot(invariant, rest, read_right_paren)
+    if ok then
+      for _, value in ipairs(values) do
+        t:insert(value)
+      end
+    end
+  end
+
+  if not rest then
+    return
+  end
+
+  -- Add 1 for the right_paren.
+  return rest + 1, vector(list.cast(t))
+end
+
+local whitespace = {
+  [string.byte(" ")] = true,
+  [string.byte("\t")] = true,
+  [string.byte("\r")] = true,
+  [string.byte("\n")] = true
+}
+
+local function skip_whitespace(invariant, position)
+  local source, rest = invariant.source
+  for i=position, #source do
+    if not whitespace[source:byte(i)] then
+      rest = i
+      break
+    end
+  end
+  -- If no values returned, readifnot will keep advancing, which is what we
+  -- want for skip_whitespace.
+  return rest
+end
+
+local function read_semicolon(_, position)
+  return position + 1, {}
+end
+
+local function read_lua(invariant, position)
+  local rest, value = lua.Block(invariant, position + 1)
+  if rest then
+    return rest, {value}
+  end
+  rest, value = lua.Exp(invariant, position + 1)
+  return rest, {value}
+end
+
+local function read_lua_comment(invariant, position)
+  local rest = lua.Comment(invariant, skip_whitespace(invariant, position))
+  if rest then
+    return rest, {}
+  end
+end
+
+local function read_lua_number(invariant, position)
+  local rest, value = lua.Numeral(invariant, position)
+  if rest then
+    return rest, {value}
+  end
+end
+
+local function read_lua_literal(invariant, position)
+  local rest, value = lua.Exp(invariant, position)
+  return rest, {value}
+end
+
+function readifnot(invariant, position, stop)
+  local R, source = invariant.read, invariant.source
+  local rest, macro = position
+
+  if position > #source then
+    return false
+  end
+
+  local values
+
+  while (not macro or not values) and rest <= #source do
+    local byte = source:byte(rest)
+    local index = matchreadmacro(R, byte)
+    position = rest
+    for i=1, #R[index] do
+      macro = R[index][i]
+      if stop == macro then
+        return false, rest
+      end
+      rest, values = macro(invariant, rest)
+      if rest then
+        break
+      elseif i < #R[index] then
+        rest = position
+      end
+    end
+    if rest and values then
+      return true, rest, values
+    elseif not rest then
+      return false
+    end
+  end
+  return false
+end
+
+local function load_extension(invariant, mod, alias)
+  -- Special form and Macro extensions can be alias namespaced.
+  -- Read macros cannot.
+  if mod.lua then
+    for k, x in pairs(mod.lua) do
+      if utils.hasmetatable(k, symbol) then
+        k = k.name
+      end
+      if alias then
+        k = alias .. "." .. k
+      end
+      invariant.lua[k] = x
+    end
+  end
+  if mod.macro then
+    for k, x in pairs(mod.macro) do
+      if utils.hasmetatable(k, symbol) then
+        k = k.name
+      end
+      if alias then
+        k = alias .. "." .. k
+      end
+      invariant.macro[k] = x
+    end
+  end
+  if mod.read then
+    assert(not alias, "read macros cannot be namespaced.")
+    for k, xs in pairs(mod.read) do
+      if type(k) == "string" then
+        k = string.byte(k)
+      end
+      for _, x in ipairs(xs) do
+        invariant.read[k] = invariant.read[k] or {}
+        if not utils.contains(invariant.read[k], x) then
+          table.insert(invariant.read[k], x)
+        end
+      end
     end
   end
 end
 
+local function import_extension(_, name)
+  local compiler = require("l2l.compiler")
+  local ok, mod = pcall(compiler.import, name)
+  if not ok and string.match(mod, "not found") then
+    mod = compiler.import("l2l.ext."..name, {})
+  end
+  if not mod then
+    error("cannot load "..name)
+  end
+  return mod
+end
 
--- Dispatch character table. See `read_dispatch_macro`.
-_D = {
---  ['\\'] = read_character,
-  ['\''] = read_table_quote,
-  [' '] = read_hash_literal
-}
-
--- Read macro table. See `read`.
--- A read macro table entry can be swapped during read time to modify the
--- reader while it is reading. Use `with_R` to swap a read macro table
--- entry temporarily and reset the _R table at the end of the operation.
-_R = {
-  -- `META` stores the position of each element read using `read_list`.
-  -- Do not swap out META.
-  META = {},
-  -- `position` is a method for retrieving positions of elements previously
-  -- read using read_list, which were stored in META.
-  -- Do not swap out position.
-  position = function(alist, index)
-    if alist and _R.META[alist] then
-      return _R.META[alist][index or 0]
+local function dispatch_import(invariant, position)
+  local rest, values = read_symbol(invariant, position+1)
+  local sym, alias
+  if rest then
+    sym = values[1]
+  else
+    rest, values = read_list(invariant, position+1)
+    sym = values[1]:car()
+    if len(values[1]) > 1 then
+      alias = values[1]:cdr():car().name
     end
-  end,
-  [';'] = read_comment,
-  ['{'] = read_table,
-  ['}'] = read_right_brace,
-  ['['] = read_vector,
-  [']'] = read_right_bracket,
-  ['('] = read_list,
-  [')'] = read_right_paren,
-  ['"'] = read_string,
-  ['#'] = read_dispatch_macro,
-  ['`'] = read_quasiquote,
-  [','] = read_quasiquote_eval,
-  ["'"] = read_quote,
-}
+  end
+  if rest then
+    local name = sym[1]
+    local mod = import_extension(invariant, name)
+    load_extension(invariant, mod, alias)
+    return rest, {}
+  end
+end
+
+local function read_dispatch(invariant, position)
+  local rest, values = read_symbol(invariant, position+1)
+  if rest then
+    local name = values[1]:mangle()
+    local dispatches = invariant.dispatch[name]
+    if not dispatches then
+      error("no dispatch: "..name)
+    end
+    for _, dispatch in ipairs(dispatches) do
+      local r, v = dispatch(invariant, rest)
+      if r then
+        return r, v
+      end
+    end
+    error("no matched dispatch: "..name)
+  end
+end
+
+local function expand(invariant, data)
+  -- assert(invariant, "missing invariant")
+  local expanded = false
+  local _expand = function(value)
+    local d, x = expand(invariant, value)
+    expanded = expanded or x
+    return d
+  end
+  local macro = invariant.macro
+  if utils.hasmetatable(data, list) then
+    local car, cdr = data:car(), data:cdr()
+    if utils.hasmetatable(car, symbol) and macro[car.name] then
+      return expand(invariant, macro[car.name](
+        vector.unpack(vector.cast(cdr, _expand)))), true
+    else
+      data = list.cast(data, _expand)
+      return data, expanded
+    end
+  elseif lua.lua_ast[getmetatable(data)] then
+    data = data:gsub(list, function(value)
+      local d, x = expand(invariant, value)
+      expanded = expanded or x
+      return d
+    end)
+    return data, expanded
+  end
+  return data, expanded
+end
+
+local function inherit(invariant, source)
+  local new = {}
+  for k, v in pairs(invariant) do
+    if k ~= "source" then
+      new[k] = v
+    else
+      new.source = source
+    end
+  end
+  return new
+end
+
+
+local function environ(source)
+  return {
+    events = {},
+    macro = {},
+    dispatch = {
+      ["import"] = {dispatch_import}
+    },
+    lua = {},
+    read = {
+      [string.byte("@")] = {read_dispatch},
+      [string.byte("#")] = {read_length},
+      [string.byte("\\")] = {read_lua},
+      [string.byte("(")] = {read_list},
+      [string.byte(";")] = {read_semicolon},
+      [string.byte(")")] = {read_right_paren},
+      [string.byte('{')] = {read_lua_literal},
+      [string.byte('"')] = {read_lua_literal},
+      [string.byte("-")] = {read_lua_number, read_lua_comment, read_symbol},
+
+      -- Implement skip_whitespace as a single byte read macro, because
+      -- skip_whitespace is the most common read_macro evaluated and pattern
+      -- macros are relatively expensive.
+      [string.byte(" ")]={skip_whitespace},
+      [string.byte("\t")]={skip_whitespace},
+      [string.byte("\n")]={skip_whitespace},
+      [string.byte("\r")]={skip_whitespace},
+
+      -- Pattern indices should not overlap with any other pattern index.
+      ["[0-9]"]={read_lua_literal},
+
+      -- Default read macro.
+      {read_symbol}
+    },
+    source = source:match("^(.-)%s*$")
+  }
+end
+
+function read(invariant, position)
+  return select(2, readifnot(invariant, position or 1))
+end
+
 
 return {
-  tofile = tofile,
-  EOFException = EOFException,
-  UnmatchedRightParenException = UnmatchedRightParenException,
-  UnmatchedLeftParenException = UnmatchedLeftParenException,
-  UnmatchedDoubleQuoteException = UnmatchedDoubleQuoteException,
-  UndefinedDispatchMacroException = UndefinedDispatchMacroException,
+  lua_none = lua_none,
   read = read,
-  read_method = read_method,
-  read_attribute = read_attribute,
-  read_number = read_number,
-  read_symbol = read_symbol,
-  read_quasiquote = read_quasiquote,
-  read_string = read_string,
-  read_vector = read_vector,
-  read_dispatch_macro = read_dispatch_macro,
+  expand = expand,
+  environ = environ,
+  load_extension = load_extension,
+  import_extension = import_extension,
+  inherit = inherit,
+  read_lua = read_lua,
   read_list = read_list,
-  read_right_bracket = read_right_bracket,
-  read_right_brace = read_right_brace,
   read_right_paren = read_right_paren,
-  read_quasiquote_eval = read_quasiquote_eval,
-  read_table_quote = read_table_quote,
-  read_table = read_table,
-  read_comment = read_comment,
-  read_dispatch_macro = read_dispatch_macro
+  read_lua_literal = read_lua_literal,
+  read_quote = read_quote,
+  read_symbol = read_symbol,
+  symbol=symbol,
+  skip_whitespace = skip_whitespace
 }
+

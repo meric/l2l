@@ -70,9 +70,9 @@ bin/l2l
 ;; Welcome to Lisp-To-Lua REPL!
 ;; Type '(print "hello world!") to start.
 >> (import sample02) ;; sample02.lisp defines the if1 macro.
-=	true
+= true
 >> (if1 false 1 2)
-=	2
+= 2
 ```
 
 Use in Lua

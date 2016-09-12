@@ -1,4 +1,4 @@
 .DS_Store
-lua
-#out.lua
-ext
+*.lispc
+l2l/ext/*.lua
+l2l/lib/*.lua
