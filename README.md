@@ -2,7 +2,7 @@
 
 > The Tao gave birth to the One. The One gave birth to the Two.
 
-*[Lao Zi](http://www.mobilewords.pro/Tao/wu.htm#42)*
+*[Lao Tzu](http://www.mobilewords.pro/Tao/wu.htm#42)*
 
 > Now I do not know whether I was then a man dreaming
 > I was a butterfly, or whether I am now a butterfly, dreaming I am a man.
