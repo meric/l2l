@@ -368,7 +368,11 @@ local function import(mod, extends)
 end
 
 local function compile(source, mod, extensions)
-  local invariant = reader.environ(source, 1)
+  local invariant = source
+
+  if type(source) == "string" then
+    invariant = reader.environ(source, 1)
+  end
 
   source = invariant.source
 

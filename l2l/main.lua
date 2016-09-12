@@ -1,4 +1,5 @@
 local compiler = require("l2l.compiler")
+local reader = require("l2l.reader")
 
 local version = "0.0.2-pre"
 
@@ -15,6 +16,7 @@ end
 
 local trace, err
 local handler = function(e) trace, err = debug.traceback(2), e end
+local invariant = reader.environ("")
 
 local function repl(partial)
   if(partial) then
@@ -32,7 +34,9 @@ local function repl(partial)
   end
   input = (partial or "") .. input
 
-  local compiled_ok, src_or_err = pcall(compiler.compile, input, "*repl*")
+  invariant.source = input
+
+  local compiled_ok, src_or_err = pcall(compiler.compile, invariant, "*repl*")
 
   if(compiled_ok) then
     local vals = {xpcall(loadstring(src_or_err), handler)}
