@@ -48,31 +48,31 @@ make repl
 * Special forms in Lua.
 
   ```lua
-@import iterator
-\
-map(function(x) return x + 2 end,
-  filter(function(x) return x % 2 == 0 end,
-    map(function(x) return x + 1 end, {1, 2, 3, 4})))
+  @import iterator
+  \
+  map(function(x) return x + 2 end,
+    filter(function(x) return x % 2 == 0 end,
+      map(function(x) return x + 1 end, {1, 2, 3, 4})))
   ```
 
   Compiles into (nested loops collapsed into a single pass):
 
   ```lua
-local ipairs = require("l2l.iterator")
-local vector = require("l2l.vector")
-local next38,invariant37,i39 = ipairs({1,2,3,4});
-local values41 = vector();
-while i39 do
-  local v40;i39,v40=next38(invariant37,i39);
-  if i39 then
-    v40=v40 + 1;
-    if v40 % 2 == 0 then
-      v40=v40 + 2;
-      (values41):insert(v40)
+  local ipairs = require("l2l.iterator")
+  local vector = require("l2l.vector")
+  local next38,invariant37,i39 = ipairs({1,2,3,4});
+  local values41 = vector();
+  while i39 do
+    local v40;i39,v40=next38(invariant37,i39);
+    if i39 then
+      v40=v40 + 1;
+      if v40 % 2 == 0 then
+        v40=v40 + 2;
+        (values41):insert(v40)
+      end
     end
   end
-end
-return values41
+  return values41
   ```
 
 ## Example ##
