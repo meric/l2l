@@ -32,6 +32,12 @@ function test_local()
     1)
 end
 
+function test_length()
+  assert_exec_equal(
+    [[#{1, 2, 3, 4}]],
+    4)
+end
+
 function test_string()
   assert_exec_equal(
     [["hello"]],
