@@ -2,7 +2,7 @@
 
 > The Tao gave birth to the One. The One gave birth to the Two.
 
-> Lisp is Lisp. Lua is Lua. Lisp and Lua is One.
+> Lisp is Lisp. Lua is Lua. Lisp and Lua as One.
 
 "l2l" is a language that is the superset of Lisp and Lua.
 
