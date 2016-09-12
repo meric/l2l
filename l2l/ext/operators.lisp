@@ -42,20 +42,6 @@ Usage:
     \a == symbol("..."); '\(\/)(...)
     `\(1/\,a)))
 
-(fn and (a ...)
-  (cond
-    \not a true
-    ... `\(\,a and \,(and ...))
-    \a == symbol("..."); '\(\and)(...)
-    a))
-
-(fn or (a ...)
-  (cond
-    \not a false
-    ... `\(\,a or \,(or ...))
-    \a == symbol("..."); '\(\or)(...)
-    a))
-
 (fn not (a)
   `\not \,a)
 
@@ -127,8 +113,6 @@ Usage:
     [(\'>=)]= \>=,
     [(\'<=)]= \<=,
     [(\'==)]= \==,
-    [(\'and_)]= \and,
-    [(\'or)]= \or,
     [(\'not)]= \not,
     [(\'%)]= \%,
     [(\'length)]= \length,
