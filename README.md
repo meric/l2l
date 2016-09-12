@@ -8,7 +8,7 @@ make test
 
 [boolean.lisp](/l2l/ext/boolean.lisp), implements `and`, `or` special forms:
 
-```
+```lua
 @import quasiquote
 @import quote
 @import fn
