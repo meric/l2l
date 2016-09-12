@@ -151,7 +151,7 @@ local function read_length(invariant, position)
     if not values[1] then
       error('nothing to length')
     end
-    values[1] = list(symbol("length"), values[1])
+    values[1] = lua.lua_unop_exp.new(lua.lua_unop("#"), values[1])
     return rest, values
   end
 end
