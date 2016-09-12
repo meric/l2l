@@ -1,6 +1,6 @@
 # l2l #
 
-"l2l" is a superset of Lisp and Lua.
+In this language, Lisp and Lua are one.
 
 ## Philosophy ##
 
