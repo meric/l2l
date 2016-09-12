@@ -13,3 +13,6 @@ test_luajit:
 
 count:
 	cloc l2l/*.lua l2l/ext/*.lisp l2l/lib/*.lisp
+
+repl:
+	bin/l2l -r
