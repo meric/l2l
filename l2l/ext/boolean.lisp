@@ -28,7 +28,7 @@
     ref))
 
 (fn statize_and (invariant cdr output)
-  (to_stat (expize_and (invariant cdr output))))
+  (to_stat (expize_and invariant cdr output)))
 
 (fn circuit_or (invariant cdr output truth)
   (cond cdr
@@ -52,7 +52,7 @@
     ref))
 
 (fn statize_or (invariant cdr output)
-  (to_stat (expize_or (invariant cdr output))))
+  (to_stat (expize_or invariant cdr output)))
 
 {
   lua = {
