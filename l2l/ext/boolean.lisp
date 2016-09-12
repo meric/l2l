@@ -36,14 +36,14 @@
       car (:car cdr)
       ref (lua_name:unique "_or_value"))
       `\
-        local \,ref = \,\(expize(invariant, car, output))
-        if \,ref then
-          \,truth = \,ref
-        else
-          \,(cond (:cdr cdr)
-              (circuit_and invariant (:cdr cdr) output truth)
-              `\\,truth = \,ref)
-        end)))
+        if not \,truth then
+          local \,ref = \,\(expize(invariant, car, output))
+          if \,ref then
+            \,truth = \,ref
+          end
+        end
+        \,(cond (:cdr cdr)
+            (circuit_or invariant (:cdr cdr) output truth)))))
 
 (fn expize_or (invariant cdr output)
   (let (ref (lua_name:unique "_or_bool"))

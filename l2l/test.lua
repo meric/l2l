@@ -10,7 +10,16 @@ local function assert_exec_equal(source, ...)
   local src = compiler.compile(source, "test")
   local ret = {loadstring(src)()}
   for i=1, math.max(select("#", ...), #ret) do
-    t.assert_equal(ret[i], select(i, ...))
+    t.assert_equal(select(i, ...), ret[i])
+  end
+end
+
+local function assert_exec_equal_print(source, ...)
+  local src = compiler.compile(source, "test")
+  print(src)
+  local ret = {loadstring(src)()}
+  for i=1, math.max(select("#", ...), #ret) do
+    t.assert_equal(select(i, ...), ret[i])
   end
 end
 
@@ -118,6 +127,9 @@ function test_and()
   assert_exec_equal(
     [[(and true true)]],
     true)
+  assert_exec_equal(
+    [[(and)]],
+    true)
 end
 
 function test_or()
@@ -127,6 +139,15 @@ function test_or()
   assert_exec_equal(
     [[(or false true)]],
     true)
+  assert_exec_equal(
+    [[(or false false)]],
+    false)
+  assert_exec_equal(
+    [[(or false false true)]],
+    true)
+  assert_exec_equal(
+    [[(or)]],
+    false)
 end
 
 function test_do()
