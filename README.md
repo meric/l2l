@@ -2,7 +2,20 @@
 
 > The Tao gave birth to the One. The One gave birth to the Two.
 
+*[Lao Zi](http://www.mobilewords.pro/Tao/wu.htm#42)*
+
+> Now I do not know whether I was then a man dreaming
+> I was a butterfly, or whether I am now a butterfly, dreaming I am a man.
+
+*[Zhuang Zhou](http://ctext.org/zhuangzi/adjustment-of-controversies?searchu=butterfly&searchmode=showall#result)*
+
+> I have put duality away, I have seen that the two worlds are one;
+> One I seek, One I know, One I see, One I call.
+
+*[Jalaluddin Rumi](http://thefoggiestnotion.com/rumi.htm)*
+
 > Lisp is Lisp. Lua is Lua. Lisp and Lua as One.
+
 
 "l2l" is a language that is the superset of Lisp and Lua.
 
