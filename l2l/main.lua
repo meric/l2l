@@ -100,19 +100,22 @@ local run = function(...)
 
   for _,to_load in ipairs(options) do
     if(to_load.how == "eval") then
-      local src = compiler.compile(to_load.val, "*eval*")
+      invariant.source = to_load.val
+      local src = compiler.compile(invariant, "*eval*")
       print(loadstring(src)())
     elseif(to_load.how == "load") then
       local f = assert(io.open(to_load.val), "File not found: " .. to_load.val)
       local lisp_source = f:read("*all")
       f:close()
-      local src = compiler.compile(lisp_source, to_load.val)
+      invariant.source = lisp_source
+      local src = compiler.compile(invariant, to_load.val)
       loadstring(src)()
     elseif(to_load.how == "compile") then
       local f = assert(io.open(to_load.val), "File not found: " .. to_load.val)
       local lisp_source = f:read("*all")
       f:close()
-      print(compiler.compile(lisp_source, to_load.val))
+      invariant.source = lisp_source
+      print(compiler.compile(invariant, to_load.val))
     end
   end
 
