@@ -6,21 +6,23 @@ In this language, Lisp and Lua are one.
 
 > The Tao begot one. One begot two.
 
-*[Laozi](http://terebess.hu/english/tao/gia.html#Kap42)*
+**[Laozi](http://terebess.hu/english/tao/gia.html#Kap42)**
 
 > Now I do not know whether I was then a man dreaming
 > I was a butterfly, or whether I am now a butterfly, dreaming I am a man.
 
-*[Zhuangzi](http://ctext.org/zhuangzi/adjustment-of-controversies?searchu=butterfly&searchmode=showall#result)*
+**[Zhuangzi](http://ctext.org/zhuangzi/adjustment-of-controversies?searchu=butterfly&searchmode=showall#result)**
 
 > I have put duality away, I have seen that the two worlds are one;
 > One I seek, One I know, One I see, One I call.
 
-*[Jalaluddin Rumi](http://thefoggiestnotion.com/rumi.htm)*
+**[Jalaluddin Rumi](http://thefoggiestnotion.com/rumi.htm)**
 
 > Now I do not know whether I was writing Lua inside of Lisp, or whether I am
 > now writing Lisp, inside of Lua. I have put duality away, I have seen that
 > the two languages are one. One I read. One I write. One I compile. One I run.
+
+*[You](http://www.thoughtpursuits.com/10-faciniting-love-poems-rumi/)*
 
 ## Quick Start ##
 
@@ -168,4 +170,4 @@ make repl
 > If anyone quotes anything except this from my sayings,
 > I am quit of him and outraged by these words.
 
-*[Jalaluddin Rumi](https://en.wikipedia.org/wiki/Rumi)*
+**[Jalaluddin Rumi](https://en.wikipedia.org/wiki/Rumi)**
