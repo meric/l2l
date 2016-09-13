@@ -32,6 +32,15 @@ function test_local()
     1)
 end
 
+function test_dot()
+  assert_exec_equal(
+    [[(.x {x=1})]],
+    1)
+  assert_exec_equal(
+    [[(:f {f=function() return 2 end})]],
+    2)
+end
+
 function test_length()
   assert_exec_equal(
     [[#{1, 2, 3, 4}]],

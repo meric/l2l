@@ -26,11 +26,12 @@ local function accessor_functioncall(car, cdr)
     local rest = lua.lua_args.new(lua.lua_explist(vector.sub(cdr, 2)))
     if first == ":"then
       return lua.lua_colon_functioncall.new(
-        cdr[1],
+        lua.lua_paren_exp.new(cdr[1]),
         lua.lua_name(car.name:sub(2)),
         rest)
     elseif first == "." and second ~= "." then
-      return lua.lua_dot.new(cdr[1], lua.lua_name(car.name:sub(2)))
+      return lua.lua_dot.new(lua.lua_paren_exp.new(cdr[1]),
+        lua.lua_name(car.name:sub(2)))
     end
   end
 end
