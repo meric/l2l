@@ -18,7 +18,7 @@ In this language, Lisp and Lua are one.
 
 > Now I do not know whether I was writing Lua inside of Lisp,<br>
 > Or whether I am now writing Lisp, inside of Lua.<br>
-> I have put duality away, I have seen that the two are one.<br>
+> I have put duality away, I have seen that the two worlds are one;<br>
 > One I read. One I write. One I compile. One I run.<br>
 > &mdash; *[You](http://www.thoughtpursuits.com/10-faciniting-love-poems-rumi/)*
 
