@@ -14,6 +14,15 @@ local function assert_exec_equal(source, ...)
   end
 end
 
+local function assert_exec_error_contains(message, source, ...)
+  local src = compiler.compile(source, "test", true)
+  local ok, ret = pcall(loadstring(src))
+  t.assert_equal(ok, false)
+  print(ret)
+  local found = ret:find(message, 1, true) and true
+  t.assert_equal(found, true)
+end
+
 local function assert_exec_equal_print(source, ...)
   local src = compiler.compile(source, "test")
   print(src)
@@ -221,6 +230,21 @@ function test_apply()
   assert_exec_equal(
     [[(apply + 1 2 (list))]],
     3)
+end
+
+function test_error()
+  assert_exec_error_contains(
+    "Line 1, column 1:",
+    [[0 + 1 +
+      (0 + nil)]],
+    2, "")
+
+  assert_exec_error_contains(
+    "Line 3, column 15:",
+    [[(let (x 1
+            y 2
+            z 3 + nil) z)]],
+    2, "")
 end
 
 function test_backslash()

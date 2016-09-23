@@ -23,7 +23,7 @@ Usage:
   (table.insert output `\local \,var)
   \
   for i, value in ipairs(cdr) do
-    if i < count then
+    if i < count or utils.hasmetatable(value, lua.lua_block) then
       local stat = statize(invariant, value, block)
       if stat then
         table.insert(block, stat)

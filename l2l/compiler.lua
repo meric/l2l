@@ -3,6 +3,7 @@ local list = require("l2l.list")
 local lua = require("l2l.lua")
 local reader = require("l2l.reader")
 local vector = require("l2l.vector")
+local exception = require("l2l.exception")
 local symbol = reader.symbol
 local len = require("l2l.len")
 local loadstring = _G["loadstring"] or _G["load"]
@@ -63,7 +64,7 @@ local function statize_lua(invariant, data, output)
 end
 
 local function expize_lua(invariant, data, output)
-  return data:gsub(symbol, function(value)
+  local exp = data:gsub(symbol, function(value)
       return lua.lua_nameize(value)
     end):gsub(list, function(value)
       return expize(invariant, value, output)
@@ -77,6 +78,32 @@ local function expize_lua(invariant, data, output)
       return invariant.lua[tostring(value.exp)] and
         invariant.lua[tostring(value.exp)].in_lua
     end)
+
+  if invariant.debug and invariant.index[data] and
+    not (exp and exp.match and
+      (exp:match(lua.lua_vararg) or
+        exp:match(lua.lua_name, function(value)
+          return value == lua.lua_name("...")
+        end))) then
+    local position, rest = table.unpack(invariant.index[data])
+    local src = invariant.source:sub(position, rest)
+    return lua.lua_paren_exp.new(
+      lua.lua_functioncall.new(lua.lua_name("trace"),
+        lua.lua_args.new(lua.lua_explist({
+          lua.lua_string("Module \""..(invariant.mod or "N/A")..
+              "\". "..exception.formatsource(
+            invariant.source,
+            position, rest-1)),
+          lua.lua_lambda_function.new(
+            lua.lua_funcbody.new(
+              lua.lua_namelist({}),
+              lua.lua_block({
+                lua.lua_retstat.new(exp)
+                })))
+        }))))
+  end
+
+  return exp
 end
 
 expize = function(invariant, data, output)
@@ -92,9 +119,11 @@ expize = function(invariant, data, output)
         return data
       end
     end
-    data, expanded = reader.expand(invariant, data)
+    local _data
+    _data, expanded = reader.expand(invariant, data)
     if expanded then
-      return expize(invariant, data, output)
+      invariant.index[_data] = invariant.index[data]
+      return expize(invariant, _data, output)
     end
   end
   if lua.lua_ast[getmetatable(data)] then
@@ -144,6 +173,8 @@ local function retstatize(invariant, data, output)
   elseif not utils.hasmetatable(data[#data], lua.lua_retstat) then
     data[#data] = retstatize(invariant,
       expize_lua(invariant, data[#data], output), output)
+    return statize_lua(invariant, data, output)
+  elseif not utils.hasmetatable(data, lua.retstat) then
     return statize_lua(invariant, data, output)
   end
   return expize_lua(invariant, data, output)
@@ -209,6 +240,7 @@ local function initialize_dependencies()
       ["list"] = {{'require("l2l.list")', nil}},
       ["vector"] = {{'require("l2l.vector")', nil}},
       ["ipairs"] = {{'require("l2l.iterator")', nil}},
+      ["trace"] = {{'require("l2l.trace")', nil}},
       ["len"] = {{'require("l2l.len")', nil}},
       [symbol("%"):mangle()] = {
         "import", {'import("l2l.lib.operators")', "operators"}},
@@ -316,7 +348,7 @@ local compile_or_cached
 
 local build_cache = {}
 
-local function build(mod, extends)
+local function build(mod, extends, verbose)
   local prefix = string.gsub(mod, "[.]", "/")
   local path = prefix..".lisp"
   if build_cache[path] then
@@ -328,7 +360,7 @@ local function build(mod, extends)
   end
   local source = file:read("*a")
   file:close()
-  local out = compile_or_cached(source, mod, extends, prefix..".lua")
+  local out = compile_or_cached(source, mod, extends, prefix..".lua", verbose)
   local f, err = loadstring(out)
   if f then
     build_cache[path] = {f, out}
@@ -339,8 +371,8 @@ local function build(mod, extends)
   end
 end
 
-local function import(mod, extends)
-  local f, out = build(mod, extends)
+local function import(mod, extends, verbose)
+  local f, out = build(mod, extends, verbose)
   local path = mod:gsub("[.]", "/")
   local ok, m
   if f then
@@ -368,11 +400,17 @@ local function import(mod, extends)
   return m
 end
 
-local function compile(source, mod, extensions)
+local function compile(source, mod, verbose, extensions)
   local invariant = source
 
   if type(source) == "string" then
-    invariant = reader.environ(source, 1)
+    invariant = reader.environ(source, verbose)
+  end
+
+  invariant.mod = mod
+
+  if verbose ~= nil then
+    invariant.debug = verbose
   end
 
   source = invariant.source
@@ -398,7 +436,7 @@ local function compile(source, mod, extensions)
 
   for _, e in ipairs(extensions) do
     reader.load_extension(invariant,
-      reader.import_extension(invariant, e))
+      reader.import_extension(invariant, e, false))
   end
 
   local output = {}
@@ -497,11 +535,11 @@ local function hash_mod(source)
   return "--"..total.."\n"
 end
 
-compile_or_cached = function(source, mod, extends, path)
+compile_or_cached = function(source, mod, extends, path, verbose)
   local f = io.open(path)
   local h = hash_mod(source)
   if not f then
-    local out = compile(source, mod, extends)
+    local out = compile(source, mod, verbose, extends)
     local g = io.open(path, "w")
     g:write(h..out)
     g:close()
@@ -510,7 +548,7 @@ compile_or_cached = function(source, mod, extends, path)
   local code = f:read("*a")
   f:close()
   if code:sub(1, #h) ~= h then
-    local out = compile(source, mod, extends)
+    local out = compile(source, mod, verbose, extends)
     local g = io.open(path, "w")
     g:write(h..out)
     g:close()

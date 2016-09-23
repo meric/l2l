@@ -36,7 +36,8 @@ local function repl(partial)
 
   invariant.source = input
 
-  local compiled_ok, src_or_err = pcall(compiler.compile, invariant, "*repl*")
+  local compiled_ok, src_or_err = pcall(compiler.compile, invariant, "*repl*",
+    true)
 
   if(compiled_ok) then
     local vals = {xpcall(loadstring(src_or_err), handler)}

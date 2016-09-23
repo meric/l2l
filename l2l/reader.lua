@@ -187,8 +187,12 @@ local function read_list(invariant, position)
     return
   end
 
+  local value = list.cast(t)
   -- Add 1 for the right_paren.
-  return rest + 1, vector(list.cast(t))
+  if value then
+    invariant.index[value] = {position, rest + 1}
+  end
+  return rest + 1, vector(value)
 end
 
 local whitespace = {
@@ -218,9 +222,11 @@ end
 local function read_lua(invariant, position)
   local rest, value = lua.Block(invariant, position + 1)
   if rest then
+    invariant.index[value] = {position, rest}
     return rest, {value}
   end
   rest, value = lua.Exp(invariant, position + 1)
+  invariant.index[value] = {position, rest}
   return rest, {value}
 end
 
@@ -240,6 +246,7 @@ end
 
 local function read_lua_literal(invariant, position)
   local rest, value = lua.Exp(invariant, position)
+  invariant.index[value] = {position, rest}
   return rest, {value}
 end
 
@@ -319,11 +326,11 @@ local function load_extension(invariant, mod, alias)
   end
 end
 
-local function import_extension(_, name)
+local function import_extension(_, name, verbose)
   local compiler = require("l2l.compiler")
-  local ok, mod = pcall(compiler.import, name)
+  local ok, mod = pcall(compiler.import, name, nil, verbose)
   if not ok and string.match(mod, "not found") then
-    mod = compiler.import("l2l.ext."..name, {})
+    mod = compiler.import("l2l.ext."..name, {}, verbose)
   end
   if not mod then
     error("cannot load "..name)
@@ -345,7 +352,7 @@ local function dispatch_import(invariant, position)
   end
   if rest then
     local name = sym[1]
-    local mod = import_extension(invariant, name)
+    local mod = import_extension(invariant, name, invariant.debug)
     load_extension(invariant, mod, alias)
     return rest, {}
   end
@@ -411,8 +418,11 @@ local function inherit(invariant, source)
 end
 
 
-local function environ(source)
+local function environ(source, verbose)
   return {
+    debug = verbose or false,
+    index = {},
+    sourcemap = {},
     events = {},
     macro = {},
     dispatch = {
