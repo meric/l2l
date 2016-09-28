@@ -99,7 +99,7 @@ local function formatsource(src, index, to)
 
   table.insert(messages, "Line "..linenumber..", column "..columnnumber..":")
   local stack, content, _ = {}
-  for _=1, 3 do
+  for _=1, 1 do -- number of previous lines to display.
     if start >= 2 then
       content, start = lineat(src, start-2)
       table.insert(stack, content)
@@ -118,7 +118,7 @@ local function formatsource(src, index, to)
       math.max(index, st), math.min(fin, to)))
     linenumber = lineno
   end
-  for i=1, 3 do
+  for i=1, 1 do -- number of previous lines to display.
     if finish + 1 <= #src then
       content, _, finish = lineat(src, finish+1)
       table.insert(messages, (linenumber + i).."\t|"..content)

@@ -378,6 +378,7 @@ end
 
 local function expand(invariant, data)
   -- assert(invariant, "missing invariant")
+  local origin = data
   local expanded = false
   local _expand = function(value)
     local d, x = expand(invariant, value)
@@ -392,6 +393,7 @@ local function expand(invariant, data)
         vector.unpack(vector.cast(cdr, _expand)))), true
     else
       data = list.cast(data, _expand)
+      invariant.index[data] = invariant.index[origin]
       return data, expanded
     end
   elseif lua.lua_ast[getmetatable(data)] then
@@ -400,6 +402,7 @@ local function expand(invariant, data)
       expanded = expanded or x
       return d
     end)
+    invariant.index[data] = invariant.index[origin]
     return data, expanded
   end
   return data, expanded

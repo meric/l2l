@@ -63,22 +63,7 @@ local function statize_lua(invariant, data, output)
   return stat
 end
 
-local function expize_lua(invariant, data, output)
-  local exp = data:gsub(symbol, function(value)
-      return lua.lua_nameize(value)
-    end):gsub(list, function(value)
-      return expize(invariant, value, output)
-    end):gsub(lua.lua_functioncall,
-    function(value)
-      return lua.lua_nameize(invariant.lua[tostring(value.exp)].expize(
-        invariant,
-        list.cast(value.args.explist),
-        output))
-    end, function(value)
-      return invariant.lua[tostring(value.exp)] and
-        invariant.lua[tostring(value.exp)].in_lua
-    end)
-
+local function record(invariant, data, exp)
   if invariant.debug and invariant.index[data] and
     not (exp and exp.match and
       (exp:match(lua.lua_vararg) or
@@ -102,8 +87,25 @@ local function expize_lua(invariant, data, output)
                 })))
         }))))
   end
-
   return exp
+end
+
+local function expize_lua(invariant, data, output)
+  local exp = data:gsub(symbol, function(value)
+      return lua.lua_nameize(value)
+    end):gsub(list, function(value)
+      return expize(invariant, value, output)
+    end):gsub(lua.lua_functioncall,
+    function(value)
+      return lua.lua_nameize(invariant.lua[tostring(value.exp)].expize(
+        invariant,
+        list.cast(value.args.explist),
+        output))
+    end, function(value)
+      return invariant.lua[tostring(value.exp)] and
+        invariant.lua[tostring(value.exp)].in_lua
+    end)
+  return record(invariant, data, exp)
 end
 
 expize = function(invariant, data, output)
@@ -143,9 +145,9 @@ expize = function(invariant, data, output)
     if utils.hasmetatable(func, lua.lua_lambda_function) then
       func = lua.lua_paren_exp.new(func)
     end
-    return lua.lua_functioncall.new(
+    return record(invariant, data, lua.lua_functioncall.new(
       func,
-      lua.lua_args.new(lua.lua_explist(cdr)))
+      lua.lua_args.new(lua.lua_explist(cdr))))
   elseif utils.hasmetatable(data, symbol) then
     return lua.lua_name(data:mangle())
   elseif data == nil then
