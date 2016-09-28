@@ -92,8 +92,9 @@ end
 local function formatsource(src, index, to)
   local messages = {}
   local linenumber = numberat(src, index)
-  local line, start, _ = lineat(src, index)
-  local _, __, finish = lineat(src, to)
+  local _, start, _ = lineat(src, index)
+  local _, _, finish = lineat(src, to)
+  local line
 
   local columnnumber = index - start + 1
 

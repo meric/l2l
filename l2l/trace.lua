@@ -1,4 +1,5 @@
 local unpack = _G["unpack"] or table.unpack
+local pack = table.pack or function(...) return {n=select("#", ...), ...} end
 local len = require("l2l.len")
 
 local level = setmetatable({
@@ -40,7 +41,7 @@ local level = setmetatable({
 })
 
 return function (exception, f, ...)
-  local returns = table.pack(pcall(f, ...))
+  local returns = pack(pcall(f, ...))
   local ok = returns[1]
   if ok then
     return unpack(returns, 2, returns.n)

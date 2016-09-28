@@ -70,8 +70,7 @@ local function record(invariant, data, exp)
         exp:match(lua.lua_name, function(value)
           return value == lua.lua_name("...")
         end))) then
-    local position, rest = table.unpack(invariant.index[data])
-    local src = invariant.source:sub(position, rest)
+    local position, rest = unpack(invariant.index[data])
     return lua.lua_paren_exp.new(
       lua.lua_functioncall.new(lua.lua_name("trace"),
         lua.lua_args.new(lua.lua_explist({
