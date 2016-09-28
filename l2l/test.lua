@@ -18,8 +18,10 @@ local function assert_exec_error_contains(message, source, ...)
   local src = compiler.compile(source, "test", true)
   local ok, ret = pcall(loadstring(src))
   t.assert_equal(ok, false)
-  print(ret)
   local found = ret:find(message, 1, true) and true
+  if not found then
+    print(ret)
+  end
   t.assert_equal(found, true)
 end
 
@@ -244,6 +246,15 @@ function test_error()
     [[(let (x 1
             y 2
             z 3 + nil) z)]],
+    2, "")
+
+  assert_exec_error_contains(
+    "Line 4, column 15:",
+    [[(fn q (u)
+        (let (x 1
+            y 2
+            z 3 + u) z))
+      (q nil)]],
     2, "")
 end
 
