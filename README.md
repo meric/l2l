@@ -71,28 +71,6 @@ This language is a superset of Lisp and Lua.
 }
 ```
 
-## Philosophy ##
-
-> The Tao begot one. One begot two.<br>
-> &mdash; *[Laozi](http://terebess.hu/english/tao/gia.html#Kap42)*
-
-> Now I do not know whether I was then a man dreaming
-> I was a butterfly,<br>
-> Or whether I am now a butterfly, dreaming I am a man.<br>
-> &mdash; *[Zhuangzi](http://ctext.org/zhuangzi/adjustment-of-controversies?searchu=butterfly&searchmode=showall#result)*
-
-> I have put duality away, I have seen that the two worlds are one;<br>
-> One I seek, One I know, One I see, One I call.<br>
-> &mdash; *[Jalaluddin Rumi](http://thefoggiestnotion.com/rumi.htm)*
-
-> Now I do not know whether I was writing Lua inside of Lisp,<br>
-> Or whether I am now writing Lisp, inside of Lua.<br>
-> I have put duality away, I have seen that the two worlds are one;<br>
-> One I read. One I write. One I compile. One I run.<br>
-> &mdash; *[You](http://www.thoughtpursuits.com/10-faciniting-love-poems-rumi/)*
-
-
-
 ## Quick Start ##
 
 ```bash
@@ -161,6 +139,27 @@ make repl
   end
   return values41
   ```
+
+## Philosophy ##
+
+> The Tao begot one. One begot two.<br>
+> &mdash; *[Laozi](http://terebess.hu/english/tao/gia.html#Kap42)*
+
+> Now I do not know whether I was then a man dreaming
+> I was a butterfly,<br>
+> Or whether I am now a butterfly, dreaming I am a man.<br>
+> &mdash; *[Zhuangzi](http://ctext.org/zhuangzi/adjustment-of-controversies?searchu=butterfly&searchmode=showall#result)*
+
+> I have put duality away, I have seen that the two worlds are one;<br>
+> One I seek, One I know, One I see, One I call.<br>
+> &mdash; *[Jalaluddin Rumi](http://thefoggiestnotion.com/rumi.htm)*
+
+> Now I do not know whether I was writing Lua inside of Lisp,<br>
+> Or whether I am now writing Lisp, inside of Lua.<br>
+> I have put duality away, I have seen that the two worlds are one;<br>
+> One I read. One I write. One I compile. One I run.<br>
+> &mdash; *[You](http://www.thoughtpursuits.com/10-faciniting-love-poems-rumi/)*
+
 
 #### Obligatory ####
 
