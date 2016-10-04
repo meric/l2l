@@ -1,6 +1,75 @@
 # l2l #
 
-In this language, Lisp and Lua are one.
+This language is a superset of Lisp and Lua.
+
+## Example ##
+
+[boolean.lisp](/l2l/ext/boolean.lisp), implements `and`, `or` special forms:
+
+```lua
+@import quasiquote
+@import quote
+@import fn
+@import local
+@import do
+@import let
+@import cond
+
+(fn circuit_and (invariant cdr output truth)
+  (cond cdr
+    (let (
+      car (:car cdr)
+      ref (lua_name:unique "_and_value"))
+      `\
+        local \,ref = \,\(expize(invariant, car, output))
+        if \,ref then
+          \,(cond (:cdr cdr)
+              (circuit_and invariant (:cdr cdr) output truth)
+              `\\,truth = \,ref)
+        else
+          \,truth = false
+        end)))
+
+(fn expize_and (invariant cdr output)
+  (let (ref (lua_name:unique "_and_bool"))
+    (table.insert output `\local \,ref = true)
+    (table.insert output (circuit_and invariant cdr output ref))
+    ref))
+
+(fn statize_and (invariant cdr output)
+  (to_stat (expize_and invariant cdr output)))
+
+(fn circuit_or (invariant cdr output truth)
+  (cond cdr
+    (let (
+      car (:car cdr)
+      ref (lua_name:unique "_or_value"))
+      `\
+        if not \,truth then
+          local \,ref = \,\(expize(invariant, car, output))
+          if \,ref then
+            \,truth = \,ref
+          end
+        end
+        \,(cond (:cdr cdr)
+            (circuit_or invariant (:cdr cdr) output truth)))))
+
+(fn expize_or (invariant cdr output)
+  (let (ref (lua_name:unique "_or_bool"))
+    (table.insert output `\local \,ref = false)
+    (table.insert output (circuit_or invariant cdr output ref))
+    ref))
+
+(fn statize_or (invariant cdr output)
+  (to_stat (expize_or invariant cdr output)))
+
+{
+  lua = {
+    ["and"] = {expize=expize_and, statize=statize_and},
+    ["or"] = {expize=expize_or, statize=statize_or}
+  }
+}
+```
 
 ## Philosophy ##
 
@@ -92,76 +161,6 @@ make repl
   end
   return values41
   ```
-
-## Example ##
-
-[boolean.lisp](/l2l/ext/boolean.lisp), implements `and`, `or` special forms:
-
-```lua
-@import quasiquote
-@import quote
-@import fn
-@import local
-@import do
-@import let
-@import cond
-
-(fn circuit_and (invariant cdr output truth)
-  (cond cdr
-    (let (
-      car (:car cdr)
-      ref (lua_name:unique "_and_value"))
-      `\
-        local \,ref = \,\(expize(invariant, car, output))
-        if \,ref then
-          \,(cond (:cdr cdr)
-              (circuit_and invariant (:cdr cdr) output truth)
-              `\\,truth = \,ref)
-        else
-          \,truth = false
-        end)))
-
-(fn expize_and (invariant cdr output)
-  (let (ref (lua_name:unique "_and_bool"))
-    (table.insert output `\local \,ref = true)
-    (table.insert output (circuit_and invariant cdr output ref))
-    ref))
-
-(fn statize_and (invariant cdr output)
-  (to_stat (expize_and invariant cdr output)))
-
-(fn circuit_or (invariant cdr output truth)
-  (cond cdr
-    (let (
-      car (:car cdr)
-      ref (lua_name:unique "_or_value"))
-      `\
-        if not \,truth then
-          local \,ref = \,\(expize(invariant, car, output))
-          if \,ref then
-            \,truth = \,ref
-          end
-        end
-        \,(cond (:cdr cdr)
-            (circuit_or invariant (:cdr cdr) output truth)))))
-
-(fn expize_or (invariant cdr output)
-  (let (ref (lua_name:unique "_or_bool"))
-    (table.insert output `\local \,ref = false)
-    (table.insert output (circuit_or invariant cdr output ref))
-    ref))
-
-(fn statize_or (invariant cdr output)
-  (to_stat (expize_or invariant cdr output)))
-
-{
-  lua = {
-    ["and"] = {expize=expize_and, statize=statize_and},
-    ["or"] = {expize=expize_or, statize=statize_or}
-  }
-}
-```
-
 
 #### Obligatory ####
 
