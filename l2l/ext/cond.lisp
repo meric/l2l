@@ -33,7 +33,7 @@ Usage:
   end
 
   if ... then
-    \(table.insert rest (stat_cond invariant block value found ...))
+    \(table.insert rest (stat_cond invariant rest value found ...))
   end
 
   return \`\if \,(expize invariant condition output) then

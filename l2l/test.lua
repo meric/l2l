@@ -12,6 +12,7 @@ local function assert_exec_equal(source, ...)
   for i=1, math.max(select("#", ...), #ret) do
     t.assert_equal(select(i, ...), ret[i])
   end
+  return src
 end
 
 local function assert_exec_error_contains(message, source, ...)

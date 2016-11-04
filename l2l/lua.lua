@@ -683,6 +683,10 @@ function lua_lazy:__tostring()
   return tostring(self.f())
 end
 
+function lua_lazy:gsub(...)
+  return self.f():gsub(...)
+end
+
 lua_ast = {
   [lua_assign] = lua_assign,
   [lua_dot] = lua_dot,
@@ -820,6 +824,7 @@ local exports = {
   lua_binop = lua_binop,
   lua_unop = lua_unop,
   lua_name = lua_name,
+  lua_field_name = lua_field_name,
   lua_lazy = lua_lazy,
   lua_nameize = lua_nameize
 }
