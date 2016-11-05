@@ -43,6 +43,9 @@ local function escape_lua(invariant, data)
     return data:repr()
   end
   if utils.hasmetatable(data, list) then
+    if data:car() == symbol("quasiquote-eval") then
+      return data
+    end
     data = list.cast(data, function(value)
       return escape_lua(invariant, value)
     end)
