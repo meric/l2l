@@ -108,7 +108,7 @@ function list:__ipairs()
     local car = cdr:car()
     cdr = cdr:cdr()
     return i, car
-  end
+  end, self, 0
 end
 
 function list:__len()
