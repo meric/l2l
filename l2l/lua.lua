@@ -162,7 +162,7 @@ local function _list(...)
       if lua_ast[getmetatable(value)] then
         table.insert(parameters, value:repr())
       elseif type(value) == "string" then
-        table.insert(parameters, reader.symbol(value))
+        table.insert(parameters, utils.escape(value))
       else
         table.insert(parameters, value)
       end
