@@ -226,7 +226,7 @@ local function statize(invariant, data, output, last)
     validate_functioncall(car)
     local accessor = accessor_functioncall(car, cdr)
     if accessor then
-      return accessor
+      return lua.lua_block({accessor, lua.lua_semicolon()})
     end
     return lua.lua_functioncall.new(
       expize(invariant, car),
