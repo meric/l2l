@@ -88,7 +88,7 @@ r = each(function(v, k)
   lua_functioncall = {exp=1, args=2},
   lua_colon_functioncall = {exp=1, ":", name=3, args=4},
   lua_args = {"(", explist=2, ")" },
-  lua_table_args = {"{", fieldlist=2, "}"},
+  lua_table = {"{", fieldlist=2, "}"},
   lua_funcbody = {"(", namelist=2, ")", block=4, " end"},
   lua_paren_exp = {"(", exp=2, ")"},
   lua_field_name = {name=1, "=", exp=3},
@@ -119,7 +119,7 @@ local lua_unop_exp = r.lua_unop_exp
 local lua_functioncall = r.lua_functioncall
 local lua_colon_functioncall = r.lua_colon_functioncall
 local lua_args = r.lua_args
-local lua_table_args = r.lua_table_args
+local lua_table = r.lua_table
 local lua_funcbody = r.lua_funcbody
 local lua_paren_exp = r.lua_paren_exp
 local lua_field_name = r.lua_field_name
@@ -169,7 +169,7 @@ local function _list(...)
     end
     return r.lua_functioncall.new(lua_name(tostring(st)),
       r.lua_args.new(lua_explist({
-        lua_table_args.new(lua_fieldlist(parameters))
+        lua_table.new(lua_fieldlist(parameters))
       })))
   end
   return st
@@ -515,7 +515,7 @@ ParList = factor("ParList", function() return
   span(NameList, opt(span(",", term("...") % lua_vararg) % second)) % leftflat,
   term("...") % lua_vararg end)
 TableConstructor = factor("TableConstructor", function() return
-  span("{", opt(FieldList), "}") % lua_table_args end)
+  span("{", opt(FieldList), "}") % lua_table end)
 FieldList = factor("FieldList", function() return
   span(span(Field, rep(span(FieldSep, Field) % second)) % rightflat,
     opt(FieldSep)) % first end, lua_fieldlist)
@@ -712,7 +712,7 @@ lua_ast = {
   [lua_functioncall] = lua_functioncall,
   [lua_colon_functioncall] = lua_colon_functioncall,
   [lua_args] = lua_args,
-  [lua_table_args] = lua_table_args,
+  [lua_table] = lua_table,
   [lua_funcbody] = lua_funcbody,
   [lua_paren_exp] = lua_paren_exp,
   [lua_local] = lua_local,
@@ -803,7 +803,7 @@ local exports = {
   lua_functioncall = lua_functioncall,
   lua_colon_functioncall = lua_colon_functioncall,
   lua_args = lua_args,
-  lua_table_args = lua_table_args,
+  lua_table = lua_table,
   lua_funcbody = lua_funcbody,
   lua_paren_exp = lua_paren_exp,
   lua_local = lua_local,
