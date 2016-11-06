@@ -136,6 +136,14 @@ function test_lua_quote()
   ]], 3)
 end
 
+function test_accessor()
+  local src = assert_exec_equal([[
+    \local x = {a = { 2}}
+    return \(. x "a" 1)
+    ]],
+    2)
+end
+
 function test_let()
   assert_exec_equal([[
     (let (

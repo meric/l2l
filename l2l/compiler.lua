@@ -30,6 +30,14 @@ local function accessor_functioncall(car, cdr)
         lua.lua_paren_exp.new(cdr[1]),
         lua.lua_name(car.name:sub(2)),
         rest)
+    elseif car.name == "." then
+      local exp = cdr[1]
+      for i, v in ipairs(cdr) do
+        if i > 1 then
+          exp = lua.lua_index.new(lua.lua_paren_exp.new(exp), cdr[i])
+        end
+      end
+      return exp
     elseif first == "." and second ~= "." then
       return lua.lua_dot.new(lua.lua_paren_exp.new(cdr[1]),
         lua.lua_name(car.name:sub(2)))
