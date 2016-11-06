@@ -145,14 +145,37 @@ function test_accessor()
 end
 
 function test_let()
-  assert_exec_equal([[
+  local src = assert_exec_equal([[
     (let (
-      (a b) (unpack {1, 2})
-      c 3
-      d 4)
-      \return a, b, c, d)
+      {a, b, hello=c, world={f}} {1, 2, hello=4, world={5}}
+      d 3
+      e 4)
+      \return a, b, c, d, e, f)
     ]],
-    1, 2, 3, 4)
+    1, 2, 4, 3, 4, 5)
+end
+
+function test_let()
+  local src = assert_exec_equal([[
+    (let (
+      {a, b, c, d, e} {unpack({1, 2, 3, 4, 5})}
+      x {}
+      {f} x)
+      \return a, b, c, d, e)
+    ]],
+    1, 2, 3, 4, 5)
+end
+
+function test_let3()
+  local src = assert_exec_equal([[
+    @import iterator
+    (let (
+      (a b c) {1,2,3}
+      (d e f) '(4 5 (+ 6 8))
+      (g h i) `(4 5 ,(+ 6 8)))
+      \return a, b, c, d, e, f, g, h, i)
+    ]],
+    1, 2, 3, 4, 5, 14, 4, 5, 14)
 end
 
 function test_and()

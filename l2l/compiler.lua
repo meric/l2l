@@ -9,6 +9,9 @@ local len = require("l2l.len")
 local loadstring = _G["loadstring"] or _G["load"]
 local ipairs = require("l2l.iterator")
 
+local trait = require("leftry.trait")
+local destructure = trait("destructure")
+
 local unpack = table.unpack or _G["unpack"]
 
 local function validate_functioncall(car)
@@ -577,6 +580,7 @@ exports = {
   expize = expize,
   to_stat = to_stat,
   expand = reader.expand,
+  destructure = destructure
 }
 
 return exports
