@@ -144,7 +144,7 @@ function test_accessor()
     2)
 end
 
-function test_let()
+function test_let0()
   local src = assert_exec_equal([[
     (let (
       {a, b, hello=c, world={f}} {1, 2, hello=4, world={5}}
