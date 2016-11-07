@@ -57,7 +57,12 @@ For each assignment,
                 (cond
                   (destructure:has (getmetatable field.exp))
                     (stats:insert (destructure field.exp sub))
-                    (stats:insert `\local \,field.exp = \,sub)))))
+                    (stats:insert `\local \,field.exp = \,sub)))
+            (destructure:has (getmetatable field))
+              (do
+                (local sub `\(\,ref)[(\,i)])
+                (stats:insert (destructure field sub)))
+            (error "cannot destructure "..str(field))))
         self.fieldlist)
         stats))))
 

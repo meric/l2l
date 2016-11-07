@@ -18,7 +18,7 @@ local function assert_exec_equal(source, ...)
     print(src)
   end
   for i=1, math.max(select("#", ...), #ret) do
-    t.assert_equal(select(i, ...), ret[i])
+    t.assert_equal(select(i, ...), ret[i], src)
   end
   return src
 end
@@ -159,15 +159,15 @@ function test_let0()
       {y, {z}} {1, {2}}
       d 3
       e 4)
-      \return a, b, c, d, e, f)
+      \return a, b, c, d, e, f, z)
     ]],
-    1, 2, 4, 3, 4, 5)
+    1, 2, 4, 3, 4, 5, 2)
 end
 
 function test_let()
   local src = assert_exec_equal([[
     (let (
-      {a, b, c, d, e} {unpack({1, 2, 3, 4, 5})}
+      {a, b, c, d, {e}} {unpack({1, 2, 3, 4, {5}})}
       x {}
       {f} x)
       \return a, b, c, d, e)
