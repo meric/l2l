@@ -8,7 +8,15 @@ local loadstring = _G["loadstring"] or _G["load"]
 
 local function assert_exec_equal(source, ...)
   local src = compiler.compile(source, "test")
-  local ret = {loadstring(src)()}
+  local f = loadstring(src)
+  if not f then
+    print(src)
+  end
+  local ret = {pcall(f)}
+  local ok = table.remove(ret, 1)
+  if not ok then
+    print(src)
+  end
   for i=1, math.max(select("#", ...), #ret) do
     t.assert_equal(select(i, ...), ret[i])
   end
@@ -148,6 +156,7 @@ function test_let0()
   local src = assert_exec_equal([[
     (let (
       {a, b, hello=c, world={f}} {1, 2, hello=4, world={5}}
+      {y, {z}} {1, {2}}
       d 3
       e 4)
       \return a, b, c, d, e, f)

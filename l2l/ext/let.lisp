@@ -32,7 +32,7 @@ For each assignment,
 (fn is_strictly_array (self)
   (apply and
     (map
-      (fn (field) (not (utils.hasmetatable field lua_field_name)))
+      (fn (field) (or (utils.hasmetatable field lua_name) (not (getmetatable field))))
       self.fieldlist)))
 
 (:where destructure lua_table (fn (self value)
@@ -63,11 +63,13 @@ For each assignment,
 
 (:where destructure list (fn (self value)
   (cond
-    (and (utils.hasmetatable value lua_table)
-         (is_strictly_array value))
+    (and (utils.hasmetatable value lua_table))
       -- (a b c) {1,2,3}
-      `\local \,(lua_namelist (vector.cast self lua_name)) =
-        \,value.fieldlist
+      (do
+        (assert (is_strictly_array value)
+          "table with keys cannot be destructred into list")
+        `\local \,(lua_namelist (vector.cast self lua_name)) =
+          \,value.fieldlist)
     (and (utils.hasmetatable value list)
          (== (:car value) (symbol "quote")))
       -- (d e f) '(4 5 (+ 6 8))
