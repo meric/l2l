@@ -29,17 +29,18 @@ For each assignment,
 
 (local utils (require "leftry.utils"))
 
-(fn is_strictly_array (self)
+(fn is_strictly_lua_name_array (self)
   (apply and
     (map
-      (fn (field) (or (utils.hasmetatable field lua_name) (not (getmetatable field))))
+      (fn (field) (or (utils.hasmetatable field lua_name)
+        (not (getmetatable field))))
       self.fieldlist)))
 
 (:where destructure lua_table (fn (self value)
   (cond
     (and (utils.hasmetatable value lua_table)
-         (is_strictly_array self)
-         (is_strictly_array value))
+         (is_strictly_lua_name_array self)
+         (is_strictly_lua_name_array value))
       -- Both sides are lua_table, cancels out.
       -- {a,b,c,d,e} {unpack({1, 2, 3, 4, 5})}
       `\local \,self.fieldlist = \,value.fieldlist
@@ -71,7 +72,7 @@ For each assignment,
     (and (utils.hasmetatable value lua_table))
       -- (a b c) {1,2,3}
       (do
-        (assert (is_strictly_array value)
+        (assert (is_strictly_lua_name_array value)
           "table with keys cannot be destructred into list")
         `\local \,(lua_namelist (vector.cast self lua_name)) =
           \,value.fieldlist)
