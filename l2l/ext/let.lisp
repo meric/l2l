@@ -51,8 +51,12 @@ For each assignment,
         (map (fn (field i)
           (cond
             (utils.hasmetatable field lua_name)
+             -- {a, b, hello=c, world={f}}
+             -- The simple `a, b` part.
               (stats:insert `\local \,field = (\,ref)[(\,i)])
             (utils.hasmetatable field lua_field_name)
+              -- {a, b, hello=c, world={f}} {1, 2, hello=4, world={5}}
+              -- The nested string keys part.
               (do
                 (local sub `\(\,ref)[\,(lua_string field.name.value)])
                 (cond
@@ -60,6 +64,8 @@ For each assignment,
                     (stats:insert (destructure field.exp sub))
                     (stats:insert `\local \,field.exp = \,sub)))
             (destructure:has (getmetatable field))
+              -- {a, b, c, d, {e}} {unpack({1, 2, 3, 4, {5}})}
+              -- The nested {e} part.
               (do
                 (local sub `\(\,ref)[(\,i)])
                 (stats:insert (destructure field sub)))
