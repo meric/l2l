@@ -100,7 +100,14 @@ local function record(invariant, data, exp)
   return exp
 end
 
+-- Compile a embedded Lua expression into a Lua expression, compiling all
+-- nested Lisp expressions into Lua expressions too.
+-- @param invariant
+-- @param data
+-- @param output
+-- @return
 local function expize_lua(invariant, data, output)
+
   local exp = data:gsub(symbol, function(value)
       return lua.lua_nameize(value)
     end):gsub(list, function(value)
@@ -118,7 +125,12 @@ local function expize_lua(invariant, data, output)
   return record(invariant, data, exp)
 end
 
-expize = function(invariant, data, output)
+-- Compile a Lisp expression into a Lua expression.
+-- @param invariant
+-- @param data
+-- @param output
+-- @return
+function expize(invariant, data, output)
   local expanded
   if utils.hasmetatable(data, list) then
     local car = data:car()
@@ -170,6 +182,11 @@ expize = function(invariant, data, output)
   error("cannot not expize.."..tostring(data))
 end
 
+
+-- Convert a compiled lua expression into a statement.
+-- @param exp
+-- @param name
+-- @return
 local function to_stat(exp, name)
   -- convert exp to stat
   name = name or lua.lua_name:unique("_var")
@@ -177,6 +194,12 @@ local function to_stat(exp, name)
   return lua.lua_local.new(lua.lua_namelist({name}), lua.lua_explist({exp}))
 end
 
+
+-- Compile a lisp expression into a Lua return statement.
+-- @param invariant
+-- @param data
+-- @param output
+-- @return
 local function retstatize(invariant, data, output)
   -- Convert stat to retstat.
   if not utils.hasmetatable(data, lua.lua_block) then
@@ -192,6 +215,13 @@ local function retstatize(invariant, data, output)
   return expize_lua(invariant, data, output)
 end
 
+
+-- Compile a Lisp expression into a Lua statement.
+-- @param invariant
+-- @param data
+-- @param output
+-- @param last
+-- @return
 local function statize(invariant, data, output, last)
   if last then
     return retstatize(invariant, data, output)
