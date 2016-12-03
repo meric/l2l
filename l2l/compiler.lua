@@ -50,6 +50,14 @@ end
 
 local expize
 
+--- Convert a compiled lua expression into a Lua statement. Replace all
+-- Lisp symbols with Lua names, call the appropriate special form function
+-- for all Lua function calls if the caller is a defined special form
+-- designed with Lua in mind.
+-- @param invariant
+-- @param data
+-- @param output
+-- @return
 local function statize_lua(invariant, data, output)
   local stat = data
     :gsub(symbol, function(value) return lua.lua_nameize(value) end)
@@ -74,6 +82,16 @@ local function statize_lua(invariant, data, output)
   return stat
 end
 
+
+--- If invariant is in debug mode, wrap the lua expression in a pcall-ed
+-- anonymous function, which in case of error prints a traceback in l2l code
+-- instead of a traceback of the compiled Lua. In the case where the expression
+-- contains vararg ... then it has no effect - vararg ... cannot be wrapped
+-- inside an anonymous function.
+-- @param invariant
+-- @param data
+-- @param exp
+-- @return
 local function record(invariant, data, exp)
   if invariant.debug and invariant.index[data] and
     not (exp and exp.match and
@@ -100,14 +118,13 @@ local function record(invariant, data, exp)
   return exp
 end
 
--- Compile a embedded Lua expression into a Lua expression, compiling all
+--- Compile a embedded Lua expression into a Lua expression, compiling all
 -- nested Lisp expressions into Lua expressions too.
 -- @param invariant
 -- @param data
 -- @param output
 -- @return
 local function expize_lua(invariant, data, output)
-
   local exp = data:gsub(symbol, function(value)
       return lua.lua_nameize(value)
     end):gsub(list, function(value)
@@ -125,7 +142,7 @@ local function expize_lua(invariant, data, output)
   return record(invariant, data, exp)
 end
 
--- Compile a Lisp expression into a Lua expression.
+--- Compile a Lisp expression into a Lua expression.
 -- @param invariant
 -- @param data
 -- @param output
@@ -183,7 +200,7 @@ function expize(invariant, data, output)
 end
 
 
--- Convert a compiled lua expression into a statement.
+--- Convert a compiled lua expression into a statement.
 -- @param exp
 -- @param name
 -- @return
@@ -195,7 +212,7 @@ local function to_stat(exp, name)
 end
 
 
--- Compile a lisp expression into a Lua return statement.
+--- Compile a lisp expression into a Lua return statement.
 -- @param invariant
 -- @param data
 -- @param output
@@ -216,7 +233,7 @@ local function retstatize(invariant, data, output)
 end
 
 
--- Compile a Lisp expression into a Lua statement.
+--- Compile a Lisp expression into a Lua statement.
 -- @param invariant
 -- @param data
 -- @param output
@@ -274,6 +291,9 @@ local exports
 
 local dependencies
 
+--- This function returns a table that stores the lua statement required
+-- to import the lua object named as the key.
+-- @return
 local function initialize_dependencies()
   if not dependencies then
     dependencies = {
@@ -330,6 +350,12 @@ local function initialize_dependencies()
   return dependencies
 end
 
+
+--- Given a list of Lua names generate a list of lua statement that imports
+-- the referenced Lua object from l2l modules.
+-- @param references
+-- @param mod
+-- @return
 local function header(references, mod)
   local deps = initialize_dependencies()
   local names = {}
@@ -374,6 +400,11 @@ local function header(references, mod)
   return table.concat(output, "\n")
 end
 
+
+--- Analyse a Lua expression and store all Lua name prefixes into the
+-- `references` table.
+-- @param references
+-- @return value
 local function analyse_chunk(references, value)
   for match in lua.Chunk:gmatch(value, lua.Var) do
     if utils.hasmetatable(match, lua.lua_dot) then
@@ -413,12 +444,17 @@ local function build(mod, extends, verbose)
   end
 end
 
+
+--- Import an l2l module named `mod`, making sure it's compiled to Lua.
+-- @param mod
+-- @param extends
+-- @param verbose
+-- @return
 local function import(mod, extends, verbose)
   local f, out = build(mod, extends, verbose)
   local path = mod:gsub("[.]", "/")
   local ok, m
   if f then
-    -- TODO: path here is undefined
     ok, m = pcall(f, mod, path)
     if not m then
       print("missing module", mod, path)
@@ -442,6 +478,13 @@ local function import(mod, extends, verbose)
   return m
 end
 
+
+--- Compile l2l string code into Lua.
+-- @param source
+-- @param mod
+-- @param verbose
+-- @param extensions
+-- @return
 local function compile(source, mod, verbose, extensions)
   local invariant = source
 
@@ -507,6 +550,12 @@ local function compile(source, mod, verbose, extensions)
 end
 
 
+--- Convert a purely functional lua anonymous function definition into a
+-- macro definition.
+-- @param invariant
+-- @param f
+-- @param output
+-- @return
 local function macroize(invariant, f, output)
   assert(utils.hasmetatable(f, lua.lua_lambda_function)
       and len(f.body.block) == 1
@@ -537,6 +586,13 @@ local function macroize(invariant, f, output)
     ))
 end
 
+
+--- Convert a function call into a macro expansion.
+-- @param invariant
+-- @param f
+-- @param output
+-- @param ...
+-- @return
 local function lua_inline_functioncall(invariant, f, output, ...)
   f = expize(invariant, f, output)
   if utils.hasmetatable(f, lua.lua_lambda_function)
@@ -562,10 +618,18 @@ local function lua_inline_functioncall(invariant, f, output, ...)
     lua.lua_args.new(lua.lua_explist{...}))
 end
 
+
+--- Load l2l string code into a function.
+-- @param source
+-- @return
 local function _loadstring(source)
   return loadstring(compile(source))
 end
 
+
+--- Generate a hash from a string
+-- @param source
+-- @return
 local function hash_mod(source)
   local h = #source.."@"..source
   local total = 1
@@ -577,6 +641,14 @@ local function hash_mod(source)
   return "--"..total.."\n"
 end
 
+--- Retrieve the compiled result of `source` and if it has not been compiled
+-- before, compile it and save it into the cache.
+-- @param source
+-- @param mod
+-- @param extends
+-- @param path
+-- @param verbose
+-- @return
 compile_or_cached = function(source, mod, extends, path, verbose)
   local f = io.open(path)
   local h = hash_mod(source)
