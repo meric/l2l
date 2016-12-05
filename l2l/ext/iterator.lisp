@@ -72,7 +72,7 @@ Usage:
 
 (fn compile_map (invariant cdr output insert create)
   (let (
-    (f iterable) (:unpack cdr)
+    (f iterable) {cdr:unpack()}
     iterable0 (expize invariant iterable output)
     creating (not (utils.hasmetatable iterable0 lua_iteration))
     iterable (cond creating (lua_iteration iterable0) iterable0)
@@ -99,7 +99,7 @@ Usage:
 
 (fn compile_filter (invariant cdr output insert create)
   (let (
-    (f iterable) (:unpack cdr)
+    (f iterable) {cdr:unpack()}
     iterable0 (expize invariant iterable output)
     creating (not (utils.hasmetatable iterable0 lua_iteration))
     iterable (cond creating (lua_iteration iterable0) iterable0)
@@ -128,7 +128,7 @@ Usage:
 
 (fn compile_reduce (invariant cdr output insert create)
   (let (
-    (f initial iterable) (:unpack cdr)
+    (f initial iterable) {cdr:unpack()}
     reduction (lua_name:unique "reduction")
     iterable0 (expize invariant iterable output)
     creating (not (utils.hasmetatable iterable0 lua_iteration))

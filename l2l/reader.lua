@@ -70,7 +70,7 @@ end)
 
 symbol.cache = {}
 
-local function mangle(text)
+local function _mangle(text)
   if text == "-" then
     return "_45"
   end
@@ -97,6 +97,21 @@ local function mangle(text)
       return "_"..char:byte()
     end
   end)
+end
+
+local function mangle(text)
+  if text:find("[.][.]") and text ~= '...' then
+    error("Lisp names cannot have two dots consecutively unless "..
+      "it is the vararg ...")
+  end
+  if not text:find("[.][.]") then
+    local sections = {}
+    for section in text:gmatch("[^.]+") do
+      table.insert(sections, _mangle(section))
+    end
+    return table.concat(sections, ".")
+  end
+  return _mangle(text)
 end
 
 function symbol:__eq(sym)
@@ -246,6 +261,10 @@ end
 
 local function read_lua_literal(invariant, position)
   local rest, value = lua.Exp(invariant, position)
+  if not value then
+
+  print(invariant.source:sub(position, rest), value)
+  end
   invariant.index[value] = {position, rest}
   return rest, {value}
 end
@@ -474,6 +493,7 @@ return {
   load_extension = load_extension,
   import_extension = import_extension,
   inherit = inherit,
+  mangle = mangle,
   read_lua = read_lua,
   read_list = read_list,
   read_right_paren = read_right_paren,
@@ -483,4 +503,3 @@ return {
   symbol=symbol,
   skip_whitespace = skip_whitespace
 }
-

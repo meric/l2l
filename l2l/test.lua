@@ -6,11 +6,13 @@ local compiler = require("l2l.compiler")
 local lua = require("l2l.lua")
 local loadstring = _G["loadstring"] or _G["load"]
 
+local reader = require("l2l.reader")
+
 local function assert_exec_equal(source, ...)
   local src = compiler.compile(source, "test")
-  local f = loadstring(src)
+  local f, err = loadstring(src)
   if not f then
-    print(src)
+    print(src, err)
   end
   local ret = {pcall(f)}
   local ok = table.remove(ret, 1)
@@ -167,7 +169,7 @@ end
 function test_let()
   local src = assert_exec_equal([[
     (let (
-      {a, b, c, d, {e}} {unpack({1, 2, 3, 4, {5}})}
+      {a, b, c, d, {e}} {table.unpack({1, 2, 3, 4, {5}})}
       x {}
       {f} x)
       \return a, b, c, d, e)
@@ -189,7 +191,7 @@ end
 
 function test_and()
   assert_exec_equal(
-    [[(and 1 (+ 1 2))]], 
+    [[(and 1 (+ 1 2))]],
     3)
   assert_exec_equal(
     [[(and true true)]],

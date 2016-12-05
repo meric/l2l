@@ -4,8 +4,6 @@
 @import local
 @import cond
 @import do
-@import iterator
-@import boolean
 
 -- http://exploringjs.com/es6/ch_destructuring.html#sec_destructuring-algorithm
 
@@ -28,19 +26,29 @@ For each assignment,
 ]]--
 
 (local utils (require "leftry.utils"))
+(local boolean (require "l2l.lib.operators"))
+
+(fn is_strictly_array (self)
+  (apply boolean.and
+    (utils.map
+      (fn (field) (boolean.and
+        (not (utils.hasmetatable field lua_field_key))
+        (not (utils.hasmetatable field lua_field_name))))
+      self.fieldlist)))
 
 (fn is_strictly_lua_name_array (self)
-  (apply and
-    (map
-      (fn (field) (or (utils.hasmetatable field lua_name)
+  (apply boolean.and
+    (utils.map
+      (fn (field) (boolean.or
+        (utils.hasmetatable field lua_name)
         (not (getmetatable field))))
       self.fieldlist)))
 
 (:where destructure lua_table (fn (self value)
   (cond
-    (and (utils.hasmetatable value lua_table)
+    (boolean.and (utils.hasmetatable value lua_table)
          (is_strictly_lua_name_array self)
-         (is_strictly_lua_name_array value))
+         (is_strictly_array value))
       -- Both sides are lua_table, cancels out.
       -- {a,b,c,d,e} {unpack({1, 2, 3, 4, 5})}
       `\local \,self.fieldlist = \,value.fieldlist
@@ -48,7 +56,7 @@ For each assignment,
       (do
         (local ref (lua_name:unique "ref"))
         (local stats (lua_block {\`\local \,ref = (\,value)}))
-        (map (fn (field i)
+        (utils.map (fn (field i)
           (cond
             (utils.hasmetatable field lua_name)
              -- {a, b, hello=c, world={f}}
@@ -75,19 +83,19 @@ For each assignment,
 
 (:where destructure list (fn (self value)
   (cond
-    (and (utils.hasmetatable value lua_table))
+    (boolean.and (utils.hasmetatable value lua_table))
       -- (a b c) {1,2,3}
       (do
-        (assert (is_strictly_lua_name_array value)
-          "table with keys cannot be destructred into list")
+        (assert (is_strictly_array value)
+          "table with keys cannot be destructured into list")
         `\local \,(lua_namelist (vector.cast self lua_name)) =
           \,value.fieldlist)
-    (and (utils.hasmetatable value list)
+    (boolean.and (utils.hasmetatable value list)
          (== (:car value) (symbol "quote")))
       -- (d e f) '(4 5 (+ 6 8))
         `\local \,(lua_namelist (vector.cast self lua_name)) =
           \,(lua_explist (vector.cast (:car (:cdr value))))
-    `\local \,(lua_namelist (map lua_name self)) = (\,value):unpack())))
+    `\local \,(lua_namelist (vector.cast self lua_name))=(\,value):unpack())))
 
 (:where destructure "nil" (fn (self)
   (error "let only allows symbols and list on left hand side, not.."..

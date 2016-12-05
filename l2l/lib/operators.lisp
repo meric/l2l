@@ -32,22 +32,22 @@
   return x)
 
 {
-  [(\'+)] = (\+),
-  [(\'..)] = (\..),
-  [(\'-)] = \
+  [(\'+):mangle()] = (\+),
+  [(\'..):mangle()] = (\..),
+  [(\'-):mangle()] = \
     (fn (a ...)
       (cond
         \not a 0
         \not ... \-a
         \a - \(+ ...))),
-  [(\'*)] = (\*),
-  [(\'/)] = \
+  [(\'*):mangle()] = (\*),
+  [(\'/):mangle()] = \
     (fn (a ...)
       (cond
         \not a 0
         \not ... \1/a
         \a / \(* ...))),
-  [(\'and)] = \
+  [(\'and):mangle()] = \
     (fn (...)
       (local args (vector ...))
       (local x true)
@@ -56,7 +56,7 @@
         x = x and v
       end
       return x),
-  [(\'or)] = \
+  [(\'or):mangle()] = \
     (fn (...)
       (local args (vector ...))
       (local x false)
@@ -65,7 +65,7 @@
         x = x or v
       end
       return x),
-  [(\'<)] = \
+  [(\'<):mangle()] = \
     (fn (a ...)
       (local args (vector ...))
       (local x true)
@@ -78,7 +78,7 @@
         end
       end
       return x),
-  [(\'>)] = \
+  [(\'>):mangle()] = \
     (fn (a ...)
       (local args (vector ...))
       (local x true)
@@ -91,7 +91,7 @@
         end
       end
       return x),
-  [(\'>=)] = \
+  [(\'>=):mangle()] = \
     (fn (a ...)
       (local args (vector ...))
       (local x true)
@@ -104,7 +104,7 @@
         end
       end
       return x),
-  [(\'<=)] = \
+  [(\'<=):mangle()] = \
     (fn (a ...)
       (local args (vector ...))
       (local x true)
@@ -117,7 +117,7 @@
         end
       end
       return x),
-  [(\'==)] = \
+  [(\'==):mangle()] = \
     (fn (a ...)
       (local args (vector ...))
       (local x true)
@@ -130,10 +130,10 @@
         end
       end
       return x),
-  [(\'not)] = \
+  [(\'not):mangle()] = \
     (fn (a)
       \not a),
-  [(\'%)] = \
+  [(\'%):mangle()] = \
     (fn (a b)
       \(a % b))
 }
