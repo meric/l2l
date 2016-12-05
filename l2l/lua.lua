@@ -214,7 +214,13 @@ end
 lua_varlist = _list("lua_varlist", ",", nil, var_cast)
 lua_namelist = _list("lua_namelist", ",", nil, name_cast)
 lua_explist = _list("lua_explist", ",")
-lua_block = _list("lua_block", ";")
+if _VERSION == "Lua 5.1" and (type(jit) ~= 'table' or not jit.version) then
+  -- Non-LuaJIT Lua 5.1 does not allow multiple semicolons.
+  -- Use `do end` for noop.
+  lua_block = _list("lua_block", "\ndo end\n")
+else
+  lua_block = _list("lua_block", ";")
+end
 lua_funcname = _list("lua_funcname")
 lua_fieldlist = _list("lua_fieldlist", ",")
 

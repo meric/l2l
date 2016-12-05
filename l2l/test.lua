@@ -169,7 +169,7 @@ end
 function test_let()
   local src = assert_exec_equal([[
     (let (
-      {a, b, c, d, {e}} {table.unpack({1, 2, 3, 4, {5}})}
+      {a, b, c, d, {e}} {unpack({1, 2, 3, 4, {5}})}
       x {}
       {f} x)
       \return a, b, c, d, e)
