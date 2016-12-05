@@ -100,9 +100,9 @@ local function _mangle(text)
 end
 
 local function mangle(text)
-  if text:find("[.][.]") and text ~= '...' then
+  if text:find("[.][.]") and text ~= '...'  and text ~= '..' then
     error("Lisp names cannot have two dots consecutively unless "..
-      "it is the vararg ...")
+      "it is the vararg `...` or concatenate `..`")
   end
   if not text:find("[.][.]") then
     local sections = {}
