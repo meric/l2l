@@ -83,6 +83,18 @@ make test
 make repl
 ```
 
+## Naming ##
+
+Lisp names are mangled into Lua by replacing non lua compliant characters
+with lua compliant characters. (See the mangle function in l2l/reader.lua).
+
+Lisp names can contain dashes, dots, alphabets, numbers, underscores, and many
+more characters, but they must not consist of two dots consecutively unless
+the name is `..` (lua string concat) or `...` (lua vararg).
+
+This is so the compiler can mangle lua field accessor names
+`my_table.my_subtable-with-dashes.some_key` properly.
+
 ## Features ##
 
 * Mix Lisp and Lua in source code with backslash.
