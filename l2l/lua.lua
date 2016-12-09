@@ -24,6 +24,8 @@ local lua_fieldlist
 local lua_name
 local lua_ast
 
+local loadstring = _G["loadstring"] or _G["load"]
+
 local function lua_nameize(x)
   local reader = require("l2l.reader")
   if getmetatable(x) == reader.symbol then
@@ -214,12 +216,13 @@ end
 lua_varlist = _list("lua_varlist", ",", nil, var_cast)
 lua_namelist = _list("lua_namelist", ",", nil, name_cast)
 lua_explist = _list("lua_explist", ",")
-if _VERSION == "Lua 5.1" and (type(jit) ~= 'table' or not jit.version) then
-  -- Non-LuaJIT Lua 5.1 does not allow multiple semicolons.
-  -- Use `do end` for noop.
-  lua_block = _list("lua_block", "\ndo end\n")
-else
+
+-- Check if this Lua supports consecutive semicolons.
+-- If not, use `do end` for noop.
+if (loadstring(";;")) then
   lua_block = _list("lua_block", ";")
+else
+  lua_block = _list("lua_block", "\ndo end\n")
 end
 lua_funcname = _list("lua_funcname")
 lua_fieldlist = _list("lua_fieldlist", ",")
