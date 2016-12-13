@@ -66,24 +66,25 @@ r = each(function(v, k)
   lua_dot = {prefix=1, ".", name=3},
   lua_index = {prefix=1, "[", key=3, "]"},
   lua_goto = {"goto ", label=2},
-  lua_do = {"do ", block=2, " end"},
-  lua_while = {"while ", condition=2, " do ", block=4, " end"},
-  lua_repeat = {"repeat ", block=2, " until ", condition=4},
-  lua_if = {"if ", condition=2, " then ", block=4, _elseifs=5, _else=6," end"},
-  lua_elseif = {" elseif ", condition=2, " then ", block=4},
-  lua_else = {" else ", block=2},
+  lua_do = {"do\n", block=2, "\nend"},
+  lua_while = {"\nwhile\n", condition=2, " do\n", block=4, "\nend"},
+  lua_repeat = {"\nrepeat\n", block=2, "\nuntil ", condition=4},
+  lua_if = {"\nif ", condition=2, " then ", block=4, _elseifs=5, _else=6,
+    "\nend"},
+  lua_elseif = {"\nelseif\n", condition=2, " then\n", block=4},
+  lua_else = {"\nelse\n", block=2},
   lua_elseifs = function(self) return
-      table.concat(map(tostring, self), " ")
+      table.concat(map(tostring, self), "\n")
     end,
-  lua_for = {"for ", var=2, "=", initial=4, ",", limit=6, step=7, " do ",
-             block=9, " end"},
+  lua_for = {"\nfor ", var=2, "=", initial=4, ",", limit=6, step=7, " do\n",
+             block=9, "\nend"},
   lua_step = {",", step=2},
-  lua_for_in = {"for ", namelist=2, " in ", explist=4, " do ", block=6,
-                " end"},
-  lua_function = {"function ", name=2, body=3},
+  lua_for_in = {"\nfor ", namelist=2, " in ", explist=4, " do\n", block=6,
+                "\nend"},
+  lua_function = {"\nfunction ", name=2, body=3},
   lua_lambda_function = {"function", body=2},
-  lua_local_function = {"local", " function ", name=3, body=4},
-  lua_retstat = {"return ", explist=2},
+  lua_local_function = {"\nlocal", " function ", name=3, body=4},
+  lua_retstat = {"\nreturn ", explist=2},
   lua_label = {"::", name=2, "::"},
   lua_binop_exp = {left=1, binop=2, right=3},
   lua_unop_exp = {unop=1, exp=2},
@@ -91,7 +92,7 @@ r = each(function(v, k)
   lua_colon_functioncall = {exp=1, ":", name=3, args=4},
   lua_args = {"(", explist=2, ")" },
   lua_table = {"{", fieldlist=2, "}"},
-  lua_funcbody = {"(", namelist=2, ")", block=4, " end"},
+  lua_funcbody = {"(", namelist=2, ")", block=4, "\nend"},
   lua_paren_exp = {"(", exp=2, ")"},
   lua_field_name = {name=1, "=", exp=3},
   lua_field_key = {"[", key=2, "]", "=", exp=5}
@@ -127,9 +128,9 @@ local lua_paren_exp = r.lua_paren_exp
 local lua_field_name = r.lua_field_name
 local lua_field_key = r.lua_field_key
 
-local lua_local = ast.reduce("lua_local", {"local", namelist=2, explist=3},
+local lua_local = ast.reduce("lua_local", {"\nlocal", namelist=2, explist=3},
   function(self)
-    local text = {"local", tostring(self.namelist)}
+    local text = {"\nlocal", tostring(self.namelist)}
     if self.explist then
       table.insert(text, "=")
       table.insert(text, tostring(self.explist))
