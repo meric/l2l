@@ -313,8 +313,8 @@ end
 local function read_lua_literal(invariant, position)
   local rest, value = lua.Exp(invariant, position)
   if not value then
-
-  print(invariant.source:sub(position, rest), value)
+    -- not a valid lua literal
+    return
   end
   invariant.index[value] = {position, rest}
   return rest, {value}
@@ -509,11 +509,11 @@ local function environ(source, verbose)
       [string.byte("(")] = {read_list},
       [string.byte(";")] = {read_semicolon},
       [string.byte(")")] = {read_right_paren},
-      [string.byte('{')] = {read_lua_literal},
+      [string.byte('{')] = {read_lua_literal, read_dict},
       [string.byte('"')] = {read_lua_literal},
       [string.byte("-")] = {read_lua_number, read_lua_comment, read_symbol},
-      [string.byte("[")] = {read_dict},
-      [string.byte("]")] = {read_right_brace},
+      -- [string.byte("[")] = {read_dict},
+      [string.byte("}")] = {read_right_brace},
 
       -- Implement skip_whitespace as a single byte read macro, because
       -- skip_whitespace is the most common read_macro evaluated and pattern

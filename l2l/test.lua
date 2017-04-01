@@ -36,6 +36,18 @@ local function assert_exec_error_contains(message, source, ...)
   t.assert_equal(found, true)
 end
 
+
+local function assert_parse_error_contains(message, source, ...)
+  local ok, ret = pcall(compiler.compile, source, "test", true)
+  t.assert_equal(ok, false)
+  local found = tostring(ret):find(message, 1, true) and true
+  if not found then
+    print(ret)
+  end
+  t.assert_equal(found, true)
+end
+
+
 local function assert_exec_equal_print(source, ...)
   local src = compiler.compile(source, "test")
   print(src)
@@ -329,39 +341,33 @@ end
 
 function test_table_constructor()
   assert_exec_equal(
-    [[ (.a ["a" "b"]) ]],
+    [[ (.a {"a" "b"}) ]],
     "b")
   assert_exec_equal(
-    [[ (.a ["a" -- comment
-    "b"]) ]],
+    [[ (.a {"a" -- comment
+    "b"}) ]],
     "b")
-  -- -- FIXME error test not working
-  -- assert_exec_error_contains(
-  --   "table dictionary constructor requires an even number of expressions",
-  --   [[ (.a ["a" "b" "c"]) ]])
+  assert_parse_error_contains(
+    "table dictionary constructor requires an even number of expressions",
+    [[ (.a {"a" "b" "c"}) ]])
   assert_exec_equal(
-    [[ (. [(+ 1 2) (* 10 20) (+ 3 4) (/ 10 20)] 3) ]],
+    [[ (. {(+ 1 2) (* 10 20) (+ 3 4) (/ 10 20)} 3) ]],
     200)
   assert_exec_equal(
-    [[ (.hey [\("he".."y") (+ 1 2) "b" (+ 3 4)]) ]],
+    [[ (.hey {\("he".."y") (+ 1 2) "b" (+ 3 4)}) ]],
     3)
   assert_exec_equal(
-    [[ (do (local v "heh") (+ (.heh [v 3 .a 10]) (.kw [.kw 4 .a 11])) ) ]],
+    [[ (do (local v "heh") (+ (.heh {v 3 .a 10}) (.kw {.kw 4 .a 11})) ) ]],
     7)
-  -- -- FIXME some destructuring features break, plus syntax becomes uglier. this test currently bombs
-  -- -- BUT, clojure manages just fine with this sort of syntax, albeit with optional "," and
-  -- -- with vector literals
-  -- -- AND, \{} would just be a single keystroke away, tho strange to tell users to drop to lua
-  -- -- for concise destructuring of k-v tables
-  -- assert_exec_equal([[
-  --   (let (
-  --     [ 1 a 2 b "hello" c "world" [1 f] ] [ 1 1 2 2 "hello" 4 "world" [ 1 5 ] ]
-  --     [ 1 y 2 [ 1 z ] ]  [ 1 1 2 [ 1 2 ] ]
-  --     d 3
-  --     e 4)
-  --     \return a, b, c, d, e, f, z)
-  --   ]],
-  --   1, 2, 4, 3, 4, 5, 2)
+  assert_exec_equal([[
+    (let (
+      {a, b, hello=c, world={f} } {1 1 2 2 "hello" 4 "world" {1 5}}
+      {y, {z}}  {1 1 2 {1 2}}
+      d 3
+      e 4)
+      \return a, b, c, d, e, f, z)
+    ]],
+    1, 2, 4, 3, 4, 5, 2)
 end
 
 t.run(nil, {"--verbose"})
