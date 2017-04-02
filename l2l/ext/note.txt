@@ -1,2 +1,1 @@
-Extensions require importing all extensions explicitly, whereas usually modules
-implicitly come with a default set of extensions.
+Extensions in ext/ require importing all extensions explicitly, whereas usually modules in lib/ implicitly come with a default set of extensions.
