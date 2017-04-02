@@ -210,6 +210,57 @@ local function read_list(invariant, position)
   return rest + 1, vector(value)
 end
 
+local function read_right_brace()
+  error("unmatched right brace")
+end
+
+local function read_dict(invariant, position)
+  local size = #invariant.source
+  local t = vector()
+  local ok, rest, values = true, position + 1
+  while ok do
+    if rest > size then
+      error("no bytes")
+    end
+    ok, rest, values = readifnot(invariant, rest, read_right_brace)
+    if ok then
+      for _, value in ipairs(values) do
+        t:insert(value)
+      end
+    end
+  end
+
+  if not rest then
+    return
+  end
+
+  local n = #t
+  if n % 2 == 1 then
+    error("table dictionary constructor requires an even number of expressions")
+  end
+
+  local parameters = {}
+  for i = 1, n, 2 do
+    local k = t[i]
+    -- sugar for string keys
+    if utils.hasmetatable(k, symbol) then
+      local first = string.sub(k.name, 1, 1)
+      if first == "." then
+        k = lua.lua_string(k.name:sub(2))
+      end
+    end
+    table.insert(parameters, lua.lua_field_key.new(k, t[i+1]))
+  end
+
+  local value = lua.lua_table.new(lua.lua_fieldlist(parameters))
+  -- Add 1 for the right_brace.
+  if value then
+    invariant.index[value] = {position, rest + 1}
+  end
+  return rest + 1, {value}
+
+end
+
 local whitespace = {
   [string.byte(" ")] = true,
   [string.byte("\t")] = true,
@@ -262,8 +313,8 @@ end
 local function read_lua_literal(invariant, position)
   local rest, value = lua.Exp(invariant, position)
   if not value then
-
-  print(invariant.source:sub(position, rest), value)
+    -- not a valid lua literal
+    return
   end
   invariant.index[value] = {position, rest}
   return rest, {value}
@@ -458,9 +509,11 @@ local function environ(source, verbose)
       [string.byte("(")] = {read_list},
       [string.byte(";")] = {read_semicolon},
       [string.byte(")")] = {read_right_paren},
-      [string.byte('{')] = {read_lua_literal},
+      [string.byte('{')] = {read_lua_literal, read_dict},
       [string.byte('"')] = {read_lua_literal},
       [string.byte("-")] = {read_lua_number, read_lua_comment, read_symbol},
+      -- [string.byte("[")] = {read_dict},
+      [string.byte("}")] = {read_right_brace},
 
       -- Implement skip_whitespace as a single byte read macro, because
       -- skip_whitespace is the most common read_macro evaluated and pattern
@@ -497,6 +550,8 @@ return {
   read_lua = read_lua,
   read_list = read_list,
   read_right_paren = read_right_paren,
+  read_dict = read_dict,
+  read_right_brace = read_right_brace,
   read_lua_literal = read_lua_literal,
   read_quote = read_quote,
   read_symbol = read_symbol,
