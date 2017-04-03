@@ -4,6 +4,7 @@
 local utils = require("leftry.utils")
 local ast = require("leftry.ast")
 local ipairs = require("l2l.iterator")
+local vector = require("l2l.vector")
 local map = utils.map
 local each =  utils.each
 
@@ -344,7 +345,7 @@ local Chunk, Block, Stat, RetStat, Label, FuncName, VarList, Var, NameList,
       ExpList, Exp, PrefixExp, FunctionCall, Args, FunctionDef, FuncBody,
       ParList, TableConstructor, FieldList, Field, FieldSep, BinOp, UnOp,
       numeral, Numeral, LiteralString, Name, Comment, LongString,
-      LispExp, LispStat, NameOrLispExp
+      LispExp, LispStat, NameOrLispExp, FuncNameOrLispExp
 
 local dquoted, squoted
 
@@ -437,7 +438,7 @@ Stat = factor("Stat", function() return
   span("for", Name, "=", Exp, ",", Exp, opt(span(",", Exp) % lua_step),
     "do", Block, "end") % lua_for,
   span("for", NameList, "in", ExpList, "do", opt(Block), "end") % lua_for_in,
-  span("function", FuncName, FuncBody) % lua_function,
+  span("function", FuncNameOrLispExp, FuncBody) % lua_function,
   span("local", "function", Name, FuncBody) % lua_local_function,
   span("local", NameList, opt(span("=", ExpList) % second)) % lua_local end)
 RetStat = factor("RetStat", function() return
@@ -457,6 +458,10 @@ Var = factor("Var", function() return
   span("\\", LispExp) % second,
   span(PrefixExp, "[", Exp, "]") % lua_index,
   span(PrefixExp, ".", Name) % lua_dot end)
+FuncNameOrLispExp = factor("FuncNameOrLispExp", function() return
+  FuncName,
+  span("\\", LispExp)
+    % utils.compose(second, lua_name, vector, lua_funcname) end)
 NameOrLispExp = factor("NameOrLispExp", function() return
   Name, span("\\", LispExp) % second end)
 NameList = factor("NameList", function() return
@@ -779,6 +784,7 @@ local exports = {
   LiteralString=LiteralString,
   Name=Name,
   NameOrLispExp=NameOrLispExp,
+  FuncNameOrLispExp=FuncNameOrLispExp,
   Comment=Comment,
   LongString=LongString,
   span=span,

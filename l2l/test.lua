@@ -266,6 +266,12 @@ function test_fn()
   assert_exec_equal(
     [[((fn add (...) (+ 1 2 3 4 ...)) 5)]],
     15)
+  assert_exec_equal(
+    [[(local x {})
+      (fn x:add () 4)
+      (x:add)]],
+    4)
+
 end
 
 function test_quasiquote()

@@ -1,3 +1,5 @@
+@import quasiquote
+
 \
 --[[
 Usage:
@@ -12,38 +14,21 @@ local utils = require("leftry").utils
 local function stat_lua_function(invariant, name, parameters, body)
   assert(utils.hasmetatable(parameters, list) or parameters == nil,
     "fn.lisp:stat_lua_function")
-  local stats = {}
-  for i, value in ipairs(body) do
-    table.insert(stats, compiler.statize(invariant, value, stats, i == len(body)))
-  end
-  local constructor = lua_local_function
-
-  if name.name:match(":") then
-    constructor = lua_function
-  end
-
-  local local_function = constructor.new(
-    lua_name(name:mangle()),
-    lua_funcbody.new(
-      lua_namelist(vector.cast(parameters, function(value, i)
-          assert(value, "missing value: ".. i..", " .. tostring(parameters))
-          return lua_name(value:mangle())
-        end)),
-      lua_block(stats)))
-  local_function.body.block = lua_block(stats)
-  return local_function
+  return \`\function \,name(\,\lua_namelist(parameters))
+      \,\unpack(utils.inserts(
+        function(value, i, stats)
+          return compiler.statize(invariant, value, stats, i == len(body))
+        end, body))
+    end
 end
 
 local function exp_lua_lambda_function(invariant, parameters, body)
-  local stats = {}
-  for i, value in ipairs(body) do
-    table.insert(stats, compiler.statize(invariant, value, stats, i == len(body)))
-  end
-  return lua_lambda_function.new(lua_funcbody.new(
-    lua_namelist(vector.cast(parameters, function(value)
-        return lua_name(value:mangle())
-      end)),
-    lua_block(stats)))
+  return \`\function(\,\lua_namelist(parameters))
+      \,\unpack(utils.inserts(
+        function(value, i, stats)
+          return compiler.statize(invariant, value, stats, i == len(body))
+        end, body))
+    end
 end
 
 local function validate_function(cadr)
@@ -81,7 +66,7 @@ local function statize_fn(invariant, cdr, output)
 end
 
 
--- if in_lua == true, then 
+-- if in_lua == true, then
 --  \(fn(\'some_name, \'(a), print(a)))("hello")
 -- would work.
 
