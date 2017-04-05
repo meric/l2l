@@ -513,6 +513,7 @@ local function compile(source, mod, verbose, extensions)
         "cond",
         "do",
         "set",
+        "seti",
         "let",
         "boolean"
       }
