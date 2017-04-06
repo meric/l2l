@@ -40,6 +40,9 @@ local function repl(partial)
     true)
 
   if(compiled_ok) then
+    local ok, f_or_err = loadstring(src_or_err)
+    assert(ok, "BUG! l2l code compiled into broken Lua: [["..
+      src_or_err.."]].\nerror was: \""..f_or_err.."\".")
     local vals = {xpcall(loadstring(src_or_err), handler)}
     if(table.remove(vals, 1)) then
       for _,val in ipairs(vals) do
