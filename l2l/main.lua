@@ -25,6 +25,10 @@ local function repl(partial)
     io.write("> ")
   end
   local input = io.read()
+  if input:match("^%s*$") then
+    -- Ignore empty space or blank lines.
+    return repl()
+  end
   if(not input) then
     if(not partial) then
       return
