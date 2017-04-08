@@ -23,24 +23,23 @@ Usage:
   end
   return exp)
 
-(fn expize_seti(invariant cdr output)
+(fn compile_seti(invariant cdr output)
   (local args (vector.cast cdr))
-  (assert (>= (len args) 3))
+  \if len(args) < 3 then
+    error("seti requires at least 3 arguments: (seti left-expression index1 [index2 ...] value)")
+  end
   (local value (args:pop))
   (local left (indexer invariant output args))
-  (table.insert output `\\,left = \,(expize invariant value output))
-  
-  --(print invariant.debug)
-  --(print left)
-  --(local b `\\,left = \,(expize invariant value output))
-  --(print b)
+  \return left, value)
 
+(fn expize_seti(invariant cdr output)
+  (local left value (compile_seti invariant cdr output))
+  (table.insert output `\\,left = \,(expize invariant value output))
   left)
-  
 
 (fn statize_seti(invariant cdr output)
-  (print "TO DO")
-  1
+  (local left value (compile_seti invariant cdr output))
+  `\\,left = \,(expize invariant value output)
   )
 
 {
