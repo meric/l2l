@@ -514,6 +514,7 @@ local function compile(source, mod, verbose, extensions)
         "operators",
         "local",
         "cond",
+        "if",
         "do",
         "set",
         "seti",
