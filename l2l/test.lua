@@ -372,8 +372,11 @@ end
 
 function test_seti()
   assert_parse_error_contains(
-    "seti requires at least 3 arguments",
-    [[ (seti {} 1) ]])
+    "seti requires at least 2 arguments",
+    [[ (seti v) ]])
+  assert_exec_equal(
+    [[ (seti v 5) ]],
+    5)
   assert_exec_equal(
     [[ (do
           (local t {})
