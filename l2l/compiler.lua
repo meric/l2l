@@ -223,8 +223,11 @@ local function retstatize(invariant, data, output)
     return lua.lua_retstat.new(
       lua.lua_explist({expize(invariant, data, output)}))
   elseif not utils.hasmetatable(data[#data], lua.lua_retstat) then
-    data[#data] = retstatize(invariant,
-      expize_lua(invariant, data[#data], output), output)
+    if not data[#data]:match(lua.lua_assign) then
+      -- TODO: Should ignore all Lua stat asts that are not valid Lua exps, not just lua_assign.
+      data[#data] = retstatize(invariant,
+        expize_lua(invariant, data[#data], output), output)
+    end
     return statize_lua(invariant, data, output)
   elseif not utils.hasmetatable(data, lua.retstat) then
     return statize_lua(invariant, data, output)
@@ -297,54 +300,54 @@ local dependencies
 local function initialize_dependencies()
   if not dependencies then
     dependencies = {
-      ["compiler"] = {{'require("l2l.compiler")'}},
-      ["reader"] = {{'require("l2l.reader")'}},
-      ["list"] = {{'require("l2l.list")', nil}},
-      ["vector"] = {{'require("l2l.vector")', nil}},
-      ["ipairs"] = {{'require("l2l.iterator")', nil}},
-      ["trace"] = {{'require("l2l.trace")', nil}},
-      ["len"] = {{'require("l2l.len")', nil}},
+      ["compiler"] = {{'require("l2l.compiler");'}},
+      ["reader"] = {{'require("l2l.reader");'}},
+      ["list"] = {{'require("l2l.list");', nil}},
+      ["vector"] = {{'require("l2l.vector");', nil}},
+      ["ipairs"] = {{'require("l2l.iterator");', nil}},
+      ["trace"] = {{'require("l2l.trace");', nil}},
+      ["len"] = {{'require("l2l.len");', nil}},
       [symbol("%"):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol(".."):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol("-"):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol("+"):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol("*"):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol("/"):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol("<"):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol("<="):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol(">"):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol(">="):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol("=="):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol("and"):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol("or"):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
       [symbol("not"):mangle()] = {
-        "import", {'import("l2l.lib.operators")', "operators"}},
-      ["apply"] = {"import", {'import("l2l.lib.apply")', "apply"}},
+        "import", {'import("l2l.lib.operators");', "operators"}},
+      ["apply"] = {"import", {'import("l2l.lib.apply");', "apply"}},
       ["unpack"] = {{"table.unpack or unpack", nil}}
     }
     for name, _ in pairs(lua) do
-      dependencies[name] = {{'require("l2l.lua")', "lua"}}
+      dependencies[name] = {{'require("l2l.lua");', "lua"}}
     end
 
     for name, _ in pairs(reader) do
-      dependencies[name] = {{'require("l2l.reader")', "reader"}}
+      dependencies[name] = {{'require("l2l.reader");', "reader"}}
     end
 
     for name, _ in pairs(exports) do
-      dependencies[name] = {{'require("l2l.compiler")', "compiler"}}
+      dependencies[name] = {{'require("l2l.compiler");', "compiler"}}
     end
   end
   return dependencies
@@ -513,6 +516,7 @@ local function compile(source, mod, verbose, extensions)
         "cond",
         "do",
         "set",
+        "seti",
         "let",
         "boolean"
       }

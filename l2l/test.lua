@@ -370,4 +370,30 @@ function test_table_constructor()
     1, 2, 4, 3, 4, 5, 2)
 end
 
+function test_seti()
+  assert_parse_error_contains(
+    "seti requires at least 3 arguments",
+    [[ (seti {} 1) ]])
+  assert_exec_equal(
+    [[ (do
+          (local t {})
+          (seti t "a" 10)
+          (.a t)) ]],
+    10)
+  assert_exec_equal(
+    [[ (do
+          (local t {})
+          (local expcase (seti t 1 10))
+          expcase) ]],
+    10)
+  assert_exec_equal(
+    [[ (do
+          (local t {})
+          (local f (fn () t))
+          (seti (f) "a" {})
+          (seti (f) "a" "b" 20)
+          (.a.b t)) ]],
+    20)
+end
+
 t.run(nil, {"--verbose"})
