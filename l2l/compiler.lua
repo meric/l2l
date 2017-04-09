@@ -83,29 +83,21 @@ local function statize_lua(invariant, data, output)
 end
 
 
---- If invariant is in debug mode, wrap the lua expression in a pcall-ed
--- anonymous function, which in case of error prints a traceback in l2l code
--- instead of a traceback of the compiled Lua. In the case where the expression
--- contains vararg ... then it has no effect - vararg ... cannot be wrapped
--- inside an anonymous function.
+--- If invariant is in debug mode, append each lua expression with a comment
+-- to describe which code in the original source code the compiled lua
+-- expression corresponds to.
 -- @param invariant
 -- @param data
 -- @param exp
 -- @return
 local function record(invariant, data, exp)
-  if invariant.debug and invariant.index[data] and
-    not (exp and exp.match and
-      (exp:match(lua.lua_vararg) or
-        exp:match(lua.lua_name, function(value)
-          return value == lua.lua_name("...")
-        end))) then
+  if invariant.debug and invariant.index[data]
+      and not utils.hasmetatable(data, lua.lua_block) then
     local position, rest = unpack(invariant.index[data])
-
     return lua.lua_annotated.new(exp,
-      lua.lua_long_comment.new("\nModule \""..(invariant.mod or "N/A")..
-                "\". "..exception.formatsource(
-              invariant.source,
-              position, rest-1).."\n"))
+      lua.lua_long_comment.new(
+        "\n% Module \""..(invariant.mod or "N/A").."\". "..
+          exception.formatsource(invariant.source, position, rest-1).."\n"))
   end
   return exp
 end
@@ -334,7 +326,7 @@ local function initialize_dependencies()
       [symbol("not"):mangle()] = {
         "import", {'import("l2l.lib.operators");', "operators"}},
       ["apply"] = {"import", {'import("l2l.lib.apply");', "apply"}},
-      ["unpack"] = {{"table.unpack or unpack", nil}}
+      ["unpack"] = {{"table.unpack or unpack;", nil}}
     }
     for name, _ in pairs(lua) do
       dependencies[name] = {{'require("l2l.lua");', "lua"}}
@@ -440,7 +432,7 @@ local function build(mod, extends, verbose)
     build_cache[path] = {f, out}
     return f, out
   else
-    print(out)
+    -- print(out)
     error(err)
   end
 end
@@ -461,7 +453,7 @@ local function import(mod, extends, verbose)
       print("missing module", mod, path)
     end
     if not ok then
-      print(out)
+      -- print(out)
       error(m)
     end
   else
@@ -548,9 +540,62 @@ local function compile(source, mod, verbose, extensions)
   end
 
   output = table.concat(output, "\n")
-  return header(references, mod) .. "\n" .. output
+
+  local _references = {}
+  analyse_chunk(_references, "return unpack")
+  if verbose then
+    return header(_references, mod)..("\n"..[[
+local pack = table.pack or function(...) return {n=select("#", ...), ...} end
+local returns = pack(xpcall(function(...)
+%s
+%s
+end, require("l2l.compiler")._error_handler, ...))
+local ok = returns[1]
+if not ok then
+  error(returns[2], 2)
+end
+return unpack(returns, 2, returns.n)]]):format(header(references, mod), output)
+  end
+  return header(references, mod).."\n"..output
 end
 
+
+local function _error_handler(e)
+  local level = 2
+  local message = {
+    "ERROR: ".. e:gsub("^.*:[0-9]: ", ""),
+    "stack traceback:"}
+  while true do
+    local info = debug.getinfo(level, "Slnf")
+    if not info then break end
+    if info.what == "C" then
+      table.insert(message,
+        "\t"..info.short_src..": in "..
+          (info.name and "function '"..tostring(info.name).."'" or "?"))
+    else   -- a Lua function
+      local src = exception.source(info.source)
+      local from, to = exception.atlineno(src, info.currentline)
+      local line = src:sub(from, to)
+      local rest = src:sub(to+3)
+      local comment_from, comment_to = lua.Comment:find(rest, lua.Comment)
+      if comment_from and comment_from == 1 and
+        rest:sub(comment_from, comment_to):sub(6, -4):match("^%% Module") then
+        local comment = rest:sub(comment_from, comment_to):sub(6, -4)
+        table.insert(message, "\t"..info.short_src..":"..info.currentline)
+        table.insert(message, "<=")
+        table.insert(message, "\t"..comment:gsub("[\n]", "\n\t"))
+      else
+        table.insert(message,
+          "\t"..info.short_src..":"..info.currentline..": "..
+            (info.name and "function '"..
+              tostring(info.name).."'" or "in main chunk")..
+                ": `"..line:gsub("^%s+", "").."`")
+      end
+    end
+    level = level + 1
+  end
+  return table.concat(message, "\n")
+end
 
 --- Convert a purely functional lua anonymous function definition into a
 -- macro definition.
@@ -684,7 +729,8 @@ exports = {
   expize = expize,
   to_stat = to_stat,
   expand = reader.expand,
-  destructure = destructure
+  destructure = destructure,
+  _error_handler = _error_handler,
 }
 
 return exports

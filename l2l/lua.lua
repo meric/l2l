@@ -754,6 +754,9 @@ lua_ast = {
   [lua_unop] = lua_unop,
   [lua_name] = lua_name,
   [lua_lazy] = lua_lazy,
+  [lua_comment] = lua_comment,
+  [lua_long_comment] = lua_long_comment,
+  [lua_annotated] = lua_annotated,
 }
 
 

@@ -50,7 +50,7 @@ local function pointat(src, index, to)
     if i >= index and i <= to then
       display = display.."^"
     else
-      display = display.."~"
+      display = display.."_"
     end
   end
   return display
@@ -115,11 +115,11 @@ local function formatsource(src, index, to)
     local lineno = numberat(src, fin+1)
     line, st, fin = lineat(src, fin+1)
     table.insert(messages, lineno.."\t|"..line)
-    table.insert(messages, "\t|".. pointat(src,
+    table.insert(messages, tostring(lineno):gsub("[0-9]", " ").."\t|".. pointat(src,
       math.max(index, st), math.min(fin, to)))
     linenumber = lineno
   end
-  for i=1, 1 do -- number of previous lines to display.
+  for i=1, 1 do -- number of next lines to display.
     if finish + 1 <= #src then
       content, _, finish = lineat(src, finish+1)
       table.insert(messages, (linenumber + i).."\t|"..content)
@@ -128,8 +128,42 @@ local function formatsource(src, index, to)
   return table.concat(messages, "\n")
 end
 
+local function source(src)
+  if src:sub(1, 1) == "@" then
+    local f = io.open(src:sub(2), "r")
+    src = f:read("*a")
+    f:close()
+  end
+  return src
+end
+
+local function atlineno(src, lineno)
+  local count = 1
+  local from=1
+  local to
+  for i=1, #src do
+    if src:sub(i, i) == "\n" then
+      count = count + 1
+    end
+    if count == lineno then
+      from = i + 1
+      to = #src
+      break
+    end
+  end
+  for i=from, #src do
+    if src:sub(i, i) == "\n" then
+      break
+    end
+    to = i - 1
+  end
+  return from, to
+end
+
 return {
   formatsource = formatsource,
   lineat = lineat,
-  pointat = pointat
+  pointat = pointat,
+  source = source,
+  atlineno = atlineno
 }
