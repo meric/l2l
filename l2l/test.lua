@@ -384,8 +384,11 @@ end
 
 function test_seti()
   assert_parse_error_contains(
-    "seti requires at least 3 arguments",
-    [[ (seti {} 1) ]])
+    "seti requires at least 2 arguments",
+    [[ (seti v) ]])
+  assert_exec_equal(
+    [[ (seti v 5) ]],
+    5)
   assert_exec_equal(
     [[ (do
           (local t {})
@@ -406,6 +409,64 @@ function test_seti()
           (seti (f) "a" "b" 20)
           (.a.b t)) ]],
     20)
+end
+
+function test_if()
+  assert_parse_error_contains(
+    "if requires 2 or 3 arguments",
+    [[ (if 1) ]])
+  assert_parse_error_contains(
+    "if requires 2 or 3 arguments",
+    [[ (if 1 2 3 4) ]])
+  assert_exec_equal(
+    [[ (if 1 1 2) ]],
+    1)
+  assert_exec_equal(
+    [[ (if 1 2) ]],
+    2)
+  assert_exec_equal(
+    [[ (if nil 2) ]],
+    nil)
+  assert_exec_equal(
+    [[ (if nil 2 3) ]],
+    3)
+  assert_parse_error_contains(
+    "when requires 2 or more arguments",
+    [[ (when 1) ]])
+  assert_exec_equal(
+    [[ (when 1 "a" "b" "c") ]],
+    "c")
+  assert_exec_equal(
+    [[ (when false "a" "b" "c") ]],
+    nil)
+  assert_exec_equal(
+    [[ (do
+          (local v 0)
+          (when 1
+            (set v (+ v 1))
+            (set v (+ v 1))
+            "a")
+          v) ]],
+    2)
+  assert_parse_error_contains(
+    "unless requires 2 or more arguments",
+    [[ (unless 1) ]])
+  assert_exec_equal(
+    [[ (unless 1 "a" "b" "c") ]],
+    nil)
+  assert_exec_equal(
+    [[ (unless false "a" "b" "c") ]],
+    "c")
+  assert_exec_equal(
+    [[ (do
+          (local v 0)
+          (unless nil
+            (set v (+ v 1))
+            (set v (+ v 1))
+            "a")
+          v) ]],
+    2)
+
 end
 
 t.run(nil, {"--verbose"})

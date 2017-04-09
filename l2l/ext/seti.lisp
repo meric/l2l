@@ -25,8 +25,8 @@ Usage:
 
 (fn compile_seti(invariant cdr output)
   (local args (vector.cast cdr))
-  \if len(args) < 3 then
-    error("seti requires at least 3 arguments: (seti left-expression index1 [index2 ...] value)")
+  \if len(args) < 2 then
+    error("seti requires at least 2 arguments: (seti left-expression [index1 ...] value)")
   end
   (local value (args:pop))
   (local left (indexer invariant output args))
