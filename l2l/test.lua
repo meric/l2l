@@ -245,6 +245,12 @@ function test_do()
       (set x 8 + x)
       (set x 9 + x))]],
     25)
+  assert_exec_equal(
+    [[(do "a" "b")]],
+    "b")
+  assert_exec_equal(
+    [[(do 1 2)]],
+    2)
 end
 
 function test_cond()

@@ -196,7 +196,7 @@ function expize(invariant, data, output)
   elseif type(data) == "number" then
     return data
   end
-  error("cannot not expize.."..tostring(data))
+  error("cannot expize.."..tostring(data))
 end
 
 
@@ -271,6 +271,9 @@ local function statize(invariant, data, output, last)
       return to_stat(data)
     end
   end
+  if type(data) == "number" then
+    return to_stat(data)
+  end
   if utils.hasmetatable(data, list) then
     local car = data:car()
     local cdr = vector.cast(data:cdr(), function(value)
@@ -287,7 +290,7 @@ local function statize(invariant, data, output, last)
   elseif data == reader.lua_none then
     return
   end
-  error("cannot not statize.."..tostring(data))
+  error("cannot statize.."..tostring(data))
 end
 
 local exports
