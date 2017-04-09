@@ -100,20 +100,24 @@ local function record(invariant, data, exp)
           return value == lua.lua_name("...")
         end))) then
     local position, rest = unpack(invariant.index[data])
-    return lua.lua_paren_exp.new(
-      lua.lua_functioncall.new(lua.lua_name("trace"),
-        lua.lua_args.new(lua.lua_explist({
-          lua.lua_string("Module \""..(invariant.mod or "N/A")..
-              "\". "..exception.formatsource(
-            invariant.source,
-            position, rest-1)),
-          lua.lua_lambda_function.new(
-            lua.lua_funcbody.new(
-              lua.lua_namelist({}),
-              lua.lua_block({
-                lua.lua_retstat.new(exp)
-                })))
-        }))))
+
+    return lua.lua_annotated.new(exp,
+      lua.lua_comment.new(tostring(exp):gsub("\n", "\\n").." INDEX "..position.." TO "..rest))
+
+    -- return lua.lua_paren_exp.new(
+    --   lua.lua_functioncall.new(lua.lua_name("trace"),
+    --     lua.lua_args.new(lua.lua_explist({
+    --       lua.lua_string("Module \""..(invariant.mod or "N/A")..
+    --           "\". "..exception.formatsource(
+    --         invariant.source,
+    --         position, rest-1)),
+    --       lua.lua_lambda_function.new(
+    --         lua.lua_funcbody.new(
+    --           lua.lua_namelist({}),
+    --           lua.lua_block({
+    --             lua.lua_retstat.new(exp)
+    --             })))
+    --     }))))
   end
   return exp
 end
@@ -273,6 +277,9 @@ local function statize(invariant, data, output, last)
   end
   if type(data) == "number" then
     return to_stat(data)
+  elseif utils.hasmetatable(data, lua.lua_comment)
+      or utils.hasmetatable(data, lua.lua_long_comment) then
+    return data
   end
   if utils.hasmetatable(data, list) then
     local car = data:car()

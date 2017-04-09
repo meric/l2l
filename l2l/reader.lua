@@ -297,8 +297,12 @@ local function read_lua(invariant, position)
 end
 
 local function read_lua_comment(invariant, position)
-  local rest = lua.Comment(invariant, skip_whitespace(invariant, position))
+  local rest, value = lua.Comment(invariant,
+    skip_whitespace(invariant, position))
   if rest then
+    if value then
+      invariant.index[value] = {position, rest + 1}
+    end
     return rest, {}
   end
 end

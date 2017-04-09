@@ -251,6 +251,12 @@ function test_do()
   assert_exec_equal(
     [[(do 1 2)]],
     2)
+  assert_exec_equal(
+    [=[(do 1 2 --[[hello]] 3)]=],
+    3)
+  assert_exec_equal(
+    [=[(do 1 2 --[[hello]])]=],
+    2)
 end
 
 function test_cond()

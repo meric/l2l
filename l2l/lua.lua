@@ -95,7 +95,10 @@ r = each(function(v, k)
   lua_funcbody = {"(", namelist=2, ")", block=4, "\nend"},
   lua_paren_exp = {"(", exp=2, ")"},
   lua_field_name = {name=1, "=", exp=3},
-  lua_field_key = {"[", key=2, "]", "=", exp=5}
+  lua_field_key = {"[", key=2, "]", "=", exp=5},
+  lua_long_comment = {"--[[", comment=2, "]]"},
+  lua_comment = {"--", comment=2},
+  lua_annotated = {exp=1, "\n", comment=3, "\n"},
 })
 
 local lua_assign = r.lua_assign
@@ -127,6 +130,9 @@ local lua_funcbody = r.lua_funcbody
 local lua_paren_exp = r.lua_paren_exp
 local lua_field_name = r.lua_field_name
 local lua_field_key = r.lua_field_key
+local lua_long_comment = r.lua_long_comment
+local lua_comment = r.lua_comment
+local lua_annotated = r.lua_annotated
 
 local lua_local = ast.reduce("lua_local", {"\nlocal", namelist=2, explist=3},
   function(self)
@@ -372,16 +378,20 @@ Comment = factor("Comment", function() return
   grammar.span("--", function(invariant, position, peek)
     -- Parse --[[ comment ]]
     local value
+    local rest = position
 
     if LongString(invariant, position, true) then
-      position, value = LongString(invariant, position, peek)
+      rest, value = LongString(invariant, rest, peek)
+      value = lua_long_comment.new(value)
     else
-      while invariant.source:sub(position, position) ~= "\n" do
-        position = position + 1
+      while invariant.source:sub(rest, rest) ~= "\n"
+          and rest <= #invariant.source do
+        rest = rest + 1
       end
+      value = lua_comment.new(invariant.source:sub(position, rest-1))
     end
-    return position, value
-  end) end)
+    return rest, value
+  end) % second end)
 
 local spaces = " \t\r\n"
 
@@ -837,7 +847,10 @@ local exports = {
   lua_field_name = lua_field_name,
   lua_field_key = lua_field_key,
   lua_lazy = lua_lazy,
-  lua_nameize = lua_nameize
+  lua_nameize = lua_nameize,
+  lua_long_comment = lua_long_comment,
+  lua_comment = lua_comment,
+  lua_annotated = lua_annotated
 }
 
 for _, v in pairs(exports) do
