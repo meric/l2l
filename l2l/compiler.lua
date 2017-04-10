@@ -550,7 +550,7 @@ local pack = table.pack or function(...) return {n=select("#", ...), ...} end
 local returns = pack(xpcall(function(...)
 %s
 %s
-end, require("l2l.compiler")._error_handler, ...))
+end, require("l2l.compiler").error_handler, ...))
 local ok = returns[1]
 if not ok then
   error(returns[2], 2)
@@ -561,7 +561,7 @@ return unpack(returns, 2, returns.n)]]):format(header(references, mod), output)
 end
 
 
-local function _error_handler(e)
+local function error_handler(e)
   local level = 2
   local message = {
     "ERROR: ".. e:gsub("^.*:[0-9]: ", ""),
@@ -597,6 +597,17 @@ local function _error_handler(e)
   end
   return table.concat(message, "\n")
 end
+
+
+local function call(f, ...)
+  local returns = pack(xpcall(f, error_handler, ...))
+  local ok = returns[1]
+  if not ok then
+    error(returns[2], 2)
+  end
+  return unpack(returns, 2, returns.n)
+end
+
 
 --- Convert a purely functional lua anonymous function definition into a
 -- macro definition.
@@ -731,7 +742,8 @@ exports = {
   to_stat = to_stat,
   expand = reader.expand,
   destructure = destructure,
-  _error_handler = _error_handler,
+  error_handler = error_handler,
+  call = call,
 }
 
 return exports
