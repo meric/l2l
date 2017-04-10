@@ -13,6 +13,7 @@ local trait = require("leftry.trait")
 local destructure = trait("destructure")
 
 local unpack = table.unpack or _G["unpack"]
+local pack = table.pack or function(...) return {n=select("#", ...), ...} end
 
 local function validate_functioncall(car)
   assert(
