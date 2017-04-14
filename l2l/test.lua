@@ -38,7 +38,9 @@ end
 
 local function assert_parse_contains(source, expected)
   local src = compiler.compile(source, "test")
-  t.assert_match(expected:gsub("[^a-zA-Z0-9 ]", "%%%1"), src)
+  t.assert_match(expected
+    :gsub("[^a-zA-Z0-9 ]", "%%%1")
+    :gsub("%s", "%%s+"), src)
 end
 
 local function assert_parse_error_contains(message, source, ...)
@@ -476,6 +478,9 @@ end
 function test_nested_macro()
   assert_parse_contains([[`(cond (not ,true))]],
     [[return list(symbol("cond"), list(symbol("not"), true))]])
+  assert_parse_contains([[((fn () (not true)))]],
+    "return (function() return not true end)()")
+  assert_exec_equal([[((fn () (not true)))]], false)
 end
 
 
