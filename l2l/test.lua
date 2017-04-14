@@ -36,6 +36,10 @@ local function assert_exec_error_contains(message, source, ...)
   t.assert_equal(found, true)
 end
 
+local function assert_parse_contains(source, expected)
+  local src = compiler.compile(source, "test")
+  t.assert_match(expected:gsub("[^a-zA-Z0-9 ]", "%%%1"), src)
+end
 
 local function assert_parse_error_contains(message, source, ...)
   local ok, ret = pcall(compiler.compile, source, "test", true)
@@ -251,6 +255,12 @@ function test_do()
   assert_exec_equal(
     [[(do 1 2)]],
     2)
+  assert_exec_equal(
+    [=[(do 1 2 --[[hello]] 3)]=],
+    3)
+  assert_exec_equal(
+    [=[(do 1 2 --[[hello]])]=],
+    2)
 end
 
 function test_cond()
@@ -462,5 +472,11 @@ function test_if()
     2)
 
 end
+
+function test_nested_macro()
+  assert_parse_contains([[`(cond (not ,true))]],
+    [[return list(symbol("cond"), list(symbol("not"), true))]])
+end
+
 
 t.run(nil, {"--verbose"})

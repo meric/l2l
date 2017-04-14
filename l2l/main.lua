@@ -14,8 +14,8 @@ local lookup_alias = function(arg)
   return aliases[arg] or arg
 end
 
-local trace, err
-local handler = function(e) trace, err = debug.traceback(2), e end
+local err
+local handler = function(e) err = e end
 local invariant = reader.environ("")
 
 local function repl(partial)
@@ -52,7 +52,6 @@ local function repl(partial)
       end
     else
       print(err)
-      print(trace)
     end
   else
     if(src_or_err:find("no bytes$")) then
