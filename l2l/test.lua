@@ -483,5 +483,9 @@ function test_nested_macro()
   assert_exec_equal([[((fn () (not true)))]], false)
 end
 
+function test_concat()
+  assert_exec_equal([[(.. "1" "2")]], "12")
+end
+
 
 t.run(nil, {"--verbose"})
