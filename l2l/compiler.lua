@@ -137,13 +137,7 @@ function expize(invariant, data, output)
   if utils.hasmetatable(data, list) then
     local car = data:car()
     if utils.hasmetatable(car, symbol) and invariant.lua[car[1]] then
-      data, expanded = reader.expand(invariant,
-        invariant.lua[car[1]].expize(invariant, data:cdr(), output))
-      if expanded then
-        return expize(invariant, data, output)
-      else
-        return data
-      end
+      return invariant.lua[car[1]].expize(invariant, data:cdr(), output)
     end
     local _data
     _data, expanded = reader.expand(invariant, data)
@@ -235,13 +229,7 @@ local function statize(invariant, data, output, last)
   if utils.hasmetatable(data, list) then
     local car = data:car()
     if utils.hasmetatable(car, symbol) and invariant.lua[car[1]] then
-      data, expanded = reader.expand(invariant,
-        invariant.lua[car[1]].statize(invariant, data:cdr(), output))
-      if expanded then
-        return statize(invariant, data, output, last)
-      else
-        return data
-      end
+      return invariant.lua[car[1]].statize(invariant, data:cdr(), output)
     end
     data, expanded = reader.expand(invariant, data)
     if expanded then
