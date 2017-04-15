@@ -18,7 +18,7 @@ local loadstring = _G["loadstring"] or _G["load"]
 -- If the current Lua version does not support having statements between
 -- `break` and `end` then wrap it in `do end` block.
 (local _break (if
-    (loadstring "while break; print(1) end") `\break
+    (loadstring "while true do break; print(1) end") `\break
     `\do break end))
 
 (fn expize_break (invariant cdr output)
