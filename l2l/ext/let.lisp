@@ -5,8 +5,6 @@
 @import cond
 @import do
 
--- http://exploringjs.com/es6/ch_destructuring.html#sec_destructuring-algorithm
-
 \--[[
 Usage:
   (let (
@@ -20,103 +18,14 @@ Usage:
     (print c)
     (print d))
 ]]
---[[
-For each assignment,
-   convert to a list of assignments
-]]--
 
-(local utils (require "leftry.utils"))
-(local boolean (require "l2l.lib.operators"))
-
-(fn is_strictly_array (self)
-  (apply boolean.and
-    (utils.map
-      (fn (field) (boolean.and
-        (not (utils.hasmetatable field lua_field_key))
-        (not (utils.hasmetatable field lua_field_name))))
-      self.fieldlist)))
-
-(fn is_strictly_lua_name_array (self)
-  (apply boolean.and
-    (utils.map
-      (fn (field) (boolean.or
-        (utils.hasmetatable field lua_name)
-        (not (getmetatable field))))
-      self.fieldlist)))
-
-(:where destructure lua_table (fn (self value)
-  (cond
-    (boolean.and (utils.hasmetatable value lua_table)
-         (is_strictly_lua_name_array self)
-         (is_strictly_array value))
-      -- Both sides are lua_table, cancels out.
-      -- {a,b,c,d,e} {unpack({1, 2, 3, 4, 5})}
-      `\local \,self.fieldlist = \,value.fieldlist
-      -- Right side is not literal table.
-      (do
-        (local ref (lua_name:unique "ref"))
-        (local stats (lua_block {\`\local \,ref = (\,value)}))
-        (utils.map (fn (field i)
-          (cond
-            (utils.hasmetatable field lua_name)
-             -- {a, b, hello=c, world={f}}
-             -- The simple `a, b` part.
-              (stats:insert `\local \,field = (\,ref)[(\,i)])
-            (utils.hasmetatable field lua_field_name)
-              -- {a, b, hello=c, world={f}} {1, 2, hello=4, world={5}}
-              -- The nested string keys part.
-              (do
-                (local sub `\(\,ref)[\,(lua_string field.name.value)])
-                (cond
-                  (destructure:has (getmetatable field.exp))
-                    (stats:insert (destructure field.exp sub))
-                    (stats:insert `\local \,field.exp = \,sub)))
-            (destructure:has (getmetatable field))
-              -- {a, b, c, d, {e}} {unpack({1, 2, 3, 4, {5}})}
-              -- The nested {e} part.
-              (do
-                (local sub `\(\,ref)[(\,i)])
-                (stats:insert (destructure field sub)))
-            (error "cannot destructure "..str(field))))
-        self.fieldlist)
-        stats))))
-
-(:where destructure list (fn (self value)
-  (cond
-    (boolean.and (utils.hasmetatable value lua_table))
-      -- (a b c) {1,2,3}
-      (do
-        (assert (is_strictly_array value)
-          "table with keys cannot be destructured into list")
-        `\local \,(lua_namelist (vector.cast self lua_name)) =
-          \,value.fieldlist)
-    (boolean.and (utils.hasmetatable value list)
-         (== (:car value) (symbol "quote")))
-      -- (d e f) '(4 5 (+ 6 8))
-        `\local \,(lua_namelist (vector.cast self lua_name)) =
-          \,(lua_explist (vector.cast (:car (:cdr value))))
-    `\local \,(lua_namelist (vector.cast self lua_name))=(\,value):unpack())))
-
-(:where destructure "nil" (fn (self)
-  (error "let only allows symbols and list on left hand side, not.."..
-      tostring(getmetatable(self)))))
-
-(fn assign (names value)
-  (cond
-    (utils.hasmetatable names symbol)
-      `(local ,names ,value)
-    (destructure names value)))
-
-(fn locals (names values ...)
-  (cond ...
-    \return assign(names, values), locals(...)
-    (assign names values)))
+(local destructure (import "l2l.lib.destructure"))
 
 (fn let (vars ...)
   (cond \(len(vars)) > 0
     `(do ,(vector.unpack
       (:append
-        (vector (locals (list.unpack vars)))
+        (vector (destructure.locals_block (list.unpack vars)))
         (vector ...))))
     `(do ,...)))
 
