@@ -95,7 +95,7 @@ git clone git@github.com:meric/language-l2l.git
 
 It will take effect when you restart Atom and apply to all files with a .lisp extension.
 
-![l2l-syntax-highlighting](/l2l/l2l-syntax-highlight.png?raw=true "")
+![l2l-syntax-highlighting](/l2l-syntax-highlight.png?raw=true "")
 
 ## Naming ##
 
