@@ -509,16 +509,6 @@ function test_while()
     (while (< n 9)
       (set n (+ n 1))
       (when (== n 4)
-        \break))
-    n
-  ]], 4)
-
-  -- FIXME (break) expize macro generates code like "break\ntemp=nil" and Lua chokes on break followed by runable code
-  assert_exec_equal([[
-    (local n 0)
-    (while (< n 9)
-      (set n (+ n 1))
-      (when (== n 4)
         (break)))
     n
   ]], 4)
