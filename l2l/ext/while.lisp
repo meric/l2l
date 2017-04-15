@@ -1,4 +1,5 @@
 @import fn
+@import if
 @import cond
 @import local
 @import quasiquote
@@ -11,13 +12,21 @@ Usage:
 ]]
 
 local utils = require("leftry").utils
+local loadstring = _G["loadstring"] or _G["load"]
+
+
+-- If the current Lua version does not support having statements between
+-- `break` and `end` then wrap it in `do end` block.
+(local _break (if
+    (loadstring "while break; print(1) end") `\break
+    `\do break end))
 
 (fn expize_break (invariant cdr output)
-  (table.insert output (lua.lua_break))
+  (table.insert output _break)
   (lua.lua_nil))
 
 (fn statize_break (invariant cdr output)
-  (lua.lua_break))
+  _break)
 
 (fn stat_while (invariant cdr output)
   \
