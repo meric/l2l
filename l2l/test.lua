@@ -487,5 +487,33 @@ function test_concat()
   assert_exec_equal([[(.. "1" "2")]], "12")
 end
 
+function test_while()
+  assert_exec_equal([[
+    (local n 0)
+    (while (< n 9)
+      (set n (+ n 1)))
+    n
+  ]], 9)
+  assert_exec_equal([[
+    (local n 0)
+    (while
+      (do 
+        (local v (* n 10))
+        (local f (fn (p) (/ p 10)))
+        (if (< (f v) 7) true false))
+      (set n (+ n 1)))
+    n
+  ]], 7)
+  assert_exec_equal([[
+    (local n 0)
+    (while (< n 9)
+      (set n (+ n 1))
+      (when (== n 4)
+        (break)))
+    n
+  ]], 4)
+
+end
+
 
 t.run(nil, {"--verbose"})
