@@ -124,6 +124,12 @@ local run = function(...)
   end
 
   if(options.repl) then
+    local dependencies = {}
+    for k, v in pairs(compiler.initialize_dependencies()) do
+      table.insert(dependencies, k)
+    end
+    table.sort(dependencies)
+    print("Available: "..table.concat(dependencies, ", "))
     repl()
   end
 end

@@ -352,6 +352,10 @@ local function initialize_dependencies()
       dependencies[name] = {{'require("l2l.reader");', "reader"}}
     end
 
+    for name, _ in pairs(utils) do
+      dependencies[name] = {{'require("leftry.utils");', "utils"}}
+    end
+
     for name, _ in pairs(exports) do
       dependencies[name] = {{'require("l2l.compiler");', "compiler"}}
     end
@@ -760,6 +764,7 @@ exports = {
   destructure = destructure,
   error_handler = error_handler,
   call = call,
+  initialize_dependencies = initialize_dependencies
 }
 
 return exports
