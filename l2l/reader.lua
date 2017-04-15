@@ -4,6 +4,9 @@ local list = require("l2l.list")
 local vector = require("l2l.vector")
 local ipairs = require("l2l.iterator")
 local len = require("l2l.len")
+local exception = require("l2l.exception")
+local unpack = table.unpack or _G["unpack"]
+local pack = table.pack or function(...) return {n=select("#", ...), ...} end
 
 local lua_keyword = {
   ["and"] = true,
@@ -97,6 +100,34 @@ local function _mangle(text)
       return "_"..char:byte()
     end
   end)
+end
+
+local function set_sourcemap_to(invariant, data1, data2)
+  if not data2 then
+    return data2
+  end
+  invariant.index[data2] = invariant.index[data2] or invariant.index[data1]
+  return data2
+end
+
+--- Return expansion of macro m with arguments ... in a protected manner.
+local function transform(invariant, data, m, ...)
+  local ok, error_or_data = xpcall(m, function(e)
+    return (function()
+      if e:match("%% Module") then
+        return e
+      end
+      local position, rest = vector.unpack(invariant.index[data])
+      local message = "ERROR: ".. e:gsub("^.*:[0-9]: ", "") ..
+          "\n% Module \""..(invariant.mod or "N/A").."\". "..
+          exception.formatsource(invariant.source, position, rest-1)
+      return message
+    end)()
+  end, ...)
+  if not ok then
+    error(error_or_data, 2)
+  end
+  return error_or_data
 end
 
 local function mangle(text)
@@ -461,10 +492,10 @@ local function expand(invariant, data)
   end
   local macro = invariant.macro
   if utils.hasmetatable(data, list) then
-    local car, cdr = data:car(), data:cdr()
+    local car = data:car()
     if utils.hasmetatable(car, symbol) and macro[car.name] then
-      return expand(invariant, macro[car.name](
-        vector.unpack(vector.cast(cdr, _expand)))), true
+      return expand(invariant, transform(invariant, data, macro[car.name],
+        vector.unpack(vector.cast(data:cdr(), _expand)))), true
     else
       data = list.cast(data, _expand)
       invariant.index[data] = invariant.index[origin]
@@ -499,7 +530,6 @@ local function environ(source, verbose)
   return {
     debug = verbose or false,
     index = {},
-    sourcemap = {},
     events = {},
     macro = {},
     dispatch = {
@@ -559,6 +589,7 @@ return {
   read_lua_literal = read_lua_literal,
   read_quote = read_quote,
   read_symbol = read_symbol,
-  symbol=symbol,
-  skip_whitespace = skip_whitespace
+  symbol = symbol,
+  skip_whitespace = skip_whitespace,
+  set_sourcemap_to = set_sourcemap_to
 }

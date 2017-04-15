@@ -48,7 +48,7 @@ local function assert_parse_error_contains(message, source, ...)
   t.assert_equal(ok, false)
   local found = tostring(ret):find(message, 1, true) and true
   if not found then
-    print(ret)
+    print(message, "\nnot found in:\n",ret)
   end
   t.assert_equal(found, true)
 end
@@ -472,6 +472,9 @@ function test_if()
             "a")
           v) ]],
     2)
+  assert_parse_error_contains(
+    "1\t|(if 1 1 1 1)",
+    [[(if 1 1 1 1)]])
 
 end
 

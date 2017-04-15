@@ -500,7 +500,9 @@ LispStat = function(invariant, position, peek)
     error("Could not compile Lisp expression embedded in Lua."..
       invariant.source:sub(position, position+10))
   end
-  return rest, values[1]
+  local expr = values[1]
+  invariant.index[expr] = {position, rest}
+  return rest, expr
 end
 LispExp = function(invariant, position, peek)
   local reader = require("l2l.reader")
@@ -516,6 +518,7 @@ LispExp = function(invariant, position, peek)
       invariant.source:sub(position, position+10))
   end
   local expr = values[1]
+  invariant.index[expr] = {position, rest}
   return rest, expr
 end
 FunctionCall = factor("FunctionCall", function() return

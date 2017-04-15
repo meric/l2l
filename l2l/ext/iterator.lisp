@@ -60,7 +60,7 @@ Usage:
   (set self.n #self))
 
 (fn lua_iteration:apply (invariant f output)
-  (lua_inline_functioncall invariant f output self.v, self.i))
+  (lua_inline_functioncall invariant f output self.v self.i))
 
 (fn lua_iteration:reduce (invariant f r output)
   (lua_inline_functioncall invariant f output r self.v))

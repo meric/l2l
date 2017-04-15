@@ -14,6 +14,7 @@ local destructure = trait("destructure")
 
 local unpack = table.unpack or _G["unpack"]
 local pack = table.pack or function(...) return {n=select("#", ...), ...} end
+local set_sourcemap_to = reader.set_sourcemap_to
 
 local function validate_functioncall(car)
   assert(
@@ -49,6 +50,29 @@ local function accessor_functioncall(car, cdr)
   end
 end
 
+
+--- Return expansion of special form f with arguments ... in a protected
+--  manner.
+local function transform(f, invariant, data, ...)
+  local ok, error_or_data = xpcall(f, function(e)
+    return (function()
+      if e:match("%% Module") then
+        return e
+      end
+      local position, rest = vector.unpack(invariant.index[data])
+      local message = "ERROR: ".. e:gsub("^.*:[0-9]: ", "") ..
+          "\n% Module \""..(invariant.mod or "N/A").."\". "..
+          exception.formatsource(invariant.source, position, rest-1)
+      return message
+    end)()
+  end, invariant, data, ...)
+  if not ok then
+    error(error_or_data, 2)
+  end
+  return error_or_data
+end
+
+
 local expize
 
 --- Convert a compiled lua expression into a Lua statement. Replace all
@@ -62,7 +86,9 @@ local expize
 local function statize_lua(invariant, data, output)
   local stat = data
     :gsub(symbol, function(value) return lua.lua_nameize(value) end)
-    :gsub(list, function(value) return expize(invariant, value, output) end)
+    :gsub(list, function(value, ...)
+      return set_sourcemap_to(invariant, value, expize(invariant, value, output))
+    end)
     :gsub(lua.lua_functioncall,
       function(value, parent)
         if parent ~= data then
@@ -137,13 +163,13 @@ function expize(invariant, data, output)
   if utils.hasmetatable(data, list) then
     local car = data:car()
     if utils.hasmetatable(car, symbol) and invariant.lua[car[1]] then
-      return invariant.lua[car[1]].expize(invariant, data:cdr(), output)
+      return transform(invariant.lua[car[1]].expize, invariant,
+        set_sourcemap_to(invariant, data, data:cdr()), output)
     end
     local _data
     _data, expanded = reader.expand(invariant, data)
     if expanded then
-      invariant.index[_data] = invariant.index[data]
-      return expize(invariant, _data, output)
+      return expize(invariant, set_sourcemap_to(invariant, data, _data), output)
     end
   end
   if lua.lua_ast[getmetatable(data)] then
@@ -229,7 +255,8 @@ local function statize(invariant, data, output, last)
   if utils.hasmetatable(data, list) then
     local car = data:car()
     if utils.hasmetatable(car, symbol) and invariant.lua[car[1]] then
-      return invariant.lua[car[1]].statize(invariant, data:cdr(), output)
+      return transform(invariant.lua[car[1]].statize, invariant,
+        set_sourcemap_to(invariant, data, data:cdr()), output)
     end
     data, expanded = reader.expand(invariant, data)
     if expanded then
