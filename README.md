@@ -147,7 +147,7 @@ This is so the compiler can mangle lua field accessor names
 
   For example, [boolean.lisp](/l2l/ext/boolean.lisp).
 
-* Zero-cost `map`, `filter`, `reduce` abstractions.
+* Zero-cost `map`, `filter`, `reduce` abstractions. <a id="zero-cost"></a>
 * Implement special forms that can inline anonymous functions as macros.
 * Special forms in Lua.
 
