@@ -83,6 +83,19 @@ make test
 make repl
 ```
 
+Run the following commands:
+
+```
+> (print "hello world")
+hello world
+> \print("hello world")
+hello world
+> (let (a 1) (print `\print(\,a)))
+print(1)
+> (let (a 1) (print (getmetatable `\print(\,a))))
+lua_block
+```
+
 ## Syntax Highlighting ##
 
 There is a [l2l syntax highlighting package for Atom](http://github.com/meric/language-l2l) that is a work-in-progress.
