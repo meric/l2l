@@ -169,7 +169,7 @@ function expize(invariant, data, output)
   elseif utils.hasmetatable(data, symbol) then
     -- TODO: symbol("a.b.c") currently converted into lua_name("a.b.c")
     -- This is not proper ast representation. The proper representation is:
-    -- lua_dot.new(lua_name("a"), lua_dot.new(lua_name("b"), lua_name("c")))
+    -- lua_dot.new(lua_dot.new(lua_name("a"),lua_name("b")),lua_name("c"))
     return lua.lua_name(data:mangle())
   elseif data == nil then
     return "nil"
@@ -620,15 +620,24 @@ local function macroize(invariant, f, output)
     names[name.value] = true
   end
   -- Manual quasiquote lua_names so they get compiled.
-  exp = exp:gsub(lua.lua_name, function(x)
+  exp = exp:gsub(lua.lua_name, function(x, ...)
     local name = tostring(x.value)
     if names[name:match("^[^.%[]+")] then
       if name:match("[.%[]") then
         -- Parse the lua_name through Exp to get proper ast representation.
         -- Replace lua_name with the symbol and apply the same operations to it
         name = select(2,
-          lua.Exp(tostring(x.value), 1)):gsub(lua.lua_name, function(y)
-            if names[y.value] then
+          lua.Exp(tostring(x.value), 1)):gsub(lua.lua_name, function(y, _, i)
+            if names[y.value] and i == 1 then
+              -- if i == 1 then it can be assumed it's first lua_name of the
+              -- chain. i.e.: a.a.a.a
+              --              ^ this one
+              -- The reason is the lua_dot's are chained like so:
+              -- lua_dot.new(lua_dot.new(lua_name("a"),lua_name("b")),lua_name("c"))
+              --                         ^ i=1         ^ i=3          ^ i=3
+              -- Refer to lua.lua for index numbers.
+              -- It's a bit hacky here because it's only coincidental
+              -- lua_index and lua_dot have same index numbers.
               return symbol(y.value)
             end
             return y

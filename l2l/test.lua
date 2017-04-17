@@ -156,6 +156,11 @@ function test_iterator()
     (local acc (map (fn (v) (.. "1" v[1])) (list {[1]="x"} {[1]="y"} {[1]="z"})))
     (reduce (fn (curr n) (.. curr n)) "" acc)
     ]], "1x1y1z")
+  assert_exec_equal([[
+    @import iterator
+    (local acc (map (fn (a) (.. "1" a.a.a)) (list {.a {.a "x"}} {.a {.a "y"}} {.a {.a "z"}})))
+    (reduce (fn (curr n) (.. curr n)) "" acc)
+    ]], "1x1y1z")
 end
 
 function test_reduce()
