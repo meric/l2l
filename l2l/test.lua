@@ -146,6 +146,16 @@ function test_iterator()
       filter(function(x) return x % 2 == 0 end,
         map(function(x) return x + 1 end, {1, 2, 3, 4})))]],
     vector(4, 6))
+  assert_exec_equal([[
+    @import iterator
+    (local acc (map (fn (v) (.. "1" v.a)) (list {.a "x"} {.a "y"} {.a "z"})))
+    (reduce (fn (curr n) (.. curr n)) "" acc)
+    ]], "1x1y1z")
+  assert_exec_equal([[
+    @import iterator
+    (local acc (map (fn (v) (.. "1" v[1])) (list {[1]="x"} {[1]="y"} {[1]="z"})))
+    (reduce (fn (curr n) (.. curr n)) "" acc)
+    ]], "1x1y1z")
 end
 
 function test_reduce()
@@ -497,7 +507,7 @@ function test_while()
   assert_exec_equal([[
     (local n 0)
     (while
-      (do 
+      (do
         (local v (* n 10))
         (local f (fn (p) (/ p 10)))
         (if (< (f v) 7) true false))

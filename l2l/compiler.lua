@@ -618,8 +618,22 @@ local function macroize(invariant, f, output)
   end
   -- Manual quasiquote lua_names so they get compiled.
   exp = exp:gsub(lua.lua_name, function(x)
-    if names[x.value] then
-      x = expize(invariant, symbol(x.value), output)
+    local name = tostring(x.value)
+    if names[name:match("^[^.%[]+")] then
+      if name:match("[.%[]") then
+        -- Parse the lua_name through Exp to get proper ast representation.
+        -- Replace lua_name with the symbol and apply the same operations to it
+        name = select(2,
+          lua.Exp(tostring(x.value), 1)):gsub(lua.lua_name, function(y)
+            if names[y.value] then
+              return symbol(y.value)
+            end
+            return y
+          end):repr()
+      else
+        name = symbol(name)
+      end
+      x = expize(invariant, name, output)
       function x.repr()
         return x
       end
