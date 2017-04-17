@@ -499,7 +499,8 @@ local function compile(source, mod, verbose, extensions)
         "seti",
         "let",
         "boolean",
-        "while"
+        "while",
+        "locals"
       }
     end
   end

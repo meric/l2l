@@ -515,5 +515,34 @@ function test_while()
 
 end
 
+function test_locals()
+  assert_exec_equal([[
+    (locals
+      {a, b, hello=c, world={f}} {1, 2, hello=4, world={5}}
+      {y, {z}} {1, {2}}
+      d 3
+      e 4)
+      \return a, b, c, d, e, f, z
+    ]],
+    1, 2, 4, 3, 4, 5, 2)
+  assert_exec_equal([[
+    (locals
+      {a, b, c, d, {e}} {unpack({1, 2, 3, 4, {5}})}
+      x {}
+      {f} x)
+      \return a, b, c, d, e
+    ]],
+    1, 2, 3, 4, 5)
+  assert_exec_equal([[
+    @import iterator
+    (locals
+      (a b c) {1,2,3}
+      (d e f) '(4 5 (+ 6 8))
+      (g h i) `(4 5 ,(+ 6 8)))
+      \return a, b, c, d, e, f, g, h, i
+    ]],
+    1, 2, 3, 4, 5, 14, 4, 5, 14)
+end
+
 
 t.run(nil, {"--verbose"})
