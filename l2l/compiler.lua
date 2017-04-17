@@ -167,6 +167,9 @@ function expize(invariant, data, output)
       func,
       lua.lua_args.new(lua.lua_explist(cdr))))
   elseif utils.hasmetatable(data, symbol) then
+    -- TODO: symbol("a.b.c") currently converted into lua_name("a.b.c")
+    -- This is not proper ast representation. The proper representation is:
+    -- lua_dot.new(lua_name("a"), lua_dot.new(lua_name("b"), lua_name("c")))
     return lua.lua_name(data:mangle())
   elseif data == nil then
     return "nil"
