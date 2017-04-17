@@ -98,17 +98,10 @@ lua_block
 
 ## Syntax Highlighting ##
 
-There is a [l2l syntax highlighting package for Atom](http://github.com/meric/language-l2l) that is a work-in-progress.
-It is not registered to Atom.io yet, so you will have to copy it to your packages directory manually:
-
-```bash
-cd ~/.atom/packages
-git clone git@github.com:meric/language-l2l.git
-```
-
-It will take effect when you restart Atom and apply to all files with a .lisp extension.
-
 ![l2l-syntax-highlighting](/l2l-syntax-highlight.png?raw=true "")
+
+* [Atom: language-l2l](https://atom.io/packages/language-l2l)
+* [Sublime Text: l2l.sublime-package](https://github.com/meric/l2l.sublime-package)
 
 ## Naming ##
 
