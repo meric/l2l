@@ -530,6 +530,26 @@ function test_while()
 
 end
 
+function test_list_index()
+  assert_exec_equal([[
+    (let
+      (a '("a" "b" "c" "d")
+       b `(,a[4] ,a[3] ,a[2] ,a[1]))
+      b)
+  ]], list("d", "c", "b", "a"))
+
+  assert_exec_equal([[
+    (let
+      (a '("a" "b" "c" "d")
+       b '(1 2 3 4))
+      \b[1] = a[4]
+      \b[2] = a[3]
+      \b[3] = a[2]
+      \b[4] = a[1]
+      b)
+  ]], list("d", "c", "b", "a"))
+end
+
 function test_locals()
   assert_exec_equal([[
     (locals

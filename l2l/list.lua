@@ -43,8 +43,8 @@ local list = utils.prototype("list", function(list, ...)
   if select("#", ...) == 0 then
     return vector()
   end
-  local self = setmetatable({position = data.n + 1}, list)
   local count = select("#", ...)
+  local self = setmetatable({position = data.n + 1, contiguous = count}, list)
   local index = self.position
   for i=1, count do
     local datum = (select(i, ...))
@@ -61,6 +61,43 @@ end)
 
 function list:__gc()
   release(self.position)
+end
+
+function list:__index(key)
+  if type(key) ~= "number" then
+    return rawget(list, key)
+  end
+  if self.contiguous then
+    assert(key <= self.contiguous)
+    return data[self.position + 2 * (key - 1)]
+  end
+  local position = self.position
+  while position and key > 1 do
+      position = data[position + 1]
+      key = key - 1
+  end
+  if position then
+    return data[position]
+  end
+end
+
+function list:__newindex(key, value)
+  if type(key) ~= "number" then
+    return rawset(self, key, value)
+  end
+  if self.contiguous then
+    assert(key <= self.contiguous)
+    data[self.position + 2 * (key - 1)] = value
+    return
+  end
+  local position = self.position
+  while position and key > 1 do
+      position = data[position + 1]
+      key = key - 1
+  end
+  if position then
+    data[position] = value
+  end
 end
 
 function list:repr()
@@ -115,11 +152,14 @@ function list:__len()
   if not self then
     return 0
   end
-  local cdr = self:cdr()
+  if self.contiguous then
+    return self.contiguous
+  end
+  local position = data[self.position + 1]
   local count = 1
-  while cdr do
+  while position do
     count = count + 1
-    cdr = cdr:cdr()
+    position = data[position + 1]
   end
   return count
 end
@@ -132,11 +172,18 @@ function list:cdr()
   local position = data[self.position + 1]
   if position then
     retain(position)
-    return setmetatable({position = position}, list)
+    local contiguous = self.contiguous
+    if contiguous then
+      contiguous = contiguous - 1
+    end
+    return setmetatable({position = position, contiguous = contiguous}, list)
   end
 end
 
 function list:__eq(l)
+  if rawequal(self, l) then
+    return true
+  end
   return getmetatable(self) == getmetatable(l) and
     self:car() == l:car() and self:cdr() == l:cdr()
 end
@@ -195,7 +242,7 @@ function list:cons(car)
     data[data.n] = self.position
   end
   retain(position)
-  return setmetatable({position = position}, list)  
+  return setmetatable({position = position, contiguous = nil}, list)
 end
 
 return list
