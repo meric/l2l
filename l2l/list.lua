@@ -1,5 +1,8 @@
 -- A very fast Lua linked list implementation that can only add a number of
--- items equal to the maximum integer that can be held in a lua number.
+-- items equal to the maximum integer that can be held in a lua number,
+-- i.e. 9007199254740992.
+-- If the program creates 100000000 list cells per second, the program will
+-- fail after 2.85 years.
 
 -- The reference counting O(n) for length of remaining list when doing cdr or
 -- cons.
@@ -98,6 +101,7 @@ function list:__newindex(key, value)
   if position then
     data[position] = value
   end
+  error("cannot assign value to key where key extends length of list")
 end
 
 function list:repr()
@@ -243,6 +247,23 @@ function list:cons(car)
   end
   retain(position)
   return setmetatable({position = position, contiguous = nil}, list)
+end
+
+function list:prepend(t)
+  local position = data.n + 1
+  local count = len(t)
+  for i, datum in ipairs(t) do
+    data.n = data.n + 1
+    data[data.n] = datum
+    data.n = data.n + 1
+    if i < count then
+      data[data.n] = position + i * 2
+    else
+      data[data.n] = self.position
+    end
+  end
+  retain(position)
+  return setmetatable({position = position}, list)
 end
 
 return list
