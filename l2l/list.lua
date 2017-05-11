@@ -66,16 +66,18 @@ function list:__gc()
   release(self.position)
 end
 
+local list_index_base = 1
+
 function list:__index(key)
   if type(key) ~= "number" then
     return rawget(list, key)
   end
   if self.contiguous then
     assert(key <= self.contiguous)
-    return data[self.position + 2 * (key - 1)]
+    return data[self.position + 2 * (key - list_index_base)]
   end
   local position = self.position
-  while position and key > 1 do
+  while position and key > list_index_base do
       position = data[position + 1]
       key = key - 1
   end
@@ -90,11 +92,11 @@ function list:__newindex(key, value)
   end
   if self.contiguous then
     assert(key <= self.contiguous)
-    data[self.position + 2 * (key - 1)] = value
+    data[self.position + 2 * (key - list_index_base)] = value
     return
   end
   local position = self.position
-  while position and key > 1 do
+  while position and key > list_index_base do
       position = data[position + 1]
       key = key - 1
   end
@@ -139,15 +141,15 @@ function list:__tostring()
 end
 
 function list:__ipairs()
-  local cdr = self
+  local position = self.position
   local i = 0
   return function()
-    if not cdr then
+    if not position then
       return
     end
     i = i + 1
-    local car = cdr:car()
-    cdr = cdr:cdr()
+    local car = data[position]
+    position = data[position + 1]
     return i, car
   end, self, 0
 end
@@ -203,6 +205,7 @@ function list:unpack()
   return car
 end
 
+-- WARNING, this uses 1-based
 function list.sub(t, from, to)
   to = to or len(t)
   from = from or 1
@@ -217,7 +220,7 @@ function list.cast(t, f)
   if not t or count == 0 then
     return nil
   end
-  local self = setmetatable({position = data.n + 1}, list)
+  local self = setmetatable({position = data.n + 1, contiguous = count}, list)
   local n = data.n
   data.n = data.n + count * 2
   for i, v in ipairs(t) do
@@ -246,7 +249,7 @@ function list:cons(car)
     data[data.n] = self.position
   end
   retain(position)
-  return setmetatable({position = position, contiguous = nil}, list)
+  return setmetatable({position = position, contiguous = false}, list)  
 end
 
 function list:prepend(t)
