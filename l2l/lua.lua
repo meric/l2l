@@ -574,6 +574,10 @@ LongString = function(invariant, position, peek)
   return rest, value
 end
 
+local ch_a = string.byte("a")
+local ch_A = string.byte("A")
+local ch_0 = string.byte("0")
+
 -- Functions
 local function stringcontent(quotechar)
   return function(invariant, position)
@@ -583,16 +587,74 @@ local function stringcontent(quotechar)
       return
     end
     local escaped = false
+    local escaped_dec = false
+    local escaped_dec_n = 0
+    local escaped_hex = 0
+    local char_acc = 0
     local value = {}
     local byte
     for i=position, limit do
+      if escaped_dec then
+        if string.match(byte, "[0-9]") and escaped_dec_n < 3 then
+          char_acc = char_acc * 10 + string.byte(byte) - ch_0
+          escaped_dec_n = escaped_dec_n + 1
+        else
+          table.insert(value, string.char(char_acc))
+          escaped = false
+          escaped_dec = false
+        end
+      end
       if not escaped and byte == "\\" then
         escaped = true
-      else
-        if escaped and byte == "n" then
-          byte = "\n"
+      elseif escaped then
+        if escaped_hex > 0 then
+          char_acc = char_acc * 16
+          if string.match(byte, "[0-9]") then
+            char_acc = char_acc + string.byte(byte) - ch_0
+          elseif string.match(byte, "[a-f]") then
+            char_acc = char_acc + string.byte(byte) - ch_a + 10
+          elseif string.match(byte, "[A-F]") then
+            char_acc = char_acc + string.byte(byte) - ch_A + 10
+          end
+          escaped_hex = escaped_hex - 1
+          if escaped_hex == 0 then
+            byte = string.char(char_acc)
+            escaped = false
+          end
+        elseif not escaped_dec then
+          if byte == "n" then
+            byte = "\n"
+            escaped = false
+          elseif byte == "t" then
+            byte = "\t"
+            escaped = false
+          elseif byte == "a" then
+            byte = "\a"
+            escaped = false
+          elseif byte == "b" then
+            byte = "\b"
+            escaped = false
+          elseif byte == "f" then
+            byte = "\f"
+            escaped = false
+          elseif byte == "r" then
+            byte = "\r"
+            escaped = false
+          elseif byte == "v" then
+            byte = "\v"
+            escaped = false
+          elseif byte == "x" then
+            escaped_hex = 2
+            char_acc = 0
+          elseif string.match(byte, "[0-9]") then
+            escaped_dec = true
+            escaped_dec_n = 1
+            char_acc = string.byte(byte) - ch_0
+          else
+            -- \" \' \\ do not need specific cases since just removing their initial \ is enough
+            escaped = false
+          end
         end
-        escaped = false
       end
       if not escaped then
         table.insert(value, byte)

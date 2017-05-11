@@ -88,9 +88,23 @@ function test_length()
 end
 
 function test_string()
+  -- \r is not being tested due to weirdness related to windows, file opening modes, and 
+  -- the lua error "unfinished string near ..."
   assert_exec_equal(
     [["hello"]],
     "hello")
+  assert_exec_equal(
+    [["\t\a\n\b\f\v\"\'\\"]],
+    "\t\a\n\b\f\v\"\'\\")
+  assert_exec_equal(
+    [["\n\t\a\b\f\v\x0a\x0A\123\40\"\'\\"]],
+    "\n\t\a\b\f\v\x0a\x0A\123\40\"\'\\")
+  assert_exec_equal(
+    [["a\na\ta\aa\ba\faa\va\x0aa\x0Aa\123a\40a\"a\'a\\a"]],
+    "a\na\ta\aa\ba\faa\va\x0aa\x0Aa\123a\40a\"a\'a\\a")
+  assert_exec_equal(
+    [["aaa\123456aaa"]],
+    "aaa{456aaa")
 end
 
 function test_math()
