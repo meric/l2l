@@ -314,6 +314,13 @@ local function read_lua_number(invariant, position)
   end
 end
 
+local function read_lua_string(invariant, position)
+  local rest, value = lua.LiteralString(invariant, position)
+  if rest then
+    return rest, {value}
+  end
+end
+
 local function read_lua_literal(invariant, position)
   local rest, value = lua.Exp(invariant, position)
   if not value then
@@ -514,7 +521,7 @@ local function environ(source, verbose)
       [string.byte(";")] = {read_semicolon},
       [string.byte(")")] = {read_right_paren},
       [string.byte('{')] = {read_lua_literal, read_dict},
-      [string.byte('"')] = {read_lua_literal},
+      [string.byte('"')] = {read_lua_string},
       [string.byte("-")] = {read_lua_number, read_lua_comment, read_symbol},
       -- [string.byte("[")] = {read_dict},
       [string.byte("}")] = {read_right_brace},
@@ -528,7 +535,7 @@ local function environ(source, verbose)
       [string.byte("\r")]={skip_whitespace},
 
       -- Pattern indices should not overlap with any other pattern index.
-      ["[0-9]"]={read_lua_literal},
+      ["[0-9]"]={read_lua_number},
 
       -- Default read macro.
       {read_symbol}

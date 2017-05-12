@@ -130,7 +130,7 @@ function test_math()
     [[(+ 1 (+ 1 2))]],
     4)
   assert_exec_equal(
-    [[(== 1 2 - 1)]],
+    [[(== 1 \2 - 1)]],
     true)
 end
 
@@ -271,14 +271,14 @@ function test_do()
     [[(do ">>")]],
     ">>")
   assert_exec_equal(
-    [[(do (local x 1) 7 + x)]],
+    [[(do (local x 1) \7 + x)]],
     8)
   assert_exec_equal([[
     (do
       (local x 1)
-      (set x 7 + x)
-      (set x 8 + x)
-      (set x 9 + x))]],
+      (set x \7 + x)
+      (set x \8 + x)
+      (set x \9 + x))]],
     25)
   assert_exec_equal(
     [[(do "a" "b")]],
@@ -339,7 +339,7 @@ end
 function test_error()
   assert_exec_error_contains(
     "Line 1, column 1:",
-    [[0 + 1 +
+    [[\0 + 1 +
       (0 + nil)]],
     2, "")
 
@@ -347,7 +347,7 @@ function test_error()
     "Line 3, column 15:",
     [[(let (x 1
             y 2
-            z 3 + nil) z)]],
+            z \3 + nil) z)]],
     2, "")
 
   assert_exec_error_contains(
@@ -355,7 +355,7 @@ function test_error()
     [[(fn q (u)
         (let (x 1
             y 2
-            z 3 + u) z))
+            z \3 + u) z))
       (print (q nil))
       (print 1)]],
     2, "")
@@ -371,9 +371,9 @@ function test_backslash()
 end
 
 function test_infix()
-  -- Infix maths when starting with a number.
+  -- Infix maths when starting with a slash.
   assert_exec_equal(
-    [[1 + 1 * 2]],
+    [[\1 + 1 * 2]],
     3)
 end
 
@@ -562,6 +562,15 @@ function test_list_index()
       \b[4] = a[1]
       b)
   ]], list("d", "c", "b", "a"))
+end
+
+function test_list()
+  assert_exec_equal([[
+    (list "a" -2)
+  ]], list("a", -2))
+  assert_exec_equal([[
+    (list 2 -2)
+  ]], list(2, -2))
 end
 
 function test_locals()
