@@ -13,8 +13,10 @@ local lua = require("l2l.lua")
 local ipairs = require("l2l.iterator")
 local len = require("l2l.len")
 
+
 local data = setmetatable({n=0, free=0}, {})
 local retains = {}
+local index_base = 1
 
 local function retain(n)
   retains[n] = (retains[n] or 0) + 1
@@ -66,18 +68,16 @@ function list:__gc()
   release(self.position)
 end
 
-local list_index_base = 1
-
 function list:__index(key)
   if type(key) ~= "number" then
     return rawget(list, key)
   end
   if self.contiguous then
     assert(key <= self.contiguous)
-    return data[self.position + 2 * (key - list_index_base)]
+    return data[self.position + 2 * (key - index_base)]
   end
   local position = self.position
-  while position and key > list_index_base do
+  while position and key > index_base do
       position = data[position + 1]
       key = key - 1
   end
@@ -92,11 +92,11 @@ function list:__newindex(key, value)
   end
   if self.contiguous then
     assert(key <= self.contiguous)
-    data[self.position + 2 * (key - list_index_base)] = value
+    data[self.position + 2 * (key - index_base)] = value
     return
   end
   local position = self.position
-  while position and key > list_index_base do
+  while position and key > index_base do
       position = data[position + 1]
       key = key - 1
   end
