@@ -76,7 +76,7 @@ For each assignment,
               (do
                 (local sub `\(\,ref)[(\,i)])
                 (stats:insert (destructure field sub)))
-            (error "cannot destructure "..str(field))))
+            (error \"cannot destructure "..str(field))))
         self.fieldlist)
         stats))))
 
@@ -97,7 +97,7 @@ For each assignment,
     `\local \,(lua_namelist (vector.cast self lua_name))=(\,value):unpack())))
 
 (:where destructure "nil" (fn (self)
-  (error "destructure block only allows symbols, list or table on left hand side, not.."..
+  (error \"destructure block only allows symbols, list or table on left hand side, not.."..
       tostring(getmetatable(self)))))
 
 (fn assign_local (names value)
