@@ -10,13 +10,19 @@
   (cond cdr
     (let (
       car (:car cdr)
-      ref (lua_name:unique "_and_value"))
+      ref (lua_name:unique "_and_value")
+      inner_output {}
+      inner
+        (cond (:cdr cdr)
+          (circuit_and invariant (:cdr cdr) inner_output truth)
+          `,truth = ,ref)
+      )
       `\
         local \,ref = \,\(expize(invariant, car, output))
         if \,ref then
-          \,(cond (:cdr cdr)
-              (circuit_and invariant (:cdr cdr) output truth)
-              `\\,truth = \,ref)
+          \,truth = \,ref
+          \,(lua.lua_block inner_output)
+          \,inner
         else
           \,truth = false
         end)))
@@ -34,16 +40,24 @@
   (cond cdr
     (let (
       car (:car cdr)
-      ref (lua_name:unique "_or_value"))
+      ref (lua_name:unique "_or_value")
+      exp_output {}
+      cond_exp (expize invariant car exp_output)
+      inner_output {}
+      inner
+        (cond (:cdr cdr)
+          (circuit_or invariant (:cdr cdr) inner_output truth))
+      )
       `\
         if not \,truth then
-          local \,ref = \,\(expize(invariant, car, output))
+          \,(lua.lua_block exp_output)
+          local \,ref = \,cond_exp
           if \,ref then
             \,truth = \,ref
           end
         end
-        \,(cond (:cdr cdr)
-            (circuit_or invariant (:cdr cdr) output truth)))))
+        \,(lua.lua_block inner_output)
+        \,inner)))
 
 (fn expize_or (invariant cdr output)
   (let (ref (lua_name:unique "_or_bool"))
