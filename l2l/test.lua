@@ -525,6 +525,13 @@ function test_while()
   ]], 9)
   assert_exec_equal([[
     (local n 0)
+    (do
+      (while (< n 9)
+        (set n (+ n 1))))
+    n
+  ]], 9)
+  assert_exec_equal([[
+    (local n 0)
     (while
       (do
         (local v (* n 10))

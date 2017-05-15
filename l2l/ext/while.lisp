@@ -46,7 +46,7 @@ local loadstring = _G["loadstring"] or _G["load"]
   (stat_while invariant cdr output))
 
 (fn expize_while (invariant cdr output)
-  (stat_while invariant cdr output)
+  (table.insert output (stat_while invariant cdr output))
   (lua.lua_nil))
 
 {
