@@ -246,6 +246,23 @@ function test_and()
   assert_exec_equal(
     [[(and)]],
     true)
+  -- the shortcut behavior of booleans must be valid for all sideband code generation too,
+  -- and must preserve the same order of evaluation for them.
+  -- verify it by checking it with side effects
+  assert_exec_equal(
+    [[
+    (do
+      (local sideband "")
+      (local e (fn ()
+        (set sideband (.. sideband "a"))
+        false))
+      (local v (fn ()
+        (set sideband (.. sideband "b"))
+        true))
+      (and (e) (if (v) 1 2))
+      sideband)
+    ]],
+    "a")
 end
 
 function test_or()
@@ -521,6 +538,13 @@ function test_while()
     (local n 0)
     (while (< n 9)
       (set n (+ n 1)))
+    n
+  ]], 9)
+  assert_exec_equal([[
+    (local n 0)
+    (do
+      (while (< n 9)
+        (set n (+ n 1))))
     n
   ]], 9)
   assert_exec_equal([[
