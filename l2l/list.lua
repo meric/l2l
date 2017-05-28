@@ -1,123 +1,32 @@
--- A very fast Lua linked list implementation that can only add a number of
--- items equal to the maximum integer that can be held in a lua number,
--- i.e. 9007199254740992.
--- If the program creates 100000000 list cells per second, the program will
--- fail after 2.85 years.
-
--- The reference counting O(n) for length of remaining list when doing cdr or
--- cons.
-
 local utils = require("leftry").utils
 local vector = require("l2l.vector")
 local lua = require("l2l.lua")
 local ipairs = require("l2l.iterator")
 local len = require("l2l.len")
 
-
-local data = setmetatable({n=0, free=0}, {})
-local retains = {}
-local index_base = 1
-
-local function retain(n)
-  retains[n] = (retains[n] or 0) + 1
-  local rest = data[n+1]
-  if rest then
-    return retain(rest)
-  end
-end
-
-local function release(n)
-  retains[n] = retains[n] - 1
-  if retains[n] == 0 then
-    retains[n] = nil
-    data[n] = nil
-    data[n+1] = nil
-    data.free = data.free + 1
-  end
-  if data.free == data.n then
-    -- Take the opportunity to reset `data`.
-    data = setmetatable({n=0, free=0}, {})
-  end
-  local rest = data[n+1]
-  if rest then
-    return release(rest)
-  end
-end
+local index_base = 0
 
 local list = utils.prototype("list", function(list, ...)
   if select("#", ...) == 0 then
     return vector()
   end
   local count = select("#", ...)
-  local self = setmetatable({position = data.n + 1, contiguous = count}, list)
-  local index = self.position
+  local self = {}
   for i=1, count do
     local datum = (select(i, ...))
-    data.n = data.n + 1
-    data[data.n] = datum
-    data.n = data.n + 1
-    if i < count then
-      data[data.n] = index + i * 2
-    end
+    self[i + index_base - 1] = datum
   end
-  retain(self.position)
-  return self
+  self.n = count
+  return setmetatable(self, list)
 end)
-
-function list:__gc()
-  release(self.position)
-end
-
-function list:__index(key)
-  if type(key) ~= "number" then
-    return rawget(list, key)
-  end
-  if self.contiguous then
-    assert(key <= self.contiguous)
-    return data[self.position + 2 * (key - index_base)]
-  end
-  local position = self.position
-  while position and key > index_base do
-      position = data[position + 1]
-      key = key - 1
-  end
-  if position then
-    return data[position]
-  end
-end
-
-function list:__newindex(key, value)
-  if type(key) ~= "number" then
-    return rawset(self, key, value)
-  end
-  if self.contiguous then
-    assert(key <= self.contiguous)
-    data[self.position + 2 * (key - index_base)] = value
-    return
-  end
-  local position = self.position
-  while position and key > index_base do
-      position = data[position + 1]
-      key = key - 1
-  end
-  if position then
-    data[position] = value
-  end
-  error("cannot assign value to key where key extends length of list")
-end
 
 function list:repr()
   local parameters = {}
-  local cdr = self
-  local i = 0
-  while cdr do
-    i = i + 1
-    local car = cdr:car()
-    if type(car) == "string" then
-      car = utils.escape(car)
+  for i,v in ipairs(self) do
+    if type(v) == "string" then
+      v = utils.escape(v)
     end
-    parameters[i] = car
-    cdr = cdr:cdr()
+    parameters[i] = v
   end
   return lua.lua_functioncall.new(lua.lua_name("list"),
     lua.lua_args.new(
@@ -126,31 +35,26 @@ end
 
 function list:__tostring()
   local text = {}
-  local cdr = self
-  local i = 0
-  while cdr do
-    i = i + 1
-    local car = cdr:car()
-    if type(car) == "string" then
-      car = utils.escape(car)
+  for i,v in ipairs(self) do
+    if type(v) == "string" then
+      v = utils.escape(v)
     end
-    text[i] = tostring(car)
-    cdr = cdr:cdr()
+    text[i] = tostring(v)
   end
   return "list("..table.concat(text, ", ")..")"
 end
 
+-- we can store nil, so we need our own ipairs
+-- also ipairs i is always 1-based
 function list:__ipairs()
-  local position = self.position
-  local i = 0
+  local s = self
+  local i = -1
   return function()
-    if not position then
+    i = i + 1
+    if i >= s.n then
       return
     end
-    i = i + 1
-    local car = data[position]
-    position = data[position + 1]
-    return i, car
+    return i + 1, s[i + index_base]
   end, self, 0
 end
 
@@ -158,55 +62,71 @@ function list:__len()
   if not self then
     return 0
   end
-  if self.contiguous then
-    return self.contiguous
-  end
-  local position = data[self.position + 1]
-  local count = 1
-  while position do
-    count = count + 1
-    position = data[position + 1]
-  end
-  return count
+  return self.n
 end
 
 function list:car()
-  return data[self.position]
+  return self[index_base]
 end
 
 function list:cdr()
-  local position = data[self.position + 1]
-  if position then
-    retain(position)
-    local contiguous = self.contiguous
-    if contiguous then
-      contiguous = contiguous - 1
-    end
-    return setmetatable({position = position, contiguous = contiguous}, list)
+  if self.n < 2 then
+    return nil
   end
+  local r = {}
+  for i=1, self.n - 1 do
+    r[i + index_base - 1] = self[i + index_base]
+  end
+  r.n = self.n - 1
+  return setmetatable(r, list)
 end
 
 function list:__eq(l)
   if rawequal(self, l) then
     return true
   end
-  return getmetatable(self) == getmetatable(l) and
-    self:car() == l:car() and self:cdr() == l:cdr()
+  if getmetatable(self) ~= getmetatable(l) then
+    return false
+  end
+  if self.n ~= l.n then
+    return false
+  end
+  for i=index_base,self.n - 1 + index_base do
+    if self[i] ~= l[i] then
+      return false
+    end
+  end
+  return true
+end
+
+function list:unpack_i(i)
+  if i == self.n  - 1 + index_base then
+    return self[i]
+  end
+  return self[i], self:unpack_i(i + 1)
 end
 
 function list:unpack()
   if not self then
     return
   end
-  local car, cdr = self:car(), self:cdr()
-  if cdr then
-    return car, cdr:unpack()
-  end
-  return car
+  return self:unpack_i(index_base)
 end
 
 -- WARNING, this uses 1-based
 function list.sub(t, from, to)
+
+  -- to = to or len(t)
+  -- from = from or 1
+  -- local j = index_base
+  -- local r = {}
+  -- for i=from - 1 + index_base, to - 1 + index_base do
+  --   r[j] = t[i]
+  --   j = j + 1
+  -- end
+  -- r.n = j - 1
+  -- return setmetatable(r, list)
+
   to = to or len(t)
   from = from or 1
   return list.cast(t, function(i)
@@ -220,53 +140,42 @@ function list.cast(t, f)
   if not t or count == 0 then
     return nil
   end
-  local self = setmetatable({position = data.n + 1, contiguous = count}, list)
-  local n = data.n
-  data.n = data.n + count * 2
+  local self = setmetatable({n = count}, list)
   for i, v in ipairs(t) do
-    n = n + 1
     if f then
-      data[n] = f(v, i)
+      self[i - 1 + index_base] = f(v, i)
     else
-      data[n] = v
-    end
-    n = n + 1
-    if i < count then
-      data[n] = n + 1
+      self[i - 1 + index_base] = v
     end
   end
-  retain(self.position)
   return self
 end
 
 function list:cons(car)
-  -- Prepend car to the list and return a new head.
-  data.n = data.n + 1
-  local position = data.n
-  data[data.n] = car
-  data.n = data.n + 1
-  if self then
-    data[data.n] = self.position
+  local r = {}
+  for i=self.n - 1 + index_base, index_base, -1 do
+    r[i+1] = self[i]
   end
-  retain(position)
-  return setmetatable({position = position, contiguous = false}, list)  
+  r[index_base] = car
+  r.n = self.n + 1
+  return setmetatable(r, list)  
 end
 
-function list:prepend(t)
-  local position = data.n + 1
-  local count = len(t)
-  for i, datum in ipairs(t) do
-    data.n = data.n + 1
-    data[data.n] = datum
-    data.n = data.n + 1
-    if i < count then
-      data[data.n] = position + i * 2
-    else
-      data[data.n] = self.position
-    end
-  end
-  retain(position)
-  return setmetatable({position = position}, list)
-end
+-- function list:prepend(t)
+--   local position = data.n + 1
+--   local count = len(t)
+--   for i, datum in ipairs(t) do
+--     data.n = data.n + 1
+--     data[data.n] = datum
+--     data.n = data.n + 1
+--     if i < count then
+--       data[data.n] = position + i * 2
+--     else
+--       data[data.n] = self.position
+--     end
+--   end
+--   retain(position)
+--   return setmetatable({position = position}, list)
+-- end
 
 return list
