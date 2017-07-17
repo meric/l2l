@@ -4,7 +4,7 @@ local lua = require("l2l.lua")
 local ipairs = require("l2l.iterator")
 local len = require("l2l.len")
 
-local index_base = 0
+local index_base = 1
 
 local list = utils.prototype("list", function(list, ...)
   if select("#", ...) == 0 then
@@ -158,7 +158,7 @@ function list:cons(car)
   end
   r[index_base] = car
   r.n = self.n + 1
-  return setmetatable(r, list)  
+  return setmetatable(r, list)
 end
 
 -- function list:prepend(t)
