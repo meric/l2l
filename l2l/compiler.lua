@@ -175,6 +175,8 @@ function expize(invariant, data, output)
     return "nil"
   elseif data == reader.lua_none then
     return
+  elseif type(data) == "string" then
+    return lua.lua_string(data)
   elseif type(data) == "number" then
     return data
   end
@@ -463,6 +465,34 @@ local function import(mod, extends, verbose)
   return m
 end
 
+local default_extensions = function()
+  return {
+    "fn",
+    "quasiquote",
+    "quote",
+    "operators",
+    "local",
+    "cond",
+    "if",
+    "do",
+    "set",
+    "seti",
+    "let",
+    "boolean",
+    "while",
+    "locals"
+  }
+end
+
+
+local function default_environ(verbose)
+  local invariant = reader.environ("", verbose)
+  for _, e in ipairs(default_extensions()) do
+    reader.load_extension(invariant,
+      reader.import_extension(invariant, e, false))
+  end
+  return invariant
+end
 
 --- Compile l2l string code into Lua.
 -- @param source
@@ -489,22 +519,7 @@ local function compile(source, mod, verbose, extensions)
     if mod and string.match(mod, "^l2l[.]lib") then
       extensions = {}
     else
-      extensions = {
-        "fn",
-        "quasiquote",
-        "quote",
-        "operators",
-        "local",
-        "cond",
-        "if",
-        "do",
-        "set",
-        "seti",
-        "let",
-        "boolean",
-        "while",
-        "locals"
-      }
+      extensions = default_extensions()
     end
   end
 
@@ -554,6 +569,10 @@ return unpack(returns, 2, returns.n)]]):format(header(references, mod), output)
   return header(references, mod).."\n"..output
 end
 
+local function compile_data(data, mod, verbose)
+  local invariant = default_environ()
+  return expize(invariant, data)
+end
 
 local function error_handler(e)
   local level = 2
@@ -748,8 +767,10 @@ compile_or_cached = function(source, mod, extends, path, verbose)
 end
 
 exports = {
+  compile_data = compile_data,
   lua_inline_functioncall=lua_inline_functioncall,
   loadstring=_loadstring,
+  default_environ=default_environ,
   build=build,
   import=import,
   compile=compile,
@@ -760,6 +781,7 @@ exports = {
   expand = reader.expand,
   destructure = destructure,
   error_handler = error_handler,
+  default_extensions = default_extensions,
   call = call,
 }
 
