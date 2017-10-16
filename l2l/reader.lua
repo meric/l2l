@@ -240,6 +240,7 @@ local function read_dict(invariant, position)
   end
 
   local parameters = {}
+  local out = {}
   for i = 1, n, 2 do
     local k = t[i]
     -- sugar for string keys
@@ -249,7 +250,9 @@ local function read_dict(invariant, position)
         k = lua.lua_string(k.name:sub(2))
       end
     end
-    table.insert(parameters, lua.lua_field_key.new(k, t[i+1]))
+    local compiler = require("l2l.compiler")
+
+    table.insert(parameters, lua.lua_field_key.new(k, compiler.expize(invariant, t[i+1], out)))
   end
 
   local value = lua.lua_table.new(lua.lua_fieldlist(parameters))
@@ -257,7 +260,7 @@ local function read_dict(invariant, position)
   if value then
     invariant.index[value] = {position, rest + 1}
   end
-  return rest + 1, {value}
+  return rest + 1, {lua.lua_block(out), value}
 
 end
 
