@@ -113,7 +113,7 @@ local run = function(...)
       f:close()
       lisp_source = lisp_source:gsub("^%s*#![^\n]+", "", 1)
       invariant.source = lisp_source
-      local src = compiler.compile(invariant, to_load.val)
+      local src = compiler.compile(invariant, to_load.val, true)
       loadstring(src)()
     elseif(to_load.how == "compile") then
       local f = assert(io.open(to_load.val), "File not found: " .. to_load.val)
